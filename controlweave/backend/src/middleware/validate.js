@@ -49,9 +49,22 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+/**
+ * Strips null bytes, <script> blocks, and HTML tags from a string.
+ * Non-string values are returned unchanged.
+ */
+function sanitizeInput(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/\0/g, '')                          // null bytes
+    .replace(/<script[\s\S]*?<\/script>/gi, '')  // full script elements
+    .replace(/<[^>]+>/g, '');                    // remaining HTML tags
+}
+
 module.exports = {
   validateBody,
   requireFields,
   isUuid,
-  isNonEmptyString
+  isNonEmptyString,
+  sanitizeInput
 };

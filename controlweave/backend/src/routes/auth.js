@@ -5,8 +5,8 @@ const jwt = require('jsonwebtoken');
 const { createHash } = require('crypto');
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
-const { validateBody, requireFields } = require('../middleware/validate');
-const { JWT_SECRET } = require('../config/security');
+const { validateBody, requireFields, sanitizeInput } = require('../middleware/validate');
+const { JWT_SECRET, SECURITY_CONFIG } = require('../config/security');
 const {
   getTrialSeedData,
   expireOrganizationTrialIfNeeded
@@ -125,6 +125,7 @@ function deriveOrganizationName({ organizationName, fullName, email, role }) {
 async function getUserByEmail(email) {
   const result = await pool.query(
     `SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, u.role, u.is_active,
+            u.failed_login_attempts, u.locked_until,
             u.organization_id, o.name as organization_name, o.tier as organization_tier,
             o.billing_status as organization_billing_status,
             o.trial_status as organization_trial_status,
