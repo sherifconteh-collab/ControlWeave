@@ -285,7 +285,7 @@ controlweave/
 | Dedicated support | - | - | - | Yes |
 
 Default signup behavior:
-- New organizations start on a 30-day full-feature trial tier.
+- New organizations start on a 7-day full-feature trial tier.
 - At trial expiry, organizations are automatically downgraded to Free unless upgraded.
 - Paid tiers include `starter`, `professional`, `enterprise`, and `utilities`.
 
