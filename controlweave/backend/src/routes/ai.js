@@ -1,12 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { createOrgRateLimiter } = require('../middleware/rateLimit');
 const llm = require('../services/llmService');
 const { normalizeTier, shouldEnforceAiLimitForByok, getByokPolicy } = require('../config/tierPolicy');
+
+const aiOrgRateLimiter = createOrgRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  label: 'ai-org'
+});
 
 // All AI routes require authentication
 router.use(authenticate);
 router.use(requirePermission('ai.use'));
+router.use(aiOrgRateLimiter);
 
 // ---------- Middleware: Check AI usage limits ----------
 async function checkAIUsage(req, res, next) {

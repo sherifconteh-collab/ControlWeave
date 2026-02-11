@@ -5,7 +5,15 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { organizationAPI, frameworkAPI, assessmentsAPI } from '@/lib/api';
-import { hasPermission } from '@/lib/access';
+import { hasPermission, normalizeTier } from '@/lib/access';
+
+function getFrameworkLimit(tier: string): number {
+  switch (tier) {
+    case 'free': return 2;
+    case 'starter': return 5;
+    default: return 999;
+  }
+}
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
 
 interface Framework {
@@ -58,6 +66,9 @@ export default function FrameworksPage() {
   const { user } = useAuth();
   const canManageFrameworks = hasPermission(user, 'frameworks.manage');
   const canReadAssessments = hasPermission(user, 'assessments.read');
+  const userTier = normalizeTier(user?.organizationTier);
+  const frameworkLimit = getFrameworkLimit(userTier);
+  const isLimitedTier = frameworkLimit < 999;
   const [frameworks, setFrameworks] = useState<Framework[]>([]);
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([]);
   const [procedureCountsByCode, setProcedureCountsByCode] = useState<Record<string, number>>({});
@@ -188,11 +199,20 @@ export default function FrameworksPage() {
 
   const toggleFramework = (frameworkId: string) => {
     if (!canManageFrameworks) return;
-    setSelectedFrameworks((prev) =>
-      prev.includes(frameworkId)
-        ? prev.filter((id) => id !== frameworkId)
-        : [...prev, frameworkId]
-    );
+    setSelectedFrameworks((prev) => {
+      if (prev.includes(frameworkId)) {
+        return prev.filter((id) => id !== frameworkId);
+      }
+      if (prev.length >= frameworkLimit) {
+        const tierLabel = userTier.charAt(0).toUpperCase() + userTier.slice(1);
+        setMessage({
+          type: 'error',
+          text: `${tierLabel} plan allows up to ${frameworkLimit} framework${frameworkLimit === 1 ? '' : 's'}. Deselect one first, or upgrade to ControlWeave Pro for more.`
+        });
+        return prev;
+      }
+      return [...prev, frameworkId];
+    });
   };
 
   const saveFrameworks = async () => {
@@ -295,6 +315,33 @@ export default function FrameworksPage() {
           </div>
         )}
 
+        {/* Tier framework limit banner */}
+        {isLimitedTier && canManageFrameworks && (
+          <div className={`border rounded-lg p-4 flex items-center justify-between gap-4 ${
+            selectedFrameworks.length >= frameworkLimit
+              ? 'bg-amber-50 border-amber-300'
+              : 'bg-blue-50 border-blue-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              selectedFrameworks.length >= frameworkLimit ? 'text-amber-900' : 'text-blue-900'
+            }`}>
+              <span className="font-semibold">{userTier.charAt(0).toUpperCase() + userTier.slice(1)} plan:</span>{' '}
+              {selectedFrameworks.length} of {frameworkLimit} framework{frameworkLimit === 1 ? '' : 's'} selected
+              {selectedFrameworks.length >= frameworkLimit && ' — limit reached'}
+            </p>
+            {process.env.NEXT_PUBLIC_PRO_URL && (
+              <a
+                href={process.env.NEXT_PUBLIC_PRO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 text-xs px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
+              >
+                Get ControlWeave Pro
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Selection Summary */}
         {selectedFrameworks.length > 0 && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -328,6 +375,8 @@ export default function FrameworksPage() {
                 {featuredSpotlight.map((framework) => {
                   const isSelected = selectedFrameworks.includes(framework.id);
                   const procedureCount = procedureCountsByCode[framework.code] ?? null;
+                  const isAtLimit = selectedFrameworks.length >= frameworkLimit;
+                  const isLocked = canManageFrameworks && !isSelected && isAtLimit;
                   return (
                     <div
                       key={`spotlight-${framework.id}`}
@@ -335,12 +384,14 @@ export default function FrameworksPage() {
                       className={`rounded-xl border-2 p-5 transition ${
                         isSelected
                           ? 'border-purple-600 bg-purple-50'
-                          : canManageFrameworks
-                            ? 'border-slate-200 hover:border-purple-400 hover:bg-slate-50 cursor-pointer'
-                            : 'border-slate-200'
+                          : isLocked
+                            ? 'border-slate-200 opacity-50 cursor-not-allowed'
+                            : canManageFrameworks
+                              ? 'border-slate-200 hover:border-purple-400 hover:bg-slate-50 cursor-pointer'
+                              : 'border-slate-200'
                       }`}
-                      role={canManageFrameworks ? 'button' : undefined}
-                      tabIndex={canManageFrameworks ? 0 : -1}
+                      role={canManageFrameworks && !isLocked ? 'button' : undefined}
+                      tabIndex={canManageFrameworks && !isLocked ? 0 : -1}
                       onKeyDown={(e) => {
                         if (!canManageFrameworks) return;
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -354,9 +405,11 @@ export default function FrameworksPage() {
                           <div className="text-[11px] uppercase tracking-wide text-slate-500">Featured</div>
                           <h3 className="text-lg font-semibold text-slate-900 mt-1">{framework.name}</h3>
                         </div>
-                        {isSelected && (
+                        {isSelected ? (
                           <span className="text-[11px] px-2 py-1 rounded-full bg-purple-600 text-white">Selected</span>
-                        )}
+                        ) : isLocked ? (
+                          <span className="text-[11px] px-2 py-1 rounded-full bg-gray-400 text-white">Locked</span>
+                        ) : null}
                       </div>
                       <p className="text-sm text-slate-600 mt-2">{framework.description}</p>
                       <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
@@ -586,20 +639,23 @@ export default function FrameworksPage() {
             {orderedFrameworks.map((framework) => {
               const isSelected = selectedFrameworks.includes(framework.id);
               const procedureCount = procedureCountsByCode[framework.code] ?? null;
+              const isAtLimit = selectedFrameworks.length >= frameworkLimit;
+              const isLocked = canManageFrameworks && !isSelected && isAtLimit;
               return (
                 <div
                   key={framework.id}
                   onClick={() => toggleFramework(framework.id)}
                   className={`
-                    bg-white border-2 rounded-lg p-6 transition-all
+                    bg-white border-2 rounded-lg p-6 transition-all relative
                     ${
                       isSelected
                         ? 'border-purple-600 bg-purple-50 shadow-lg scale-105'
-                        : canManageFrameworks
-                          ? 'border-gray-200 hover:border-purple-400 hover:shadow-md'
-                          : 'border-gray-200'
+                        : isLocked
+                          ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                          : canManageFrameworks
+                            ? 'border-gray-200 hover:border-purple-400 hover:shadow-md cursor-pointer'
+                            : 'border-gray-200 cursor-default'
                     }
-                    ${canManageFrameworks ? 'cursor-pointer' : 'cursor-default'}
                   `}
                 >
                   <div className="flex justify-between items-start mb-3">
@@ -611,11 +667,15 @@ export default function FrameworksPage() {
                         </span>
                       )}
                     </div>
-                    {isSelected && (
+                    {isSelected ? (
                       <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
                         Selected
                       </span>
-                    )}
+                    ) : isLocked ? (
+                      <span className="bg-gray-400 text-white text-xs px-2 py-1 rounded-full">
+                        Locked
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-sm text-gray-600 mb-4">{framework.description}</p>
                   <div className="flex items-center justify-between">

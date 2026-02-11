@@ -200,9 +200,9 @@ router.post('/register', validateBody((body) => requireFields(body, ['email', 'p
       information_types,
       informationTypes
     } = req.body;
-    const selectedRole = String(initial_role || initialRole || 'admin').toLowerCase();
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-    const normalizedFullName = String(full_name || '').trim();
+    const selectedRole = sanitizeInput(String(initial_role || initialRole || 'admin').toLowerCase());
+    const normalizedEmail = sanitizeInput(String(email || '').trim().toLowerCase());
+    const normalizedFullName = sanitizeInput(String(full_name || '').trim());
     const selectedFrameworkCodes = normalizeFrameworkCodes(framework_codes || frameworkCodes);
     const selectedInformationTypes = normalizeInformationTypes(information_types || informationTypes);
 
@@ -394,7 +394,7 @@ router.post('/register', validateBody((body) => requireFields(body, ['email', 'p
 router.post('/login', validateBody((body) => requireFields(body, ['email', 'password'])), async (req, res) => {
   try {
     const { email, password } = req.body;
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedEmail = sanitizeInput(String(email || '').trim().toLowerCase());
 
     if (!isValidEmail(normalizedEmail)) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -409,9 +409,38 @@ router.post('/login', validateBody((body) => requireFields(body, ['email', 'pass
       return res.status(401).json({ success: false, error: 'Account is disabled' });
     }
 
+    // Check account lockout
+    const { lockoutMaxAttempts, lockoutDurationMs } = SECURITY_CONFIG;
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const retryAfterSeconds = Math.ceil((new Date(user.locked_until) - Date.now()) / 1000);
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(423).json({
+        success: false,
+        error: 'Account temporarily locked due to too many failed login attempts',
+        retryAfterSeconds
+      });
+    }
+
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
+      const newAttempts = (user.failed_login_attempts || 0) + 1;
+      const shouldLock = newAttempts >= lockoutMaxAttempts;
+      await pool.query(
+        `UPDATE users
+         SET failed_login_attempts = $1,
+             locked_until = CASE WHEN $2 THEN NOW() + ($3::bigint * INTERVAL '1 millisecond') ELSE locked_until END
+         WHERE id = $4`,
+        [newAttempts, shouldLock, lockoutDurationMs, user.id]
+      );
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    }
+
+    // Reset lockout on successful password check
+    if (user.failed_login_attempts > 0 || user.locked_until) {
+      await pool.query(
+        'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1',
+        [user.id]
+      );
     }
 
     const trialExpired = await expireOrganizationTrialIfNeeded({

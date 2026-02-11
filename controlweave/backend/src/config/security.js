@@ -73,6 +73,16 @@ const SECURITY_CONFIG = {
     process.env.API_RATE_LIMIT_MAX,
     2000,
     { min: 1, max: 100000 }
+  ),
+  lockoutMaxAttempts: parsePositiveInt(
+    process.env.LOCKOUT_MAX_ATTEMPTS,
+    5,
+    { min: 1, max: 100 }
+  ),
+  lockoutDurationMs: parsePositiveInt(
+    process.env.LOCKOUT_DURATION_MS,
+    15 * 60 * 1000,
+    { min: 1000, max: 24 * 60 * 60 * 1000 }
   )
 };
 
