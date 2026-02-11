@@ -1,14 +1,11 @@
 /**
  * seed-demo-accounts.js
  *
- * Creates one admin account per tier so every tier can be demoed.
+ * Creates the community edition demo account (free tier).
  * Idempotent — safe to run multiple times.
  *
- * Accounts created:
- *   admin@professional.com / Test1234!  — professional tier
- *   admin@enterprise.com   / Test1234!  — enterprise tier
- *   admin@starter.com      / Test1234!  — starter tier
- *   admin@free.com         / Test1234!  — free tier
+ * Account created:
+ *   admin@free.com / Test1234!  — free tier
  */
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
@@ -17,30 +14,6 @@ const pool = require('../src/config/database');
 const PASSWORD = 'Test1234!';
 
 const ACCOUNTS = [
-  {
-    orgName: 'Enterprise Solutions Ltd',
-    tier: 'professional',
-    billingStatus: 'active_paid',
-    email: 'admin@professional.com',
-    firstName: 'Alice',
-    lastName: 'Admin'
-  },
-  {
-    orgName: 'Global Systems Corp',
-    tier: 'enterprise',
-    billingStatus: 'active_paid',
-    email: 'admin@enterprise.com',
-    firstName: 'Eve',
-    lastName: 'Enterprise'
-  },
-  {
-    orgName: 'TechStart Inc',
-    tier: 'starter',
-    billingStatus: 'active_paid',
-    email: 'admin@starter.com',
-    firstName: 'Sam',
-    lastName: 'Starter'
-  },
   {
     orgName: 'Acme Corp',
     tier: 'free',

@@ -1,4 +1,4 @@
-# ControlWeave Demo Startup Script
+# ControlWeave Community Edition — Startup Script
 # Run once from PowerShell: .\start-demo.ps1
 
 $ErrorActionPreference = "Stop"
@@ -7,7 +7,7 @@ $Backend  = Join-Path $Root "backend"
 $Frontend = Join-Path $Root "frontend"
 
 Write-Host ""
-Write-Host "=== ControlWeave Demo Setup ===" -ForegroundColor Cyan
+Write-Host "=== ControlWeave Community Edition Setup ===" -ForegroundColor Cyan
 
 # ── 1. Install dependencies ──────────────────────────────────────────────────
 Write-Host "`n[1/4] Installing backend dependencies..." -ForegroundColor Yellow
@@ -55,11 +55,8 @@ Write-Host "=== Setup complete ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Frontend : http://localhost:3000" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Demo logins (password: Test1234!):" -ForegroundColor Cyan
-Write-Host "    Professional : admin@professional.com" -ForegroundColor White
-Write-Host "    Enterprise   : admin@enterprise.com" -ForegroundColor White
-Write-Host "    Starter      : admin@starter.com" -ForegroundColor White
-Write-Host "    Free         : admin@free.com" -ForegroundColor White
+Write-Host "  Demo login (password: Test1234!):" -ForegroundColor Cyan
+Write-Host "    admin@free.com  (free tier)" -ForegroundColor White
 Write-Host ""
 Write-Host "  Two new PowerShell windows have opened (backend + frontend)." -ForegroundColor DarkGray
 Write-Host "  Wait ~15 seconds for Next.js to compile, then open the URL above." -ForegroundColor DarkGray

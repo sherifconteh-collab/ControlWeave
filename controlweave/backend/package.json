@@ -14,14 +14,9 @@
     "qa:e2e:dynamic": "node scripts/qa-dynamic.js",
     "qa:e2e:dynamic:all": "node scripts/qa-dynamic.js --suites=syntax,mega,dynamic,auditor,legacy",
     "check:ip-hygiene": "node scripts/ip-hygiene-check.js",
-    "seed:admin-demo-workspace": "node scripts/seed-admin-demo-workspace.js",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.js",
-    "seed:demo-full": "npm run seed:assessment-summary && npm run seed:assessment-ai-governance && npm run seed:assessment-rich-all && npm run seed:showcase-demo && npm run seed:admin-demo-workspace && npm run seed:demo-accounts",
+    "seed:demo-full": "npm run seed:demo-accounts",
     "seed:cmdb-demo": "node scripts/seed-cmdb-data.js",
-    "seed:showcase-demo": "node scripts/seed-demo-showcase.js",
-    "seed:assessment-summary": "node scripts/seed-assessment-procedures-summary.js",
-    "seed:assessment-ai-governance": "node scripts/seed-assessment-procedures-ai-governance.js",
-    "seed:assessment-rich-all": "node scripts/seed-assessment-procedures-rich-all.js",
     "audit:check": "npm audit --audit-level=moderate"
   },
   "dependencies": {
