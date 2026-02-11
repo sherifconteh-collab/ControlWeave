@@ -20,7 +20,7 @@ const ACCOUNTS = [
   {
     orgName: 'Enterprise Solutions Ltd',
     tier: 'professional',
-    billingStatus: 'active',
+    billingStatus: 'active_paid',
     email: 'admin@professional.com',
     firstName: 'Alice',
     lastName: 'Admin'
@@ -28,7 +28,7 @@ const ACCOUNTS = [
   {
     orgName: 'Global Systems Corp',
     tier: 'enterprise',
-    billingStatus: 'active',
+    billingStatus: 'active_paid',
     email: 'admin@enterprise.com',
     firstName: 'Eve',
     lastName: 'Enterprise'
@@ -36,7 +36,7 @@ const ACCOUNTS = [
   {
     orgName: 'TechStart Inc',
     tier: 'starter',
-    billingStatus: 'active',
+    billingStatus: 'active_paid',
     email: 'admin@starter.com',
     firstName: 'Sam',
     lastName: 'Starter'
