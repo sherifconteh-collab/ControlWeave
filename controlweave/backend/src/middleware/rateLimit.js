@@ -60,6 +60,19 @@ function createRateLimiter(options = {}) {
   };
 }
 
+function createOrgRateLimiter(options = {}) {
+  return createRateLimiter({
+    ...options,
+    keyGenerator: (req) => {
+      const orgId = req.user && req.user.organization_id
+        ? String(req.user.organization_id)
+        : defaultKeyGenerator(req);
+      return orgId;
+    }
+  });
+}
+
 module.exports = {
-  createRateLimiter
+  createRateLimiter,
+  createOrgRateLimiter
 };
