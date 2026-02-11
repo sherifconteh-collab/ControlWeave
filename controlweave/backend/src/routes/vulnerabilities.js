@@ -1025,4 +1025,58 @@ router.get('/:id', requirePermission('assets.read'), async (req, res) => {
   }
 });
 
+// ---------- POST /:id/analyze ----------
+// Run AI remediation analysis for a vulnerability, caching result in ai_analysis column.
+// Safe to call repeatedly — returns cached result if fresh (< 24h).
+router.post('/:id/analyze', requirePermission('ai.use'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const { id } = req.params;
+    const provider = req.body.provider || 'claude';
+    const model = req.body.model || null;
+
+    // Return cached result if still fresh (24h)
+    const cached = await pool.query(
+      `SELECT ai_analysis, ai_analyzed_at FROM vulnerability_findings
+       WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [id, orgId]
+    );
+    if (cached.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Vulnerability not found' });
+    }
+    const { ai_analysis, ai_analyzed_at } = cached.rows[0];
+    if (ai_analysis && ai_analyzed_at) {
+      const ageMs = Date.now() - new Date(ai_analyzed_at).getTime();
+      if (ageMs < 24 * 60 * 60 * 1000) {
+        return res.json({ success: true, data: { result: ai_analysis, cached: true } });
+      }
+    }
+
+    // Run fresh analysis
+    const llm = require('../services/llmService');
+    const result = await llm.generateVulnerabilityRemediation({
+      vulnerabilityId: id,
+      organizationId: orgId,
+      provider,
+      model
+    });
+
+    // Cache result
+    await pool.query(
+      `UPDATE vulnerability_findings
+       SET ai_analysis = $1, ai_analyzed_at = NOW()
+       WHERE id = $2 AND organization_id = $3`,
+      [JSON.stringify({ text: result }), id, orgId]
+    );
+
+    res.json({ success: true, data: { result, cached: false } });
+  } catch (err) {
+    console.error('Vulnerability AI analyze error:', err);
+    res.status(err.message?.includes('No API key') ? 400 : 500).json({
+      success: false,
+      error: err.message || 'AI analysis failed'
+    });
+  }
+});
+
 module.exports = router;

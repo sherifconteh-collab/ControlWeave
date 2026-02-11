@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { requiresOrganizationOnboarding } from '@/lib/access';
 import Sidebar from './Sidebar';
+import AICopilot from './AICopilot';
 
 export default function DashboardLayout({
   children,
@@ -48,6 +49,7 @@ export default function DashboardLayout({
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-6 py-8">{children}</div>
       </main>
+      <AICopilot />
     </div>
   );
 }

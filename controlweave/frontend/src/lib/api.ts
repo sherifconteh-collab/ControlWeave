@@ -293,6 +293,8 @@ export const vulnerabilitiesAPI = {
 
   getById: (id: string) => api.get(`/vulnerabilities/${id}`),
 
+  analyzeVulnerability: (id: string) => api.post(`/vulnerabilities/${id}/analyze`),
+
   getWorkflow: (id: string) => api.get(`/vulnerabilities/${id}/workflow`),
 
   updateWorkflowItem: (

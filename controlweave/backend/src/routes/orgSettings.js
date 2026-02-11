@@ -11,7 +11,7 @@ const { normalizeTier, shouldEnforceAiLimitForByok } = require('../config/tierPo
 
 router.use(authenticate);
 
-const ALLOWED_PROVIDERS = new Set(['claude', 'openai', 'gemini', 'grok']);
+const ALLOWED_PROVIDERS = new Set(['claude', 'openai', 'gemini', 'grok', 'groq', 'ollama']);
 const CONTENT_PACK_ALLOWED_EXTENSIONS = new Set([
   '.txt', '.md', '.csv', '.json', '.xml', '.log',
   '.pdf', '.docx', '.doc'
@@ -122,16 +122,16 @@ router.get('/llm', requirePermission('settings.manage'), async (req, res) => {
     const result = await pool.query(
       `SELECT setting_key, setting_value, is_encrypted, updated_at
        FROM organization_settings
-       WHERE organization_id = $1 AND setting_key IN ('anthropic_api_key', 'openai_api_key', 'gemini_api_key', 'xai_api_key', 'default_provider', 'default_model')`,
+       WHERE organization_id = $1 AND setting_key IN ('anthropic_api_key', 'openai_api_key', 'gemini_api_key', 'xai_api_key', 'groq_api_key', 'ollama_base_url', 'default_provider', 'default_model')`,
       [orgId]
     );
 
     const settings = {};
     for (const row of result.rows) {
-      if (row.setting_key.includes('api_key') && row.setting_value) {
+      if ((row.setting_key.includes('api_key') || row.setting_key === 'ollama_base_url') && row.setting_value) {
         settings[row.setting_key] = {
           configured: true,
-          masked: '****' + row.setting_value.slice(-4),
+          masked: row.setting_key === 'ollama_base_url' ? row.setting_value : '****' + row.setting_value.slice(-4),
           updated_at: row.updated_at
         };
       } else {
@@ -147,11 +147,13 @@ router.get('/llm', requirePermission('settings.manage'), async (req, res) => {
       data: {
         settings,
         hasAnthropicKey: !!settings.anthropic_api_key?.configured,
-        hasOpenAIKey: !!settings.openai_api_key?.configured,
-        hasGeminiKey: !!settings.gemini_api_key?.configured,
-        hasGrokKey: !!settings.xai_api_key?.configured,
+        hasOpenAIKey:    !!settings.openai_api_key?.configured,
+        hasGeminiKey:    !!settings.gemini_api_key?.configured,
+        hasGrokKey:      !!settings.xai_api_key?.configured,
+        hasGroqKey:      !!settings.groq_api_key?.configured,
+        hasOllamaUrl:    !!settings.ollama_base_url?.configured,
         defaultProvider: settings.default_provider?.value || 'claude',
-        defaultModel: settings.default_model?.value || null
+        defaultModel:    settings.default_model?.value || null
       }
     });
   } catch (err) {
@@ -165,13 +167,13 @@ router.get('/llm', requirePermission('settings.manage'), async (req, res) => {
 router.put('/llm', requirePermission('settings.manage'), validateBody((body) => {
   const errors = [];
   if (body.default_provider && !ALLOWED_PROVIDERS.has(body.default_provider)) {
-    errors.push('default_provider must be one of: claude, openai, gemini, grok');
+    errors.push('default_provider must be one of: claude, openai, gemini, grok, groq, ollama');
   }
   return errors;
 }), async (req, res) => {
   try {
     const orgId = req.user.organization_id;
-    const { anthropic_api_key, openai_api_key, gemini_api_key, xai_api_key, default_provider, default_model } = req.body;
+    const { anthropic_api_key, openai_api_key, gemini_api_key, xai_api_key, groq_api_key, ollama_base_url, default_provider, default_model } = req.body;
 
     const upsert = async (key, value, encrypted = false) => {
       if (value === undefined) return;
@@ -194,6 +196,8 @@ router.put('/llm', requirePermission('settings.manage'), validateBody((body) => 
     await upsert('openai_api_key', openai_api_key, true);
     await upsert('gemini_api_key', gemini_api_key, true);
     await upsert('xai_api_key', xai_api_key, true);
+    await upsert('groq_api_key', groq_api_key, true);
+    await upsert('ollama_base_url', ollama_base_url, false);
     await upsert('default_provider', default_provider);
     await upsert('default_model', default_model);
 
@@ -275,6 +279,30 @@ router.post('/llm/test', requirePermission('settings.manage'), validateBody((bod
       return res.json({ success: true, message: 'xAI Grok API key is valid', response: resp.choices[0].message.content });
     }
 
+    if (provider === 'groq') {
+      const OpenAI = require('openai');
+      const client = new OpenAI.default({ apiKey, baseURL: 'https://api.groq.com/openai/v1' });
+      const resp = await client.chat.completions.create({
+        model: 'llama-3.1-8b-instant',
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'Say "API key verified" in exactly those words.' }]
+      });
+      return res.json({ success: true, message: 'Groq API key is valid', response: resp.choices[0].message.content });
+    }
+
+    if (provider === 'ollama') {
+      // For Ollama, apiKey field contains the base URL
+      const baseURL = apiKey || process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
+      const OpenAI = require('openai');
+      const client = new OpenAI.default({ apiKey: 'ollama', baseURL });
+      const resp = await client.chat.completions.create({
+        model: 'llama3.2',
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'Say "connected" in one word.' }]
+      });
+      return res.json({ success: true, message: 'Ollama connection verified', response: resp.choices[0].message.content });
+    }
+
     res.status(400).json({ success: false, error: 'Unsupported provider' });
   } catch (err) {
     console.error('LLM test error:', err);
@@ -291,7 +319,7 @@ router.post('/llm/test', requirePermission('settings.manage'), validateBody((bod
 router.delete('/llm/:provider', requirePermission('settings.manage'), async (req, res) => {
   try {
     const orgId = req.user.organization_id;
-    const keyMap = { claude: 'anthropic_api_key', openai: 'openai_api_key', gemini: 'gemini_api_key', grok: 'xai_api_key' };
+    const keyMap = { claude: 'anthropic_api_key', openai: 'openai_api_key', gemini: 'gemini_api_key', grok: 'xai_api_key', groq: 'groq_api_key', ollama: 'ollama_base_url' };
     const settingKey = keyMap[req.params.provider];
 
     if (!settingKey) {

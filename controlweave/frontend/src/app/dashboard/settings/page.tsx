@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { integrationsAPI, rolesAPI, settingsAPI, usersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,8 @@ interface LLMSettings {
   hasOpenAIKey: boolean;
   hasGeminiKey: boolean;
   hasGrokKey: boolean;
+  hasGroqKey: boolean;
+  hasOllamaUrl: boolean;
   defaultProvider: string;
   defaultModel: string | null;
   settings: Record<string, any>;
@@ -100,6 +103,7 @@ interface ContentPackDraft {
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const canManageRoles = hasPermission(user, 'roles.manage');
   const canReadUsers = hasPermission(user, 'users.read') || hasPermission(user, 'users.manage');
   const canManageUsers = hasPermission(user, 'users.manage');
@@ -139,7 +143,10 @@ export default function SettingsPage() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [grokKey, setGrokKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
+  const [ollamaUrl, setOllamaUrl] = useState('');
   const [defaultProvider, setDefaultProvider] = useState('claude');
+  const [defaultModel, setDefaultModel] = useState('');
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
 
   // Splunk integration state
@@ -172,7 +179,12 @@ export default function SettingsPage() {
   const [contentPackImporting, setContentPackImporting] = useState(false);
 
   useEffect(() => {
-    setActiveTab(defaultTab);
+    const tabParam = searchParams?.get('tab');
+    if (tabParam === 'llm') {
+      setActiveTab('llm');
+    } else {
+      setActiveTab(defaultTab);
+    }
     if (canManageRoles) {
       loadRoles();
     } else {
@@ -392,6 +404,7 @@ export default function SettingsPage() {
       const res = await settingsAPI.getLLMConfig();
       setLlmSettings(res.data.data);
       setDefaultProvider(res.data.data.defaultProvider || 'claude');
+      setDefaultModel(res.data.data.defaultModel || '');
     } catch (err: any) {
       // OK if settings don't exist yet
     } finally {
@@ -403,16 +416,21 @@ export default function SettingsPage() {
     if (!canManageSettings) return;
     try {
       const data: any = { default_provider: defaultProvider };
+      if (defaultModel) data.default_model = defaultModel;
       if (anthropicKey) data.anthropic_api_key = anthropicKey;
       if (openaiKey) data.openai_api_key = openaiKey;
       if (geminiKey) data.gemini_api_key = geminiKey;
       if (grokKey) data.xai_api_key = grokKey;
+      if (groqKey) data.groq_api_key = groqKey;
+      if (ollamaUrl) data.ollama_base_url = ollamaUrl;
       await settingsAPI.updateLLMConfig(data);
       showToast('LLM settings saved');
       setAnthropicKey('');
       setOpenaiKey('');
       setGeminiKey('');
       setGrokKey('');
+      setGroqKey('');
+      setOllamaUrl('');
       loadLLMSettings();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to save LLM settings');
@@ -425,7 +443,9 @@ export default function SettingsPage() {
       (provider === 'claude' && llmSettings?.hasAnthropicKey) ||
       (provider === 'openai' && llmSettings?.hasOpenAIKey) ||
       (provider === 'gemini' && llmSettings?.hasGeminiKey) ||
-      (provider === 'grok' && llmSettings?.hasGrokKey);
+      (provider === 'grok' && llmSettings?.hasGrokKey) ||
+      (provider === 'groq' && llmSettings?.hasGroqKey) ||
+      (provider === 'ollama' && llmSettings?.hasOllamaUrl);
 
     if (!key && !hasExisting) {
       setError('Enter an API key first');
@@ -1041,19 +1061,124 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Default Provider */}
-              <div className="border border-gray-200 rounded-lg p-4 mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Default Provider</label>
-                <select
-                  value={defaultProvider}
-                  onChange={(e) => setDefaultProvider(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="claude">Claude (Anthropic)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="grok">xAI Grok</option>
-                </select>
+              {/* Groq (Free Tier) */}
+              <div className="border border-green-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">⚡</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">Groq</h3>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Free Tier Available</span>
+                      </div>
+                      <p className="text-xs text-gray-500">llama-3.3-70b-versatile, llama-3.1-8b-instant · Get a free key at console.groq.com</p>
+                    </div>
+                  </div>
+                  {llmSettings?.hasGroqKey ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Configured</span>
+                      <span className="text-xs text-gray-400">{llmSettings.settings?.groq_api_key?.masked}</span>
+                      <button onClick={() => removeKey('groq')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Not configured</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={groqKey}
+                    onChange={(e) => setGroqKey(e.target.value)}
+                    placeholder="gsk_..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={() => testKey('groq', groqKey)}
+                    disabled={!groqKey || testingProvider === 'groq'}
+                    className="px-4 py-2 text-sm border border-purple-600 text-purple-600 rounded-md hover:bg-purple-50 disabled:opacity-50"
+                  >
+                    {testingProvider === 'groq' ? 'Testing...' : 'Test'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Ollama (Self-Hosted) */}
+              <div className="border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🏠</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">Ollama</h3>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Self-Hosted / Free</span>
+                      </div>
+                      <p className="text-xs text-gray-500">llama3.2, mistral, phi3 · Run locally with: ollama serve</p>
+                    </div>
+                  </div>
+                  {llmSettings?.hasOllamaUrl ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Configured</span>
+                      <span className="text-xs text-gray-400">{llmSettings.settings?.ollama_base_url?.value}</span>
+                      <button onClick={() => removeKey('ollama')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  ) : (
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Not configured</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={ollamaUrl}
+                    onChange={(e) => setOllamaUrl(e.target.value)}
+                    placeholder="http://localhost:11434/v1"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={() => testKey('ollama', ollamaUrl)}
+                    disabled={!ollamaUrl || testingProvider === 'ollama'}
+                    className="px-4 py-2 text-sm border border-purple-600 text-purple-600 rounded-md hover:bg-purple-50 disabled:opacity-50"
+                  >
+                    {testingProvider === 'ollama' ? 'Testing...' : 'Test'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Default Provider + Model */}
+              <div className="border border-gray-200 rounded-lg p-4 mb-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Default Provider</label>
+                  <select
+                    value={defaultProvider}
+                    onChange={(e) => setDefaultProvider(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="claude">Claude (Anthropic)</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="grok">xAI Grok</option>
+                    <option value="groq">Groq (Free Tier)</option>
+                    <option value="ollama">Ollama (Self-Hosted)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Model <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <input
+                    type="text"
+                    value={defaultModel}
+                    onChange={(e) => setDefaultModel(e.target.value)}
+                    placeholder={
+                      defaultProvider === 'claude' ? 'e.g. claude-sonnet-4-5-20250929' :
+                      defaultProvider === 'openai' ? 'e.g. gpt-4o' :
+                      defaultProvider === 'gemini' ? 'e.g. gemini-2.0-flash' :
+                      defaultProvider === 'grok' ? 'e.g. grok-3-latest' :
+                      defaultProvider === 'groq' ? 'e.g. llama-3.3-70b-versatile' :
+                      defaultProvider === 'ollama' ? 'e.g. llama3.2' :
+                      'Model name'
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Leave blank to use the provider default. Override per request where needed.</p>
+                </div>
               </div>
 
               <button

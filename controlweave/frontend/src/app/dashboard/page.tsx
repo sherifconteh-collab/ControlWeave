@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/DashboardLayout';
-import { dashboardAPI, implementationsAPI } from '@/lib/api';
+import { dashboardAPI, implementationsAPI, aiAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
+import { useAutoAIResult } from '@/lib/useAutoAI';
 
 const FRAMEWORK_PROGRESS_COLLAPSED_COUNT = 4;
 const DASHBOARD_SECTIONS = [
@@ -66,6 +67,30 @@ export default function DashboardPage() {
   const [showDashboardCustomizer, setShowDashboardCustomizer] = useState(false);
   const [hiddenSections, setHiddenSections] = useState<DashboardSectionKey[]>([]);
   const [dashboardPrefsReady, setDashboardPrefsReady] = useState(false);
+
+  const gapSig = stats ? `${stats.implementedControls}-${stats.totalControls}-${stats.frameworks?.length}` : '';
+  const gapAnalysis = useAutoAIResult({
+    cacheKey: `dashboard-gap-${user?.organizationId}`,
+    signature: gapSig,
+    enabled: !!stats && (stats.frameworks?.length ?? 0) > 0,
+    ttlMs: 6 * 60 * 60 * 1000,
+    run: async () => {
+      const res = await aiAPI.gapAnalysis();
+      return res.data.data.result;
+    }
+  });
+
+  const forecastSig = stats ? `forecast-${stats.overallCompliance}-${stats.frameworks?.length}` : '';
+  const forecast = useAutoAIResult({
+    cacheKey: `dashboard-forecast-${user?.organizationId}`,
+    signature: forecastSig,
+    enabled: !!stats && (stats.frameworks?.length ?? 0) > 0,
+    ttlMs: 6 * 60 * 60 * 1000,
+    run: async () => {
+      const res = await aiAPI.complianceForecast();
+      return res.data.data.result;
+    }
+  });
 
   useEffect(() => {
     loadStats();
@@ -290,6 +315,11 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* AI Gap Analysis Panel */}
+            {(stats?.frameworks?.length ?? 0) > 0 && (
+              <AIInsightPanel title="AI Gap Analysis" ai={gapAnalysis} />
+            )}
+
             {/* Maturity Score */}
             {isSectionVisible('maturity') && maturity && (
               <div className="bg-white rounded-lg shadow-md p-6">
@@ -477,10 +507,70 @@ export default function DashboardPage() {
               )}
               </div>
             )}
+
+            {/* AI Compliance Forecast Panel */}
+            {(stats?.frameworks?.length ?? 0) > 0 && (
+              <AIInsightPanel title="AI Compliance Forecast" ai={forecast} />
+            )}
           </>
         ) : null}
       </div>
     </DashboardLayout>
+  );
+}
+
+function AIInsightPanel({ title, ai }: { title: string; ai: ReturnType<typeof useAutoAIResult> }) {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div
+        className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 cursor-pointer"
+        onClick={() => setCollapsed(c => !c)}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-purple-600">✨</span>
+          <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+          {ai.fromCache && ai.lastUpdatedAt && (
+            <span className="text-xs text-gray-400">
+              · cached {new Date(ai.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          {ai.status === 'running' && (
+            <span className="text-xs text-purple-500 animate-pulse">· analyzing…</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={e => { e.stopPropagation(); ai.refresh(); }}
+            className="text-xs text-gray-400 hover:text-purple-600 px-2 py-0.5 rounded hover:bg-purple-50"
+          >
+            Refresh
+          </button>
+          <span className="text-gray-400 text-xs">{collapsed ? '▶' : '▼'}</span>
+        </div>
+      </div>
+      {!collapsed && (
+        <div className="p-4">
+          {ai.status === 'running' && !ai.result && (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+              <div className="h-3 bg-gray-200 rounded w-full" />
+              <div className="h-3 bg-gray-200 rounded w-5/6" />
+              <div className="h-3 bg-gray-200 rounded w-2/3" />
+            </div>
+          )}
+          {ai.status === 'error' && (
+            <p className="text-sm text-red-500">{ai.error}</p>
+          )}
+          {ai.result && (
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">{ai.result}</pre>
+          )}
+          {ai.status === 'idle' && !ai.result && (
+            <p className="text-xs text-gray-400">AI analysis will run automatically when data is available.</p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

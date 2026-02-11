@@ -2,14 +2,18 @@ const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
 const pool = require('../config/database');
 const { getAiUsageLimit } = require('../config/tierPolicy');
+const { buildOrgContext } = require('./orgContextService');
 
 // Default clients (platform keys from .env)
 let defaultAnthropicClient = null;
 let defaultOpenAIClient = null;
 let defaultXAIClient = null;
+let defaultGroqClient = null;
 const defaultGeminiApiKey = process.env.GEMINI_API_KEY || null;
 const GEMINI_API_BASE = process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com/v1beta';
 const XAI_API_BASE = process.env.XAI_API_BASE || 'https://api.x.ai/v1';
+const GROQ_API_BASE = 'https://api.groq.com/openai/v1';
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
 
 if (process.env.ANTHROPIC_API_KEY) {
   defaultAnthropicClient = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -20,17 +24,22 @@ if (process.env.OPENAI_API_KEY) {
 if (process.env.XAI_API_KEY) {
   defaultXAIClient = new OpenAI.default({ apiKey: process.env.XAI_API_KEY, baseURL: XAI_API_BASE });
 }
+if (process.env.GROQ_API_KEY) {
+  defaultGroqClient = new OpenAI.default({ apiKey: process.env.GROQ_API_KEY, baseURL: GROQ_API_BASE });
+}
 
 const PROVIDERS = {
-  claude: { name: 'Claude (Anthropic)', models: ['claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'] },
-  openai: { name: 'OpenAI', models: ['gpt-4o', 'gpt-4o-mini'] },
-  gemini: { name: 'Google Gemini', models: ['gemini-2.5-pro', 'gemini-2.5-flash'] },
-  grok: { name: 'xAI Grok', models: ['grok-3-latest', 'grok-4-latest'] }
+  claude:  { name: 'Claude (Anthropic)',  models: ['claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'] },
+  openai:  { name: 'OpenAI',              models: ['gpt-4o', 'gpt-4o-mini'] },
+  gemini:  { name: 'Google Gemini',       models: ['gemini-2.5-pro', 'gemini-2.5-flash'] },
+  grok:    { name: 'xAI Grok',            models: ['grok-3-latest', 'grok-4-latest'] },
+  groq:    { name: 'Groq (Free Tier)',    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'] },
+  ollama:  { name: 'Ollama (Local)',      models: ['llama3.2', 'mistral'] }
 };
 
 // ---------- BYOK: Fetch user-provided keys from org settings ----------
 async function getOrgApiKey(organizationId, provider) {
-  const keyMap = { claude: 'anthropic_api_key', openai: 'openai_api_key', gemini: 'gemini_api_key', grok: 'xai_api_key' };
+  const keyMap = { claude: 'anthropic_api_key', openai: 'openai_api_key', gemini: 'gemini_api_key', grok: 'xai_api_key', groq: 'groq_api_key', ollama: 'ollama_base_url' };
   const settingKey = keyMap[provider];
   if (!settingKey) return null;
 
@@ -56,6 +65,16 @@ function getClient(provider, orgApiKey) {
   }
   if (provider === 'gemini') {
     return { apiKey: orgApiKey || defaultGeminiApiKey };
+  }
+  if (provider === 'groq') {
+    const apiKey = orgApiKey || process.env.GROQ_API_KEY;
+    if (!apiKey) return null;
+    return new OpenAI.default({ apiKey, baseURL: GROQ_API_BASE });
+  }
+  if (provider === 'ollama') {
+    // orgApiKey is the base URL for Ollama; Ollama ignores the Authorization header
+    const baseURL = orgApiKey || OLLAMA_BASE_URL;
+    return new OpenAI.default({ apiKey: 'ollama', baseURL });
   }
   return null;
 }
@@ -157,6 +176,30 @@ async function chat({ provider = 'claude', model, messages, systemPrompt, organi
     return text;
   }
 
+  if (provider === 'groq') {
+    const groqMessages = [];
+    if (systemPrompt) groqMessages.push({ role: 'system', content: systemPrompt });
+    groqMessages.push(...messages);
+    const resp = await client.chat.completions.create({
+      model: model || 'llama-3.3-70b-versatile',
+      max_tokens: maxTokens,
+      messages: groqMessages
+    });
+    return resp.choices[0].message.content;
+  }
+
+  if (provider === 'ollama') {
+    const ollamaMessages = [];
+    if (systemPrompt) ollamaMessages.push({ role: 'system', content: systemPrompt });
+    ollamaMessages.push(...messages);
+    const resp = await client.chat.completions.create({
+      model: model || 'llama3.2',
+      max_tokens: maxTokens,
+      messages: ollamaMessages
+    });
+    return resp.choices[0].message.content;
+  }
+
   throw new Error('Unsupported provider');
 }
 
@@ -169,6 +212,13 @@ const GRC_SYSTEM = `You are an expert GRC (Governance, Risk, and Compliance) ana
 - Asset management (CMDB), risk assessment, audit readiness
 Always provide actionable, specific recommendations. Use framework control IDs when referencing requirements.
 Format responses with clear sections using markdown headers.`;
+
+// ---------- Org-personalized system prompt ----------
+async function buildPersonalizedSystem(organizationId, extra) {
+  const orgContext = organizationId ? await buildOrgContext(organizationId) : '';
+  const base = extra ? `${GRC_SYSTEM}\n${extra}` : GRC_SYSTEM;
+  return orgContext ? `${base}\n\n${orgContext}` : base;
+}
 
 // =====================================================================
 // 1. AUTOMATED GAP ANALYSIS
@@ -201,7 +251,7 @@ async function generateGapAnalysis({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate a comprehensive gap analysis report.
 
 Framework Status:
@@ -244,7 +294,7 @@ async function optimizeCrosswalk({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Analyze crosswalk mappings and recommend optimal implementation order.
 
 Crosswalk Mappings (score >= 80%):
@@ -285,7 +335,7 @@ async function forecastCompliance({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Forecast compliance trajectory.
 
 Implementation Velocity (weekly):
@@ -314,7 +364,7 @@ async function monitorRegulatoryChanges({ organizationId, frameworks: fwList, pr
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM + '\nYou have knowledge of regulatory changes and updates through your training data.',
+    systemPrompt: await buildPersonalizedSystem(organizationId, 'You have knowledge of regulatory changes and updates through your training data.'),
     messages: [{ role: 'user', content: `Analyze regulatory changes that may impact this organization.
 
 Adopted Frameworks:
@@ -353,7 +403,7 @@ async function generateRemediationPlaybook({ controlId, organizationId, provider
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate a detailed remediation playbook for this control.
 
 Control:
@@ -465,7 +515,7 @@ async function generateVulnerabilityRemediation({
     provider,
     model,
     organizationId,
-    systemPrompt: GRC_SYSTEM + '\nFocus on practical remediation and control-closure actions for vulnerability findings.',
+    systemPrompt: await buildPersonalizedSystem(organizationId, 'Focus on practical remediation and control-closure actions for vulnerability findings.'),
     messages: [{
       role: 'user',
       content: `Generate a vulnerability remediation and closure plan.
@@ -521,7 +571,7 @@ async function generateIncidentResponsePlan({ organizationId, incidentType, prov
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate an incident response plan for: ${incidentType || 'General cybersecurity incident'}
 
 Organization Asset Inventory:
@@ -567,7 +617,7 @@ async function generateExecutiveReport({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate a board-ready executive compliance report.
 
 Compliance Status by Framework:
@@ -613,7 +663,7 @@ async function generateRiskHeatmap({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate a risk heatmap analysis.
 
 Assets:
@@ -640,7 +690,7 @@ Provide:
 async function assessVendorRisk({ organizationId, vendorInfo, provider, model }) {
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Perform a third-party vendor risk assessment.
 
 Vendor Information:
@@ -694,7 +744,7 @@ async function assessAuditReadiness({ organizationId, framework, provider, model
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Assess audit readiness${framework ? ' for ' + framework : ''}.
 
 Control Status:
@@ -733,7 +783,7 @@ async function mapAssetsToControls({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Map assets to applicable compliance controls.
 
 Assets:
@@ -773,7 +823,7 @@ async function detectShadowIT({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Analyze asset inventory for potential Shadow IT gaps.
 
 Registered Assets:
@@ -817,7 +867,7 @@ async function checkAIGovernance({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Perform AI/ML model governance assessment.
 
 AI Assets:
@@ -860,7 +910,7 @@ async function queryCompliance({ organizationId, question, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM + `\nAnswer the user's compliance question based on their actual data. Be specific and cite numbers.`,
+    systemPrompt: await buildPersonalizedSystem(organizationId, "Answer the user's compliance question based on their actual data. Be specific and cite numbers."),
     messages: [{ role: 'user', content: `Question: ${question}
 
 Organization Data:
@@ -888,7 +938,7 @@ async function recommendTraining({ organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Recommend security awareness training based on compliance gaps.
 
 Unimplemented Controls:
@@ -918,7 +968,7 @@ async function suggestEvidence({ controlId, organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Suggest evidence artifacts for this control.
 
 Control: ${JSON.stringify(control.rows[0], null, 2)}
@@ -951,7 +1001,7 @@ async function analyzeControl({ controlId, organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Analyze this control and provide implementation guidance.
 
 Control: ${JSON.stringify(control.rows[0], null, 2)}
@@ -979,7 +1029,7 @@ async function generateTestProcedures({ controlId, organizationId, provider, mod
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate test procedures for this control.
 
 Control: ${JSON.stringify(control.rows[0], null, 2)}
@@ -1009,7 +1059,7 @@ async function analyzeAssetRisk({ assetId, organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Perform a risk analysis on this asset.
 
 Asset: ${JSON.stringify(asset.rows[0], null, 2)}
@@ -1035,7 +1085,7 @@ async function generatePolicy({ policyType, organizationId, provider, model }) {
 
   return chat({
     provider, model, organizationId, maxTokens: 8192,
-    systemPrompt: GRC_SYSTEM,
+    systemPrompt: await buildPersonalizedSystem(organizationId),
     messages: [{ role: 'user', content: `Generate a comprehensive ${policyType} policy document.
 
 Adopted Frameworks: ${JSON.stringify(frameworks.rows)}
@@ -1099,7 +1149,7 @@ async function generateAuditPbcDraft({
     provider,
     model,
     organizationId,
-    systemPrompt: GRC_SYSTEM + '\nYou are helping an auditor draft request-for-evidence (PBC) items.',
+    systemPrompt: await buildPersonalizedSystem(organizationId, 'You are helping an auditor draft request-for-evidence (PBC) items.'),
     messages: [{
       role: 'user',
       content: `Draft a high-quality PBC (Provided By Client) request that is auditor-ready.
@@ -1175,7 +1225,7 @@ async function generateAuditWorkpaperDraft({
     provider,
     model,
     organizationId,
-    systemPrompt: GRC_SYSTEM + '\nYou are helping an auditor draft formal workpaper narratives.',
+    systemPrompt: await buildPersonalizedSystem(organizationId, 'You are helping an auditor draft formal workpaper narratives.'),
     messages: [{
       role: 'user',
       content: `Draft an auditor workpaper narrative.
@@ -1256,7 +1306,7 @@ async function generateAuditFindingDraft({
     provider,
     model,
     organizationId,
-    systemPrompt: GRC_SYSTEM + '\nYou are helping an auditor draft findings using observation/criteria/cause/effect format.',
+    systemPrompt: await buildPersonalizedSystem(organizationId, 'You are helping an auditor draft findings using observation/criteria/cause/effect format.'),
     messages: [{
       role: 'user',
       content: `Draft a formal audit finding.
@@ -1320,10 +1370,12 @@ function getUsageLimit(tier) {
 // ---------- Provider status ----------
 function getProviderStatus(orgKeys = {}) {
   return {
-    claude: { available: !!(defaultAnthropicClient || orgKeys.claude), models: PROVIDERS.claude.models },
-    openai: { available: !!(defaultOpenAIClient || orgKeys.openai), models: PROVIDERS.openai.models },
-    gemini: { available: !!(defaultGeminiApiKey || orgKeys.gemini), models: PROVIDERS.gemini.models },
-    grok: { available: !!(defaultXAIClient || orgKeys.grok), models: PROVIDERS.grok.models }
+    claude:  { available: !!(defaultAnthropicClient || orgKeys.claude),  models: PROVIDERS.claude.models  },
+    openai:  { available: !!(defaultOpenAIClient   || orgKeys.openai),   models: PROVIDERS.openai.models  },
+    gemini:  { available: !!(defaultGeminiApiKey   || orgKeys.gemini),   models: PROVIDERS.gemini.models  },
+    grok:    { available: !!(defaultXAIClient      || orgKeys.grok),     models: PROVIDERS.grok.models    },
+    groq:    { available: !!(defaultGroqClient     || orgKeys.groq),     models: PROVIDERS.groq.models    },
+    ollama:  { available: !!(process.env.OLLAMA_BASE_URL || orgKeys.ollama), models: PROVIDERS.ollama.models }
   };
 }
 

@@ -88,26 +88,32 @@ router.get('/status', async (req, res) => {
     const enforceByokLimits = shouldEnforceAiLimitForByok(tier);
 
     // Check for org-level keys
-    const orgClaudeKey = await llm.getOrgApiKey(req.user.organization_id, 'claude');
-    const orgOpenAIKey = await llm.getOrgApiKey(req.user.organization_id, 'openai');
-    const orgGeminiKey = await llm.getOrgApiKey(req.user.organization_id, 'gemini');
-    const orgGrokKey = await llm.getOrgApiKey(req.user.organization_id, 'grok');
+    const orgClaudeKey  = await llm.getOrgApiKey(req.user.organization_id, 'claude');
+    const orgOpenAIKey  = await llm.getOrgApiKey(req.user.organization_id, 'openai');
+    const orgGeminiKey  = await llm.getOrgApiKey(req.user.organization_id, 'gemini');
+    const orgGrokKey    = await llm.getOrgApiKey(req.user.organization_id, 'grok');
+    const orgGroqKey    = await llm.getOrgApiKey(req.user.organization_id, 'groq');
+    const orgOllamaUrl  = await llm.getOrgApiKey(req.user.organization_id, 'ollama');
 
     const status = llm.getProviderStatus({
       claude: orgClaudeKey,
       openai: orgOpenAIKey,
       gemini: orgGeminiKey,
-      grok: orgGrokKey
+      grok:   orgGrokKey,
+      groq:   orgGroqKey,
+      ollama: orgOllamaUrl
     });
 
     res.json({
       success: true,
       data: {
         providers: {
-          claude: { available: status.claude.available || !!orgClaudeKey, models: status.claude.models, hasOrgKey: !!orgClaudeKey },
-          openai: { available: status.openai.available || !!orgOpenAIKey, models: status.openai.models, hasOrgKey: !!orgOpenAIKey },
-          gemini: { available: status.gemini.available || !!orgGeminiKey, models: status.gemini.models, hasOrgKey: !!orgGeminiKey },
-          grok: { available: status.grok.available || !!orgGrokKey, models: status.grok.models, hasOrgKey: !!orgGrokKey }
+          claude:  { available: status.claude.available  || !!orgClaudeKey,  models: status.claude.models,  hasOrgKey: !!orgClaudeKey  },
+          openai:  { available: status.openai.available  || !!orgOpenAIKey,  models: status.openai.models,  hasOrgKey: !!orgOpenAIKey  },
+          gemini:  { available: status.gemini.available  || !!orgGeminiKey,  models: status.gemini.models,  hasOrgKey: !!orgGeminiKey  },
+          grok:    { available: status.grok.available    || !!orgGrokKey,    models: status.grok.models,    hasOrgKey: !!orgGrokKey    },
+          groq:    { available: status.groq.available    || !!orgGroqKey,    models: status.groq.models,    hasOrgKey: !!orgGroqKey    },
+          ollama:  { available: status.ollama.available  || !!orgOllamaUrl,  models: status.ollama.models,  hasOrgKey: !!orgOllamaUrl  }
         },
         usage: { used, limit: limit === -1 ? 'unlimited' : limit, remaining: limit === -1 ? 'unlimited' : Math.max(0, limit - used) },
         byokPolicy: {

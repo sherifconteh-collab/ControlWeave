@@ -91,12 +91,6 @@ const navigation: NavigationItem[] = [
     minTier: 'starter'
   },
   {
-    name: 'AI Analysis',
-    href: '/dashboard/ai-analysis',
-    icon: '🤖',
-    requiredPermissions: ['ai.use']
-  },
-  {
     name: 'Audit Logs',
     href: '/dashboard/audit',
     icon: '📝',

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { assessmentsAPI, usersAPI } from '@/lib/api';
+import { assessmentsAPI, usersAPI, aiAPI } from '@/lib/api';
+import { useAutoAIResult } from '@/lib/useAutoAI';
 import { useAuth } from '@/contexts/AuthContext';
 import { canAccessAuditorWorkspace, hasPermission } from '@/lib/access';
 import Link from 'next/link';
@@ -75,6 +76,17 @@ export default function AssessmentsPage() {
   const [handoffSaving, setHandoffSaving] = useState(false);
   const [handoffNotice, setHandoffNotice] = useState('');
   const [error, setError] = useState('');
+
+  const auditReadiness = useAutoAIResult({
+    cacheKey: `audit-readiness-${user?.organizationId}`,
+    signature: `${stats?.overall_assessed ?? 0}-${stats?.frameworks?.length ?? 0}`,
+    enabled: !!stats,
+    ttlMs: 6 * 60 * 60 * 1000,
+    run: async () => {
+      const res = await aiAPI.auditReadiness();
+      return res.data.data.result;
+    }
+  });
 
   // Filters
   const [selectedFramework, setSelectedFramework] = useState('');
@@ -486,6 +498,51 @@ export default function AssessmentsPage() {
         {/* Overview Tab */}
         {activeTab === 'overview' && stats && (
           <div className="space-y-6">
+            {/* AI Audit Readiness Panel */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div
+                className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 cursor-pointer"
+                onClick={() => auditReadiness.status !== 'running' && auditReadiness.refresh()}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-purple-600">✨</span>
+                  <h2 className="text-sm font-semibold text-gray-800">AI Audit Readiness Score</h2>
+                  {auditReadiness.fromCache && auditReadiness.lastUpdatedAt && (
+                    <span className="text-xs text-gray-400">
+                      · cached {new Date(auditReadiness.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  {auditReadiness.status === 'running' && (
+                    <span className="text-xs text-purple-500 animate-pulse">· analyzing…</span>
+                  )}
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); auditReadiness.refresh(); }}
+                  className="text-xs text-gray-400 hover:text-purple-600 px-2 py-0.5 rounded hover:bg-purple-50"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div className="p-4">
+                {auditReadiness.status === 'running' && !auditReadiness.result && (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded w-full" />
+                    <div className="h-3 bg-gray-200 rounded w-5/6" />
+                  </div>
+                )}
+                {auditReadiness.status === 'error' && (
+                  <p className="text-sm text-red-500">{auditReadiness.error}</p>
+                )}
+                {auditReadiness.result && (
+                  <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">{auditReadiness.result}</pre>
+                )}
+                {auditReadiness.status === 'idle' && !auditReadiness.result && (
+                  <p className="text-xs text-gray-400">AI analysis will run automatically.</p>
+                )}
+              </div>
+            </div>
+
             {canAssignAuditors && (
               <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
                 <div>

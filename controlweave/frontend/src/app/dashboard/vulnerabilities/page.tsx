@@ -252,6 +252,8 @@ export default function VulnerabilitiesPage() {
   const [workflowBusyId, setWorkflowBusyId] = useState<string | null>(null);
   const [workflowError, setWorkflowError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
+  const [vulnAiAnalysis, setVulnAiAnalysis] = useState<string | null>(null);
+  const [vulnAiLoading, setVulnAiLoading] = useState(false);
 
   useEffect(() => {
     loadMeta();
@@ -424,7 +426,14 @@ export default function VulnerabilitiesPage() {
     setDetailAudit([]);
     setWorkflow({ items: [], summary: { total: 0, open: 0, in_progress: 0, resolved: 0, accepted: 0, closed: 0 } });
     setWorkflowError('');
+    setVulnAiAnalysis(null);
     setDetailLoading(true);
+    // Trigger lazy AI analysis
+    setVulnAiLoading(true);
+    vulnerabilitiesAPI.analyzeVulnerability(finding.id)
+      .then(r => setVulnAiAnalysis(r.data?.data?.result ?? r.data?.data?.ai_analysis?.summary ?? null))
+      .catch(() => {})
+      .finally(() => setVulnAiLoading(false));
     try {
       const response = await vulnerabilitiesAPI.getById(finding.id);
       const payload: DetailResponse = response.data?.data;
@@ -478,6 +487,7 @@ export default function VulnerabilitiesPage() {
     setDetailAudit([]);
     setWorkflow({ items: [], summary: { total: 0, open: 0, in_progress: 0, resolved: 0, accepted: 0, closed: 0 } });
     setWorkflowBusyId(null);
+    setVulnAiAnalysis(null);
     setWorkflowError('');
     setDetailLoading(false);
   }
@@ -742,6 +752,29 @@ export default function VulnerabilitiesPage() {
                   <>
                     <p className="text-sm text-gray-900">{selectedFinding.title}</p>
                     {selectedFinding.description && <p className="text-sm text-gray-600">{selectedFinding.description}</p>}
+
+                    {/* AI Remediation Analysis */}
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-purple-600 text-sm">✨</span>
+                        <span className="text-xs font-semibold text-purple-800">AI Remediation Plan</span>
+                        {vulnAiLoading && <span className="text-xs text-purple-500 animate-pulse">analyzing…</span>}
+                      </div>
+                      {vulnAiLoading && !vulnAiAnalysis && (
+                        <div className="space-y-1.5 animate-pulse">
+                          <div className="h-2.5 bg-purple-200 rounded w-full" />
+                          <div className="h-2.5 bg-purple-200 rounded w-4/5" />
+                          <div className="h-2.5 bg-purple-200 rounded w-3/4" />
+                        </div>
+                      )}
+                      {vulnAiAnalysis && (
+                        <pre className="whitespace-pre-wrap text-xs text-purple-900 leading-relaxed font-sans">{vulnAiAnalysis}</pre>
+                      )}
+                      {!vulnAiLoading && !vulnAiAnalysis && (
+                        <p className="text-xs text-purple-400">No AI analysis available.</p>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <DetailField label="Finding Key" value={selectedFinding.finding_key} mono />
                       <DetailField label="Source / Standard" value={`${selectedFinding.source} / ${selectedFinding.standard || '-'}`} />
