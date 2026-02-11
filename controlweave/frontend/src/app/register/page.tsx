@@ -123,7 +123,7 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
           <p className="text-gray-600 mt-2">Join {APP_NAME} - {APP_TAGLINE}</p>
           <p className="text-xs text-purple-700 mt-2 font-medium">
-            Includes a 30-day full-feature trial. After trial end, your org moves to Free tier unless upgraded.
+            Community Edition · Free tier · Open source
           </p>
         </div>
 

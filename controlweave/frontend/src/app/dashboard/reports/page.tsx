@@ -32,7 +32,7 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
       if (err.response?.status === 403) {
-        setError('Report generation requires Starter tier or higher. Please upgrade your plan.');
+        setError('Report generation is available in ControlWeave Pro. Visit ' + (process.env.NEXT_PUBLIC_PRO_URL || 'https://app.controlweave.io') + ' to learn more.');
       } else {
         setError('Failed to generate report. Please try again.');
       }

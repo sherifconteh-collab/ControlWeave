@@ -768,18 +768,8 @@ export default function SettingsPage() {
     </div>
   );
 
-  const organizationTier = String(user?.organizationTier || 'free').toLowerCase();
-  const billingStatus = String(user?.billingStatus || (organizationTier === 'free' ? 'free' : 'active_paid')).toLowerCase();
-  const trialStatus = String(user?.trialStatus || 'none').toLowerCase();
-  const trialEndsAt = user?.trialEndsAt ? new Date(user.trialEndsAt) : null;
-  const trialActive = trialStatus === 'active' && !!trialEndsAt && trialEndsAt.getTime() > Date.now();
-  const trialDaysRemaining = trialActive && trialEndsAt
-    ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
-  const trialEndLabel = trialEndsAt
-    ? trialEndsAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-    : 'N/A';
-  const paidTier = organizationTier !== 'free';
+  const organizationTier = 'free';
+  const PRO_URL = process.env.NEXT_PUBLIC_PRO_URL || 'https://app.controlweave.io';
 
   if (!canManageRoles && !canManageSettings) {
     return (
@@ -821,57 +811,42 @@ export default function SettingsPage() {
           <p className="text-gray-600 mt-2">{APP_POSITIONING_SHORT}</p>
         </div>
 
-        {/* Plan & Trial */}
+        {/* Plan — Community Edition */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
           <div className="flex flex-wrap items-center gap-2 justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Plan & Trial</h2>
-            <div className="flex gap-2">
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                paidTier ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
-              }`}>
-                Tier: {organizationTier}
-              </span>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                billingStatus === 'trial'
-                  ? 'bg-blue-100 text-blue-700'
-                  : billingStatus === 'active_paid'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-700'
-              }`}>
-                Billing: {billingStatus}
-              </span>
-            </div>
+            <h2 className="text-lg font-bold text-gray-900">Plan</h2>
+            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+              Community Edition · Free Tier
+            </span>
           </div>
-
-          {trialActive ? (
-            <div className="mb-4 p-3 border border-blue-200 bg-blue-50 rounded text-sm text-blue-800">
-              Full-feature trial active. {trialDaysRemaining} day(s) remaining. Trial ends {trialEndLabel}.
-              After expiry, your organization automatically moves to the Free tier.
-            </div>
-          ) : trialStatus === 'expired' ? (
-            <div className="mb-4 p-3 border border-amber-200 bg-amber-50 rounded text-sm text-amber-800">
-              Trial ended on {trialEndLabel}. Your organization is currently on Free tier limits.
-            </div>
-          ) : null}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-2">Free Tier</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">Community Edition (Free)</h3>
               <ul className="text-gray-600 space-y-1">
-                <li>Up to 2 frameworks</li>
+                <li>Up to 2 compliance frameworks</li>
                 <li>3 AI requests per month</li>
-                <li>No CMDB, vulnerabilities, or report export features</li>
                 <li>Core dashboard, controls, and assessments</li>
+                <li>AI Copilot chat</li>
+                <li>Open source — self-host for free</li>
               </ul>
             </div>
             <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-              <h3 className="font-semibold text-purple-900 mb-2">Paid Tiers (Starter+)</h3>
-              <ul className="text-purple-800 space-y-1">
-                <li>CMDB assets and environments</li>
-                <li>Vulnerability workflows and exports</li>
-                <li>Evidence/reporting and integrations</li>
-                <li>Higher or unlimited AI usage (by tier)</li>
+              <h3 className="font-semibold text-purple-900 mb-2">ControlWeave Pro</h3>
+              <ul className="text-purple-800 space-y-1 mb-3">
+                <li>All frameworks + unlimited AI</li>
+                <li>CMDB, vulnerabilities, SBOM/AIBOM</li>
+                <li>Evidence management and reports</li>
+                <li>Auditor Workspace, webhooks, integrations</li>
               </ul>
+              <a
+                href={PRO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block w-full text-center bg-purple-600 text-white text-xs px-4 py-2 rounded hover:bg-purple-700 font-medium"
+              >
+                Get ControlWeave Pro →
+              </a>
             </div>
           </div>
         </div>

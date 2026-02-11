@@ -25,7 +25,7 @@ function AssetsPageContent() {
   // View mode
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
-  // Tier upgrade modal
+  // Pro edition modal
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeMessage, setUpgradeMessage] = useState('');
 
@@ -171,21 +171,26 @@ function AssetsPageContent() {
   };
 
   if (showUpgradeModal) {
+    const proUrl = process.env.NEXT_PUBLIC_PRO_URL || 'https://app.controlweave.io';
     return (
       <DashboardLayout>
         <div className="min-h-[60vh] flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
             <div className="text-center">
-              <div className="text-6xl mb-4">🚀</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Upgrade Required</h2>
-              <p className="text-gray-600 mb-6">{upgradeMessage}</p>
+              <div className="text-6xl mb-4">🔒</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Available in ControlWeave Pro</h2>
+              <p className="text-gray-600 mb-6">
+                CMDB and asset management are available in ControlWeave Pro — the full-featured hosted edition.
+              </p>
               <div className="space-y-3">
-                <button
-                  onClick={() => window.location.href = '/dashboard/upgrade'}
-                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+                <a
+                  href={proUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-medium text-center"
                 >
-                  View Upgrade Options
-                </button>
+                  Get ControlWeave Pro →
+                </a>
                 <button
                   onClick={() => window.location.href = '/dashboard'}
                   className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300"
