@@ -2,7 +2,7 @@
  * seed-demo-accounts.js
  *
  * Creates one admin account per tier so every tier can be demoed.
- * Idempotent — safe to run multiple times (ON CONFLICT DO NOTHING / DO UPDATE).
+ * Idempotent — safe to run multiple times.
  *
  * Accounts created:
  *   admin@professional.com / Test1234!  — professional tier
@@ -51,6 +51,45 @@ const ACCOUNTS = [
   }
 ];
 
+async function upsertOrg(client, acct) {
+  // Check if a user with this email already exists — if so, use their org
+  const existingUser = await client.query(
+    'SELECT organization_id FROM users WHERE email = $1',
+    [acct.email]
+  );
+  if (existingUser.rows.length > 0) {
+    const orgId = existingUser.rows[0].organization_id;
+    // Ensure tier is correct
+    await client.query(
+      'UPDATE organizations SET tier = $1, billing_status = $2 WHERE id = $3',
+      [acct.tier, acct.billingStatus, orgId]
+    );
+    return orgId;
+  }
+
+  // Check if an org with this name already exists
+  const existingOrg = await client.query(
+    'SELECT id FROM organizations WHERE name = $1',
+    [acct.orgName]
+  );
+  if (existingOrg.rows.length > 0) {
+    const orgId = existingOrg.rows[0].id;
+    await client.query(
+      'UPDATE organizations SET tier = $1, billing_status = $2 WHERE id = $3',
+      [acct.tier, acct.billingStatus, orgId]
+    );
+    return orgId;
+  }
+
+  // Create a new org
+  const res = await client.query(
+    `INSERT INTO organizations (name, tier, billing_status)
+     VALUES ($1, $2, $3) RETURNING id`,
+    [acct.orgName, acct.tier, acct.billingStatus]
+  );
+  return res.rows[0].id;
+}
+
 async function run() {
   const client = await pool.connect();
   try {
@@ -59,51 +98,51 @@ async function run() {
 
     for (const acct of ACCOUNTS) {
       await client.query('BEGIN');
+      try {
+        const orgId = await upsertOrg(client, acct);
 
-      // Upsert org
-      const orgRes = await client.query(
-        `INSERT INTO organizations (name, tier, billing_status)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (name) DO UPDATE
-           SET tier = EXCLUDED.tier,
-               billing_status = EXCLUDED.billing_status
-         RETURNING id`,
-        [acct.orgName, acct.tier, acct.billingStatus]
-      );
-      const orgId = orgRes.rows[0].id;
+        // Upsert user (email is unique)
+        await client.query(
+          `INSERT INTO users (organization_id, email, password_hash, first_name, last_name, role)
+           VALUES ($1, $2, $3, $4, $5, 'admin')
+           ON CONFLICT (email) DO UPDATE
+             SET organization_id = EXCLUDED.organization_id,
+                 password_hash   = EXCLUDED.password_hash,
+                 first_name      = EXCLUDED.first_name,
+                 last_name       = EXCLUDED.last_name,
+                 role            = 'admin'`,
+          [orgId, acct.email, passwordHash, acct.firstName, acct.lastName]
+        );
 
-      // Upsert user
-      await client.query(
-        `INSERT INTO users (organization_id, email, password_hash, first_name, last_name, role)
-         VALUES ($1, $2, $3, $4, $5, 'admin')
-         ON CONFLICT (email) DO UPDATE
-           SET organization_id = EXCLUDED.organization_id,
-               password_hash   = EXCLUDED.password_hash,
-               first_name      = EXCLUDED.first_name,
-               last_name       = EXCLUDED.last_name`,
-        [orgId, acct.email, passwordHash, acct.firstName, acct.lastName]
-      );
+        // Get user id for profile
+        const userRes = await client.query(
+          'SELECT id FROM users WHERE email = $1',
+          [acct.email]
+        );
+        const userId = userRes.rows[0].id;
 
-      // Ensure onboarding is marked complete so login goes straight to dashboard
-      await client.query(
-        `INSERT INTO organization_profiles (organization_id, onboarding_completed, onboarding_completed_at, created_by, updated_by)
-         SELECT $1, true, NOW(), u.id, u.id FROM users u WHERE u.email = $2
-         ON CONFLICT (organization_id) DO UPDATE
-           SET onboarding_completed    = true,
-               onboarding_completed_at = COALESCE(organization_profiles.onboarding_completed_at, NOW())`,
-        [orgId, acct.email]
-      );
+        // Mark onboarding complete so login goes straight to dashboard
+        await client.query(
+          `INSERT INTO organization_profiles
+             (organization_id, onboarding_completed, onboarding_completed_at, created_by, updated_by)
+           VALUES ($1, true, NOW(), $2, $2)
+           ON CONFLICT (organization_id) DO UPDATE
+             SET onboarding_completed    = true,
+                 onboarding_completed_at = COALESCE(organization_profiles.onboarding_completed_at, NOW()),
+                 updated_by = EXCLUDED.updated_by`,
+          [orgId, userId]
+        );
 
-      await client.query('COMMIT');
-      console.log(`  ✓ ${acct.tier.padEnd(12)} — ${acct.email}`);
+        await client.query('COMMIT');
+        console.log(`  ✓ ${acct.tier.padEnd(12)} — ${acct.email}`);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        console.error(`  ✗ Failed for ${acct.email}: ${err.message}`);
+      }
     }
 
     console.log(`\n  Password for all accounts: ${PASSWORD}`);
     console.log('\n✅ Demo accounts ready.\n');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Seed failed:', err.message);
-    process.exit(1);
   } finally {
     client.release();
     await pool.end();
