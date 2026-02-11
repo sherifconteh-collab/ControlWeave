@@ -431,8 +431,11 @@ export default function VulnerabilitiesPage() {
     // Trigger lazy AI analysis
     setVulnAiLoading(true);
     vulnerabilitiesAPI.analyzeVulnerability(finding.id)
-      .then(r => setVulnAiAnalysis(r.data?.data?.result ?? r.data?.data?.ai_analysis?.summary ?? null))
-      .catch(() => {})
+      .then(r => {
+        const text = r.data?.data?.result;
+        setVulnAiAnalysis(typeof text === 'string' ? text : null);
+      })
+      .catch(err => console.error('Vuln AI analysis failed:', err))
       .finally(() => setVulnAiLoading(false));
     try {
       const response = await vulnerabilitiesAPI.getById(finding.id);

@@ -79,7 +79,7 @@ export default function AssessmentsPage() {
 
   const auditReadiness = useAutoAIResult({
     cacheKey: `audit-readiness-${user?.organizationId}`,
-    signature: `${stats?.overall_assessed ?? 0}-${stats?.frameworks?.length ?? 0}`,
+    signature: `${stats?.summary?.total_procedures ?? 0}-${stats?.by_framework?.length ?? 0}`,
     enabled: !!stats,
     ttlMs: 6 * 60 * 60 * 1000,
     run: async () => {

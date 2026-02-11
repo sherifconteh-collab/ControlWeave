@@ -99,11 +99,6 @@ export default function AICopilot() {
     setError('');
 
     try {
-      const apiMessages = [...messages, { role: 'user', content: userContent }].map(m => ({
-        role: m.role,
-        content: m.role === 'user' && m === messages[messages.length] ? userContent : m.content
-      }));
-      // Use the last message with page context injected
       const sendPayload = [
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userContent }

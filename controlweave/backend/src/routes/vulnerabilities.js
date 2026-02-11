@@ -1048,7 +1048,9 @@ router.post('/:id/analyze', requirePermission('ai.use'), async (req, res) => {
     if (ai_analysis && ai_analyzed_at) {
       const ageMs = Date.now() - new Date(ai_analyzed_at).getTime();
       if (ageMs < 24 * 60 * 60 * 1000) {
-        return res.json({ success: true, data: { result: ai_analysis, cached: true } });
+        // ai_analysis is stored as {result: "..."}, pg returns it as an object
+        const cachedResult = typeof ai_analysis === 'object' ? ai_analysis.result : ai_analysis;
+        return res.json({ success: true, data: { result: cachedResult, cached: true } });
       }
     }
 
@@ -1066,7 +1068,7 @@ router.post('/:id/analyze', requirePermission('ai.use'), async (req, res) => {
       `UPDATE vulnerability_findings
        SET ai_analysis = $1, ai_analyzed_at = NOW()
        WHERE id = $2 AND organization_id = $3`,
-      [JSON.stringify({ text: result }), id, orgId]
+      [JSON.stringify({ result }), id, orgId]
     );
 
     res.json({ success: true, data: { result, cached: false } });
