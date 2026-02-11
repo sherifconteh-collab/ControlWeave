@@ -1,0 +1,181 @@
+name: Public Mirror
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build mirror snapshot and run checks without pushing"
+        required: false
+        type: boolean
+        default: false
+      target_branch:
+        description: "Target branch in public repo"
+        required: false
+        type: string
+        default: "main"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-mirror-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PUBLIC_REPO: sherifconteh-collab/ai-grc-platform
+  ALLOWLIST_FILE: .github/public-mirror-allowlist.txt
+
+jobs:
+  mirror:
+    if: github.repository == 'sherifconteh-collab/ai-grc-platform-pro'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve options
+        id: opts
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_BRANCH="${{ github.event.inputs.target_branch }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+
+          if [[ -z "${TARGET_BRANCH}" ]]; then
+            TARGET_BRANCH="main"
+          fi
+
+          if [[ -z "${DRY_RUN}" ]]; then
+            DRY_RUN="false"
+          fi
+
+          echo "target_branch=${TARGET_BRANCH}" >> "${GITHUB_OUTPUT}"
+          echo "dry_run=${DRY_RUN}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate mirror secret
+        if: steps.opts.outputs.dry_run != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ secrets.PUBLIC_MIRROR_PAT }}" ]]; then
+            echo "::error::Missing required secret: PUBLIC_MIRROR_PAT"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run IP hygiene check
+        shell: bash
+        run: |
+          set -euo pipefail
+          node backend/scripts/ip-hygiene-check.js
+
+      - name: Safety scan (tokens, keys, secret files)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Block obvious secret-bearing files from ever entering mirror pipeline.
+          if git ls-files | grep -E '(^|/)\.env($|\.|/)|\.pem$|\.p12$|\.pfx$|(^|/)id_rsa$|(^|/)id_ed25519$|\.key$'; then
+            echo "::error::Potential secret file detected in tracked files."
+            exit 1
+          fi
+
+          # Block common credential patterns from source.
+          if git grep -nE '(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----|xox[baprs]-)' -- . ':!**/*.md'; then
+            echo "::error::Potential credential/token pattern found."
+            exit 1
+          fi
+
+      - name: Build allowlisted mirror snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob dotglob
+
+          if [[ ! -f "${ALLOWLIST_FILE}" ]]; then
+            echo "::error::Allowlist file not found: ${ALLOWLIST_FILE}"
+            exit 1
+          fi
+
+          rm -rf mirror-export
+          mkdir -p mirror-export
+
+          copied=0
+          while IFS= read -r raw || [[ -n "${raw}" ]]; do
+            line="${raw%$'\r'}"
+            line="${line%%#*}"
+            line="$(echo "${line}" | xargs || true)"
+            if [[ -z "${line}" ]]; then
+              continue
+            fi
+
+            matches=( ${line} )
+            if [[ ${#matches[@]} -eq 0 ]]; then
+              echo "::warning::Allowlist pattern matched nothing: ${line}"
+              continue
+            fi
+
+            for src in "${matches[@]}"; do
+              if [[ -e "${src}" ]]; then
+                rsync -aR "${src}" mirror-export/
+                copied=$((copied + 1))
+              fi
+            done
+          done < "${ALLOWLIST_FILE}"
+
+          if [[ ${copied} -eq 0 ]]; then
+            echo "::error::No files copied into mirror-export. Check allowlist."
+            exit 1
+          fi
+
+          # Defensive post-filter: block sensitive files in mirror snapshot.
+          if find mirror-export -type f | grep -E '(^|/)\.env($|\.|/)|\.pem$|\.p12$|\.pfx$|(^|/)id_rsa$|(^|/)id_ed25519$|\.key$'; then
+            echo "::error::Sensitive files present in mirror-export."
+            exit 1
+          fi
+
+          find mirror-export -type f | sed 's#^mirror-export/##' | sort > mirror-export/.mirror-manifest.txt
+          echo "Mirror snapshot contains $(wc -l < mirror-export/.mirror-manifest.txt) files."
+
+      - name: Upload mirror snapshot artifact (dry run)
+        if: steps.opts.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-mirror-snapshot
+          path: mirror-export
+          retention-days: 7
+
+      - name: Publish to public repository
+        if: steps.opts.outputs.dry_run != 'true'
+        env:
+          PUBLIC_MIRROR_PAT: ${{ secrets.PUBLIC_MIRROR_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd mirror-export
+
+          git init
+          git checkout -b "${{ steps.opts.outputs.target_branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to mirror."
+            exit 0
+          fi
+
+          git commit -m "Mirror from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${PUBLIC_MIRROR_PAT}@github.com/${PUBLIC_REPO}.git"
+          git push --force origin "${{ steps.opts.outputs.target_branch }}"
+

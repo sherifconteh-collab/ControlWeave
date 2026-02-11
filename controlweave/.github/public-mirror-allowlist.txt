@@ -1,0 +1,50 @@
+# Public mirror allowlist for ai-grc-platform (community/free repository).
+# One glob/path per line. Lines beginning with # are comments.
+
+# Top-level
+README.md
+LICENSE
+QUICK_START.md
+.gitignore
+
+# GitHub workflows and mirror config
+.github/workflows/ci.yml
+.github/public-mirror-allowlist.txt
+
+# Public docs
+docs/openapi.yaml
+docs/POSITIONING_GUARDRAILS.md
+docs/SMALL_START_DEPLOYMENT_PROFILE.md
+docs/CONTENT_PACKS.md
+docs/MCP_SETUP.md
+docs/PUBLIC_MIRROR_SETUP.md
+
+# Backend runtime and migration assets
+backend/package.json
+backend/apply-migration.mjs
+backend/run-migration.js
+backend/migrations/**
+backend/src/**
+
+# Backend scripts safe for community usage
+backend/scripts/check-syntax.js
+backend/scripts/check-db.js
+backend/scripts/migrate-all.js
+backend/scripts/run-migration.js
+backend/scripts/ip-hygiene-check.js
+backend/scripts/seed-frameworks.js
+backend/scripts/seed-missing-controls.js
+backend/scripts/seed-assessment-procedures.js
+backend/scripts/seed-assessment-procedures-expansion.js
+backend/scripts/seed-assessment-procedures-summary.js
+
+# Frontend app
+frontend/package.json
+frontend/next.config.ts
+frontend/postcss.config.mjs
+frontend/next-env.d.ts
+frontend/tsconfig.json
+frontend/scripts/build-safe.js
+frontend/public/**
+frontend/src/**
+

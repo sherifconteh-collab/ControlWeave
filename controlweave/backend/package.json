@@ -1,0 +1,47 @@
+{
+  "name": "controlweave-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "mcp": "node scripts/mcp-server.js",
+    "migrate": "node scripts/migrate-all.js",
+    "migrate:one": "node scripts/run-migration.js",
+    "db:backup": "node scripts/db-backup.js",
+    "db:capacity": "node scripts/db-capacity-check.js",
+    "check:syntax": "node scripts/check-syntax.js",
+    "qa:e2e:auditor": "node scripts/qa-auditor-workflow.js",
+    "qa:e2e:dynamic": "node scripts/qa-dynamic.js",
+    "qa:e2e:dynamic:all": "node scripts/qa-dynamic.js --suites=syntax,mega,dynamic,auditor,legacy",
+    "check:ip-hygiene": "node scripts/ip-hygiene-check.js",
+    "seed:admin-demo-workspace": "node scripts/seed-admin-demo-workspace.js",
+    "seed:demo-full": "npm run seed:assessment-summary && npm run seed:assessment-ai-governance && npm run seed:assessment-rich-all && npm run seed:showcase-demo && npm run seed:admin-demo-workspace",
+    "seed:cmdb-demo": "node scripts/seed-cmdb-data.js",
+    "seed:showcase-demo": "node scripts/seed-demo-showcase.js",
+    "seed:assessment-summary": "node scripts/seed-assessment-procedures-summary.js",
+    "seed:assessment-ai-governance": "node scripts/seed-assessment-procedures-ai-governance.js",
+    "seed:assessment-rich-all": "node scripts/seed-assessment-procedures-rich-all.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.73.0",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "openai": "^6.18.0",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.17.2",
+    "pg": "^8.18.0",
+    "xml2js": "^0.6.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
