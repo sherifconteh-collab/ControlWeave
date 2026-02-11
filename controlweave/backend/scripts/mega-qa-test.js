@@ -192,8 +192,8 @@ function dbQuery(sql, params = []) {
 
   assert(
     '1.7',
-    'Org starts in active trial tier',
-    orgTier !== 'free' && orgBilling === 'trial' && orgTrial === 'active'
+    'Org starts on free tier (community edition — no trial)',
+    orgTier === 'free' && orgBilling === 'free' && orgTrial === 'none'
   );
 
   // 1.3 Duplicate registration

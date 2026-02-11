@@ -14,7 +14,7 @@ function getTrialSeedData() {
     tier: 'free',
     billingStatus: 'free',
     trialSourceTier: null,
-    trialStatus: null,
+    trialStatus: 'none',
     trialDays: 0
   };
 }
