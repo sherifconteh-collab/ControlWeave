@@ -3,7 +3,7 @@ const { normalizeTier } = require('../config/tierPolicy');
 const { log } = require('../utils/logger');
 
 const VALID_PAID_TIERS = new Set(['starter', 'professional', 'enterprise', 'utilities']);
-const DEFAULT_TRIAL_DAYS = 30;
+const DEFAULT_TRIAL_DAYS = 7;
 const DEFAULT_TRIAL_TIER = 'utilities';
 
 function parseTrialDays(rawValue) {
