@@ -26,6 +26,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithTokens: (accessToken: string, refreshToken: string, userData?: any) => Promise<void>;
   register: (
     email: string,
     password: string,
@@ -128,6 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithTokens = async (accessToken: string, refreshToken: string, _userData?: any) => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    const currentUser = await fetchCurrentUser();
+    setUser(currentUser);
+    router.push(resolvePostAuthRoute(currentUser));
+  };
+
   const register = async (
     email: string,
     password: string,
@@ -180,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         login,
+        loginWithTokens,
         register,
         refreshUser,
         logout,

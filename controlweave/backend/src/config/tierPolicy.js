@@ -8,15 +8,15 @@ const TIER_LEVELS = Object.freeze({
 
 const TIER_LIMITS = Object.freeze({
   free: {
-    frameworks: 2,
-    aiRequestsPerMonth: 3,
+    frameworks: 10,
+    aiRequestsPerMonth: 10,
     cmdbEnabled: false,
     cmdbAssetLimit: 0,
     cmdbEnvironmentLimit: 0
   },
   starter: {
-    frameworks: 5,
-    aiRequestsPerMonth: 25,
+    frameworks: 20,
+    aiRequestsPerMonth: 50,
     cmdbEnabled: true,
     cmdbAssetLimit: 50,
     cmdbEnvironmentLimit: 5

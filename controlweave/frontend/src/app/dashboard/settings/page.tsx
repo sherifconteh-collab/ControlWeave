@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
-import api, { auditAPI, integrationsAPI, opsAPI, rolesAPI, settingsAPI, usersAPI } from '@/lib/api';
+import api, { auditAPI, integrationsAPI, opsAPI, passkeyAPI, rolesAPI, settingsAPI, siemAPI, ssoAPI, usersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission, hasTierAtLeast } from '@/lib/access';
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
@@ -109,8 +109,10 @@ function SettingsPageInner() {
   const canManageUsers = hasPermission(user, 'users.manage');
   const canManageSettings = hasPermission(user, 'settings.manage');
   const canUseSplunk = canManageSettings && hasTierAtLeast(user, 'starter');
-  const defaultTab: 'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform' = canManageRoles ? 'roles' : 'llm';
-  const [activeTab, setActiveTab] = useState<'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform'>('roles');
+  const canUsePasskeys = hasTierAtLeast(user, 'professional');
+  const canUseSso = canManageSettings && hasTierAtLeast(user, 'professional');
+  const defaultTab: 'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform' | 'security' = canManageRoles ? 'roles' : 'llm';
+  const [activeTab, setActiveTab] = useState<'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform' | 'security'>('roles');
 
   // Roles state
   const [roles, setRoles] = useState<Role[]>([]);
@@ -212,6 +214,141 @@ function SettingsPageInner() {
   const [platformActionLoading, setPlatformActionLoading] = useState('');
   const [platformActionMsg, setPlatformActionMsg] = useState('');
 
+  // Security (Passkeys) tab state
+  const [passkeys, setPasskeys] = useState<{ id: string; name: string; device_type: string | null; backed_up: boolean; created_at: string; last_used_at: string | null }[]>([]);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyRegistering, setPasskeyRegistering] = useState(false);
+  const [passkeyNewName, setPasskeyNewName] = useState('');
+  const [passkeyError, setPasskeyError] = useState('');
+  const [passkeySuccess, setPasskeySuccess] = useState('');
+
+  const loadPasskeys = async () => {
+    try {
+      setPasskeyLoading(true);
+      const res = await passkeyAPI.list();
+      setPasskeys(res.data?.data || []);
+    } catch {
+      // silently fail
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
+  const handleRegisterPasskey = async () => {
+    setPasskeyError('');
+    setPasskeySuccess('');
+    setPasskeyRegistering(true);
+    try {
+      const { startRegistration } = await import('@simplewebauthn/browser');
+      const optRes = await passkeyAPI.getRegistrationOptions();
+      const options = optRes.data?.data;
+      const attResp = await startRegistration({ optionsJSON: options });
+      await passkeyAPI.verifyRegistration({ response: attResp, name: passkeyNewName || 'Passkey' });
+      setPasskeySuccess('Passkey registered successfully.');
+      setPasskeyNewName('');
+      await loadPasskeys();
+    } catch (err: any) {
+      setPasskeyError(err?.response?.data?.error || err?.message || 'Registration failed.');
+    } finally {
+      setPasskeyRegistering(false);
+    }
+  };
+
+  const handleDeletePasskey = async (id: string) => {
+    try {
+      await passkeyAPI.delete(id);
+      setPasskeys(prev => prev.filter(pk => pk.id !== id));
+    } catch (err: any) {
+      setPasskeyError(err?.response?.data?.error || 'Failed to delete passkey.');
+    }
+  };
+
+  // SSO config state
+  const [ssoConfig, setSsoConfig] = useState<any>(null);
+  const [ssoSaving, setSsoSaving] = useState(false);
+  const [ssoMsg, setSsoMsg] = useState('');
+  const [socialLogins, setSocialLogins] = useState<{ id: string; provider: string; email: string | null }[]>([]);
+
+  const loadSsoConfig = async () => {
+    if (!canManageSettings) return;
+    try {
+      const res = await ssoAPI.getConfig();
+      setSsoConfig(res.data?.data || null);
+    } catch { /* not configured */ }
+  };
+
+  const loadSocialLogins = async () => {
+    try {
+      const res = await ssoAPI.getSocialLogins();
+      setSocialLogins(res.data?.data || []);
+    } catch { /* silently fail */ }
+  };
+
+  const handleSsoSave = async () => {
+    if (!ssoConfig) return;
+    setSsoSaving(true);
+    setSsoMsg('');
+    try {
+      await ssoAPI.saveConfig(ssoConfig);
+      setSsoMsg('SSO configuration saved.');
+    } catch (err: any) {
+      setSsoMsg(err?.response?.data?.error || 'Failed to save SSO config.');
+    } finally {
+      setSsoSaving(false);
+    }
+  };
+
+  const handleUnlinkSocial = async (provider: string) => {
+    try {
+      await ssoAPI.unlinkSocial(provider);
+      setSocialLogins(prev => prev.filter(s => s.provider !== provider));
+    } catch { /* silently fail */ }
+  };
+
+  // SIEM state
+  const [siemConfigs, setSiemConfigs] = useState<any[]>([]);
+  const [siemLoading, setSiemLoading] = useState(false);
+  const [siemMsg, setSiemMsg] = useState('');
+  const [showSiemForm, setShowSiemForm] = useState(false);
+  const [siemFormData, setSiemFormData] = useState<any>({ provider: 'webhook', name: '', enabled: true });
+  const [siemTestingId, setSiemTestingId] = useState<string | null>(null);
+
+  const loadSiemConfigs = async () => {
+    if (!canManageSettings) return;
+    try {
+      setSiemLoading(true);
+      const res = await siemAPI.list();
+      setSiemConfigs(res.data?.data || []);
+    } catch { /* silently fail */ } finally { setSiemLoading(false); }
+  };
+
+  const handleSiemCreate = async () => {
+    setSiemMsg('');
+    try {
+      await siemAPI.create(siemFormData);
+      setSiemMsg('SIEM integration added.');
+      setShowSiemForm(false);
+      setSiemFormData({ provider: 'webhook', name: '', enabled: true });
+      await loadSiemConfigs();
+    } catch (err: any) { setSiemMsg(err?.response?.data?.error || 'Failed to save.'); }
+  };
+
+  const handleSiemDelete = async (id: string) => {
+    try {
+      await siemAPI.delete(id);
+      setSiemConfigs(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) { setSiemMsg(err?.response?.data?.error || 'Failed to delete.'); }
+  };
+
+  const handleSiemTest = async (id: string) => {
+    setSiemTestingId(id);
+    setSiemMsg('');
+    try {
+      await siemAPI.test(id);
+      setSiemMsg('Test event sent successfully.');
+    } catch (err: any) { setSiemMsg(err?.response?.data?.error || 'Test failed.'); } finally { setSiemTestingId(null); }
+  };
+
   const handlePlatformAction = async (action: 'process_jobs' | 'run_retention' | 'process_webhooks') => {
     setPlatformActionLoading(action);
     setPlatformActionMsg('');
@@ -244,7 +381,7 @@ function SettingsPageInner() {
 
   useEffect(() => {
     const tabParam = searchParams?.get('tab');
-    const validTabs = ['roles', 'llm', 'ai_activity', 'integrations', 'content', 'audit', 'platform'];
+    const validTabs = ['roles', 'llm', 'ai_activity', 'integrations', 'content', 'audit', 'platform', 'security'];
     if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab(tabParam as any);
     } else {
@@ -277,6 +414,14 @@ function SettingsPageInner() {
     }
     if (activeTab === 'audit' && canManageSettings && auditRows.length === 0) {
       loadAuditLogs(1);
+    }
+    if (activeTab === 'security' && passkeys.length === 0) {
+      loadPasskeys();
+      loadSocialLogins();
+      loadSsoConfig();
+    }
+    if (activeTab === 'integrations' && siemConfigs.length === 0) {
+      loadSiemConfigs();
     }
   }, [activeTab]);
 
@@ -999,6 +1144,14 @@ function SettingsPageInner() {
                 Platform Admin
               </button>
             )}
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'security' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Security
+            </button>
           </nav>
         </div>
 
@@ -1821,13 +1974,144 @@ function SettingsPageInner() {
         )}
 
         {/* ===== INTEGRATIONS TAB ===== */}
-        {activeTab === 'integrations' && canManageSettings && canUseSplunk && (
+        {activeTab === 'integrations' && canManageSettings && (
           <div className="space-y-6">
+            {!canUsePasskeys && (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
+                SIEM integrations require the <strong>Professional</strong> plan or higher.
+              </div>
+            )}
+            {canUsePasskeys && (
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">Integrations</h2>
-              <p className="text-sm text-gray-500 mb-2">Connect external services to ControlWeave.</p>
-              <p className="text-sm text-gray-400">The Splunk Evidence Connector is available in the LLM Configuration tab while tab reorganization is in progress.</p>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">SIEM Integrations</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Forward compliance events to Splunk, Elastic, a generic webhook, or syslog.
+                    Multiple targets are supported.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setShowSiemForm(true); setSiemFormData({ provider: 'webhook', name: '', enabled: true }); }}
+                  className="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  + Add Integration
+                </button>
+              </div>
+
+              {siemMsg && (
+                <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
+                  siemMsg.includes('success') || siemMsg.includes('added') ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+                }`}>{siemMsg}</div>
+              )}
+
+              {/* Add form */}
+              {showSiemForm && (
+                <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                      <input type="text" value={siemFormData.name} onChange={e => setSiemFormData((p: any) => ({ ...p, name: e.target.value }))}
+                        placeholder="e.g. Elastic Production" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Provider</label>
+                      <select value={siemFormData.provider} onChange={e => setSiemFormData((p: any) => ({ ...p, provider: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md">
+                        <option value="webhook">Generic Webhook</option>
+                        <option value="splunk">Splunk HEC</option>
+                        <option value="elastic">Elastic</option>
+                        <option value="syslog">Syslog</option>
+                      </select>
+                    </div>
+                  </div>
+                  {siemFormData.provider !== 'syslog' && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        {siemFormData.provider === 'splunk' ? 'Splunk HEC URL' : siemFormData.provider === 'elastic' ? 'Elastic Endpoint URL' : 'Webhook URL'}
+                      </label>
+                      <input type="url" value={siemFormData.endpoint_url || ''} onChange={e => setSiemFormData((p: any) => ({ ...p, endpoint_url: e.target.value }))}
+                        placeholder={siemFormData.provider === 'splunk' ? 'https://splunk:8088/services/collector' : siemFormData.provider === 'elastic' ? 'https://es:9200' : 'https://your-webhook.example.com'}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md" />
+                    </div>
+                  )}
+                  {siemFormData.provider === 'syslog' && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div><label className="block text-xs font-medium text-gray-700 mb-1">Host</label>
+                        <input type="text" value={siemFormData.syslog_host || ''} onChange={e => setSiemFormData((p: any) => ({ ...p, syslog_host: e.target.value }))}
+                          placeholder="syslog.example.com" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md" /></div>
+                      <div><label className="block text-xs font-medium text-gray-700 mb-1">Port</label>
+                        <input type="number" value={siemFormData.syslog_port || 514} onChange={e => setSiemFormData((p: any) => ({ ...p, syslog_port: Number(e.target.value) }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md" /></div>
+                      <div><label className="block text-xs font-medium text-gray-700 mb-1">Protocol</label>
+                        <select value={siemFormData.syslog_protocol || 'udp'} onChange={e => setSiemFormData((p: any) => ({ ...p, syslog_protocol: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md">
+                          <option value="udp">UDP</option><option value="tcp">TCP</option><option value="tls">TLS</option>
+                        </select></div>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      {siemFormData.provider === 'splunk' ? 'Splunk HEC Token' : siemFormData.provider === 'elastic' ? 'Elastic API Key' : 'Bearer Token (optional)'}
+                    </label>
+                    <input type="password" value={siemFormData.api_key || ''} onChange={e => setSiemFormData((p: any) => ({ ...p, api_key: e.target.value }))}
+                      placeholder="••••••••" className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleSiemCreate} disabled={!siemFormData.name}
+                      className="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
+                      Save Integration
+                    </button>
+                    <button onClick={() => setShowSiemForm(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {siemLoading ? (
+                <div className="py-6 text-center text-sm text-gray-400">Loading...</div>
+              ) : siemConfigs.length === 0 ? (
+                <div className="py-6 text-center text-sm text-gray-400">No SIEM integrations configured yet.</div>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                  {siemConfigs.map(cfg => (
+                    <div key={cfg.id} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">{cfg.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${cfg.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {cfg.enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 capitalize">{cfg.provider}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {cfg.endpoint_url || cfg.syslog_host || '—'}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleSiemTest(cfg.id)} disabled={siemTestingId === cfg.id}
+                          className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 border border-purple-200 rounded-md hover:bg-purple-50 disabled:opacity-50">
+                          {siemTestingId === cfg.id ? 'Testing...' : 'Test'}
+                        </button>
+                        <button onClick={() => handleSiemDelete(cfg.id)}
+                          className="text-xs text-red-600 hover:text-red-800 px-2 py-1 border border-red-200 rounded-md hover:bg-red-50">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                <strong>Splunk:</strong> Use HEC (HTTP Event Collector) with your token.<br/>
+                <strong>Elastic:</strong> Point to your Elasticsearch endpoint with an API key.<br/>
+                <strong>Webhook:</strong> Any HTTPS endpoint that accepts POST JSON — works with Datadog, Sumo Logic, Microsoft Sentinel, Chronicle, and more.<br/>
+                <strong>Syslog:</strong> UDP/TCP/TLS syslog receiver (e.g. rsyslog, syslog-ng, Graylog).
+              </div>
             </div>
+            )}
           </div>
         )}
 
@@ -1940,6 +2224,205 @@ function SettingsPageInner() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ===== SECURITY TAB (Passkeys + SSO) ===== */}
+        {activeTab === 'security' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Passkeys</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Passkeys let you sign in without a password using biometrics or a hardware security key.
+                Each passkey is tied to this device and account.
+              </p>
+              {!canUsePasskeys && (
+                <div className="mb-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
+                  Passkeys require the <strong>Professional</strong> plan or higher.{' '}
+                  <a href="/dashboard/settings?tab=platform" className="underline">Upgrade your plan</a> to enable this feature.
+                </div>
+              )}
+
+              {passkeyError && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">{passkeyError}</div>
+              )}
+              {passkeySuccess && (
+                <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-sm">{passkeySuccess}</div>
+              )}
+
+              {/* Register new passkey */}
+              {canUsePasskeys && (
+              <div className="flex items-center gap-3 mb-6">
+                <input
+                  type="text"
+                  placeholder="Passkey name (e.g. MacBook Touch ID)"
+                  value={passkeyNewName}
+                  onChange={e => setPasskeyNewName(e.target.value)}
+                  className="flex-1 max-w-xs px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={handleRegisterPasskey}
+                  disabled={passkeyRegistering}
+                  className="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {passkeyRegistering ? 'Registering...' : '+ Add Passkey'}
+                </button>
+              </div>
+              )}
+
+              {/* Passkey list */}
+              {passkeyLoading ? (
+                <div className="text-sm text-gray-400 py-4">Loading passkeys...</div>
+              ) : passkeys.length === 0 ? (
+                <div className="text-sm text-gray-400 py-4">No passkeys registered yet.</div>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                  {passkeys.map(pk => (
+                    <div key={pk.id} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{pk.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {pk.device_type === 'multiDevice' ? 'Multi-device (backed up)' : 'Single-device'}
+                          {' · '}Added {new Date(pk.created_at).toLocaleDateString()}
+                          {pk.last_used_at && ` · Last used ${new Date(pk.last_used_at).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeletePasskey(pk.id)}
+                        className="text-xs text-red-600 hover:text-red-800 px-2 py-1 border border-red-200 rounded-md hover:bg-red-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Linked Social Accounts */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Linked Accounts</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Social and OAuth accounts linked to your profile for sign-in.
+              </p>
+              {socialLogins.length === 0 ? (
+                <p className="text-sm text-gray-400">No linked accounts.</p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                  {socialLogins.map(sl => (
+                    <div key={sl.id} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 capitalize">{sl.provider}</div>
+                        {sl.email && <div className="text-xs text-gray-500">{sl.email}</div>}
+                      </div>
+                      <button
+                        onClick={() => handleUnlinkSocial(sl.provider)}
+                        className="text-xs text-red-600 hover:text-red-800 px-2 py-1 border border-red-200 rounded-md hover:bg-red-50"
+                      >
+                        Unlink
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Enterprise SSO Config (professional+ admins only) */}
+            {canManageSettings && !canUseSso && (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
+                Enterprise SSO (OIDC) requires the <strong>Professional</strong> plan or higher.
+              </div>
+            )}
+            {canUseSso && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-1">Enterprise SSO</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Configure OIDC single sign-on for your organization. Works with Okta, Azure AD,
+                  Auth0, Keycloak, PingIdentity, OneLogin, and any OIDC-compliant IdP.
+                </p>
+
+                {ssoMsg && (
+                  <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
+                    ssoMsg.includes('saved') ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+                  }`}>{ssoMsg}</div>
+                )}
+
+                <div className="space-y-4 max-w-lg">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                    <input
+                      type="text"
+                      value={ssoConfig?.display_name || ''}
+                      onChange={e => setSsoConfig((p: any) => ({ ...p, display_name: e.target.value }))}
+                      placeholder="Acme Corp SSO"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">OIDC Discovery URL</label>
+                    <input
+                      type="url"
+                      value={ssoConfig?.discovery_url || ''}
+                      onChange={e => setSsoConfig((p: any) => ({ ...p, discovery_url: e.target.value, provider_type: 'oidc' }))}
+                      placeholder="https://your-idp.example.com/.well-known/openid-configuration"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Okta: https://yourorg.okta.com/.well-known/openid-configuration<br/>
+                      Azure: https://login.microsoftonline.com/TENANT_ID/v2.0/.well-known/openid-configuration
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                    <input
+                      type="text"
+                      value={ssoConfig?.client_id || ''}
+                      onChange={e => setSsoConfig((p: any) => ({ ...p, client_id: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Client Secret <span className="text-gray-400 font-normal">(leave blank to keep existing)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={ssoConfig?.client_secret_input || ''}
+                      onChange={e => setSsoConfig((p: any) => ({ ...p, client_secret_input: e.target.value, client_secret: e.target.value }))}
+                      placeholder="••••••••"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={ssoConfig?.enabled !== false}
+                        onChange={e => setSsoConfig((p: any) => ({ ...p, enabled: e.target.checked }))}
+                        className="rounded border-gray-300 text-purple-600"
+                      />
+                      Enabled
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={ssoConfig?.auto_provision !== false}
+                        onChange={e => setSsoConfig((p: any) => ({ ...p, auto_provision: e.target.checked }))}
+                        className="rounded border-gray-300 text-purple-600"
+                      />
+                      Auto-provision new users
+                    </label>
+                  </div>
+                  <button
+                    onClick={handleSsoSave}
+                    disabled={ssoSaving || !ssoConfig?.discovery_url}
+                    className="px-6 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {ssoSaving ? 'Saving...' : 'Save SSO Config'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

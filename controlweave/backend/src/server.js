@@ -134,9 +134,15 @@ const webhookRoutes = require('./routes/webhooks');
 const dataGovernanceRoutes = require('./routes/dataGovernance');
 const auditorWorkspaceRoutes = require('./routes/auditorWorkspace');
 const opsRoutes = require('./routes/ops');
+const passkeyRoutes = require('./routes/passkeys');
+const ssoRoutes = require('./routes/sso');
+const siemRoutes = require('./routes/siem');
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth/passkey', passkeyRoutes);
+app.use('/api/v1/sso', ssoRoutes);
+app.use('/api/v1/siem', siemRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/frameworks', frameworksRoutes);
 app.use('/api/v1/organizations', organizationsRoutes);

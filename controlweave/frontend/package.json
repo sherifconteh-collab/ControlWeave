@@ -11,6 +11,7 @@
     "generate:api-types": "openapi-typescript ../docs/openapi.yaml -o src/lib/generated/api-types.ts"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.2.2",
     "axios": "^1.7.0",
     "date-fns": "^4.1.0",
     "next": "^16.1.6",

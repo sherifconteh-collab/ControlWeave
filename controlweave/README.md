@@ -9,10 +9,11 @@ Open source, self-hostable GRC (Governance, Risk, and Compliance) platform. Free
 ## What's Included (Free Tier)
 
 ### Compliance Frameworks
-- **Up to 2 active compliance frameworks** from the full catalog (NIST 800-53, NIST CSF 2.0, ISO 27001, SOC 2, HIPAA, GDPR, EU AI Act, OWASP LLM Top 10, OWASP Agentic AI Top 10, and more)
+- **Up to 10 active compliance frameworks** from the full catalog (NIST 800-53, NIST CSF 2.0, ISO 27001, SOC 2, HIPAA, GDPR, EU AI Act, OWASP LLM Top 10, OWASP Agentic AI Top 10, and more)
 - **500+ controls** with crosswalk mappings between frameworks
 - **33 crosswalk mappings** — implement one control, satisfy equivalents across frameworks automatically
-- **Control implementation tracking** — Not Started → In Progress → Implemented
+- **Control implementation tracking** — forward-only workflow: Not Started → In Progress → Implemented → Verified (auditor-only)
+- **Control testing** — record test results and notes per control implementation
 
 ### Assessment & Audit
 - **Assessment procedures** (view and run) — NIST SP 800-53A, ISO 19011, SOC 2, HIPAA, GDPR methodology
@@ -20,8 +21,9 @@ Open source, self-hostable GRC (Governance, Risk, and Compliance) platform. Free
 - **Assessment plans** — create and schedule assessment campaigns
 - **Result recording** — Satisfied / Other Than Satisfied / Not Applicable
 
-### AI Analysis (3 requests/month)
-Bring your own API key (BYOK) for any supported provider. 3 AI requests/month on the platform key.
+### AI Analysis (10 requests/month)
+Bring your own API key (BYOK) for any supported provider. 10 AI requests/month on the platform key.
+All AI calls are logged with full accountability — provider, model, tokens, duration, success/failure, and BYOK status.
 
 | Feature | Description |
 |---------|-------------|
@@ -44,33 +46,80 @@ Bring your own API key (BYOK) for any supported provider. 3 AI requests/month on
 | Groq | Yes | **Free tier** at [console.groq.com](https://console.groq.com) |
 | Ollama | No key needed | **Free** — self-hosted local LLMs |
 
+BYOK keys are **org-scoped** — set once by the admin, shared by all org members automatically. Keys are stored encrypted (AES-256-GCM) at rest.
+
 ### Core Platform
 - **Dashboard** — compliance overview, framework progress, priority actions
 - **NIST Publications Library** — 62 publication references with control mappings
-- **Audit log** — complete trail of all actions
+- **Audit log** — complete trail of all actions (moved to Settings → Audit Logs)
+- **Operations Center** — POA&M tracking, vulnerability management, controls at risk
 - **MCP server** — connect to Claude Desktop, Cursor, and other MCP-compatible LLM clients
 - **Organization multi-tenancy** — full data isolation per organization
 - **RBAC** — Admin, Auditor, Viewer, and custom roles
 
 ---
 
-## What's in ControlWeave Pro
+## Tier Feature Matrix
 
-[ControlWeave Pro](https://app.controlweave.io) (hosted edition) adds:
+| Feature | Free | Starter | Professional | Enterprise |
+|---------|------|---------|-------------|------------|
+| Active frameworks | 10 | 20 | Unlimited | Unlimited |
+| AI requests/month | 10 | 50 | Unlimited (BYOK) | Unlimited (BYOK) |
+| Passkeys | — | — | ✓ | ✓ |
+| SSO (OIDC + Social) | — | — | ✓ | ✓ |
+| SIEM integrations | — | — | ✓ | ✓ |
+| CMDB / SBOM | — | ✓ | ✓ | ✓ |
+| Vulnerability tracking | — | ✓ | ✓ | ✓ |
+| Auditor Workspace | — | ✓ | ✓ | ✓ |
+| AI decision audit log | — | ✓ | ✓ | ✓ |
 
-- All compliance frameworks (no 2-framework limit)
-- Unlimited AI requests with BYOK
-- CMDB asset management (hardware, software, AI agents, service accounts, environments)
-- SBOM / AIBOM management
-- Vulnerability tracking with AI remediation
-- Evidence management and PDF/Excel reporting
-- Plan of Action & Milestones (POA&M)
-- Auditor Workspace (engagements, PBC requests, workpapers, findings, sign-offs)
-- Webhooks and outbound integrations
-- Splunk connector for SIEM evidence import
-- Data governance and sensitivity classification
-- Custom dashboard builder
-- Maturity scoring
+---
+
+## Authentication
+
+### Password + Passkeys
+- Standard email/password login with JWT access (15 min) + refresh (7 day) tokens
+- **Passkeys (WebAuthn)** — sign in with biometrics or hardware security key (Touch ID, Face ID, YubiKey); Professional+ plans
+
+### Social OAuth Sign-In
+When configured on the server, social login buttons appear on the login page automatically:
+- Google
+- Microsoft
+- Apple
+- GitHub
+
+### Enterprise SSO (OIDC)
+Per-org OIDC single sign-on — works with **any** OIDC-compatible IdP:
+- Okta, Azure AD, Auth0, Keycloak, PingIdentity, OneLogin, Dex, Cognito, and more
+- Auto-provision users on first sign-in
+- Configurable default role for provisioned users
+
+---
+
+## AI Accountability & Auditability
+
+All AI usage is tracked with full accountability (applies to every tier, including free):
+
+- **Per-call log**: org, user, feature, provider, model, BYOK status, tokens in/out, duration, success/failure, IP address
+- **Decision log**: SHA-256 hash of inputs and outputs for 7 high-stakes features (gap analysis, forecasting, remediation, incident response, executive reports, risk heatmap, vendor risk)
+- **Audit trail**: key add/remove events logged to the org audit log
+- **Usage reporting**: admin endpoint to query AI activity with filters (Settings → AI Activity tab)
+- **Org-shared BYOK**: one API key configured by the admin is available to all org members — no per-user key setup needed
+
+---
+
+## SIEM Integration (Professional+)
+
+Forward compliance events to your SIEM. Supports multiple concurrent targets:
+
+| Provider | Protocol |
+|----------|---------|
+| **Splunk** | HTTP Event Collector (HEC) |
+| **Elastic** | Elasticsearch HTTP API (any version) |
+| **Webhook** | Generic HTTPS POST JSON — works with Datadog, Sumo Logic, Microsoft Sentinel, Chronicle, Tines, and more |
+| **Syslog** | UDP / TCP / TLS — compatible with rsyslog, syslog-ng, Graylog, QRadar |
+
+Configure in Settings → Integrations.
 
 ---
 
@@ -78,11 +127,12 @@ Bring your own API key (BYOK) for any supported provider. 3 AI requests/month on
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14+, TypeScript, Tailwind CSS |
+| Frontend | Next.js 16+, TypeScript, Tailwind CSS |
 | Backend | Node.js, Express.js |
 | Database | PostgreSQL |
 | AI | Anthropic Claude, OpenAI, Google Gemini, xAI Grok, Groq, Ollama |
-| Auth | JWT, bcrypt (12 rounds) |
+| Auth | JWT, bcrypt (12 rounds), WebAuthn (passkeys), OIDC (SSO) |
+| Encryption | AES-256-GCM (BYOK keys, SSO secrets, SIEM credentials) |
 | Charts | Recharts |
 
 ---
@@ -106,7 +156,7 @@ cd ../frontend && npm install
 
 # 3. Configure environment
 cp backend/.env.example backend/.env
-# Edit backend/.env — set DATABASE_URL and JWT_SECRET at minimum
+# Edit backend/.env — set DATABASE_URL, JWT_SECRET, and ENCRYPTION_KEY at minimum
 
 # Copy and configure frontend env
 cp frontend/.env.local.example frontend/.env.local
@@ -136,12 +186,33 @@ Open [http://localhost:3000](http://localhost:3000) and register an account.
 DATABASE_URL=postgres://user:pass@localhost:5432/grc_platform
 JWT_SECRET=your-long-random-secret-at-least-32-chars
 
+# BYOK key encryption — generate with:
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ENCRYPTION_KEY=
+
 # Optional: platform-level AI key (users can also BYOK in Settings)
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 GEMINI_API_KEY=
 GROQ_API_KEY=
 OLLAMA_BASE_URL=http://localhost:11434/v1
+
+# WebAuthn / Passkeys (Professional+)
+WEBAUTHN_RP_NAME=ControlWeave
+WEBAUTHN_RP_ID=localhost
+WEBAUTHN_ORIGIN=http://localhost:3000
+
+# Social OAuth (optional — enables social sign-in buttons)
+# Set callback URL to: <BACKEND_URL>/api/v1/sso/callback/<provider>
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+APPLE_CLIENT_ID=
+APPLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+BACKEND_URL=http://localhost:3001
 ```
 
 ```env
@@ -196,17 +267,17 @@ controlweave/
 │   │   ├── config/                # Database, security, tier policy
 │   │   ├── middleware/            # Auth, rate limiting, validation
 │   │   ├── routes/                # API route handlers
-│   │   └── services/              # LLM, org context, subscriptions
-│   ├── migrations/                # SQL migrations (run in order)
+│   │   └── services/              # LLM, passkeys, SSO, SIEM, subscriptions
+│   ├── migrations/                # SQL migrations (run in order, 001–042)
 │   └── scripts/                   # Seeding and QA scripts
 └── frontend/
     └── src/
         ├── app/                   # Next.js App Router pages
         │   ├── dashboard/         # All dashboard pages
-        │   ├── login/
+        │   ├── login/             # Login + SSO callback
         │   └── register/
         ├── components/            # Shared components (AICopilot, Sidebar, etc.)
-        ├── contexts/              # Auth context
+        ├── contexts/              # Auth context (login, loginWithTokens, logout)
         └── lib/                   # API client, access utilities
 ```
 
@@ -219,10 +290,13 @@ controlweave/
 - Account lockout after 5 failed login attempts (15-minute lock)
 - IP-based rate limiting on auth endpoints
 - Input sanitization (null bytes, script injection)
+- AES-256-GCM encryption for BYOK API keys, SSO client secrets, and SIEM credentials
+- WebAuthn (FIDO2) passkey support — phishing-resistant authentication
 - 2 MB request body limit
 - Security headers: HSTS, CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy
 - Parameterized queries (no SQL injection surface)
 - RBAC on all protected routes
+- Tier enforcement on premium features (passkeys, SSO, SIEM at Professional+)
 
 ---
 

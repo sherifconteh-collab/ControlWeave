@@ -906,4 +906,45 @@ export const poamAPI = {
   update: (id: string, data: Record<string, unknown>) => api.patch(`/poam/${id}`, data),
 };
 
+// SSO APIs
+export const ssoAPI = {
+  getProviders: () => api.get('/sso/providers'),
+  getConfig: () => api.get('/sso/config'),
+  saveConfig: (data: Record<string, unknown>) => api.put('/sso/config', data),
+  getSocialLogins: () => api.get('/sso/social-logins'),
+  unlinkSocial: (provider: string) => api.delete(`/sso/social-logins/${provider}`),
+  socialLoginUrl: (provider: string) =>
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/sso/social/${provider}`,
+  orgSsoUrl: (orgId: string) =>
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/v1/sso/login/org?org_id=${orgId}`,
+};
+
+// SIEM APIs
+export const siemAPI = {
+  list: () => api.get('/siem'),
+  create: (data: Record<string, unknown>) => api.post('/siem', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/siem/${id}`, data),
+  delete: (id: string) => api.delete(`/siem/${id}`),
+  test: (id: string) => api.post(`/siem/${id}/test`),
+};
+
+// Passkey APIs
+export const passkeyAPI = {
+  // Registration (authenticated user)
+  getRegistrationOptions: () => api.get('/auth/passkey/register/options'),
+  verifyRegistration: (data: { response: unknown; name?: string }) =>
+    api.post('/auth/passkey/register/verify', data),
+
+  // Authentication (public - no auth token needed)
+  getAuthOptions: (email?: string) =>
+    api.post('/auth/passkey/auth/options', { email }),
+  verifyAuth: (data: { response: unknown; challengeId: string }) =>
+    api.post('/auth/passkey/auth/verify', data),
+
+  // Passkey management (authenticated)
+  list: () => api.get('/auth/passkey/list'),
+  delete: (id: string) => api.delete(`/auth/passkey/${id}`),
+  rename: (id: string, name: string) => api.patch(`/auth/passkey/${id}/rename`, { name }),
+};
+
 export default api;
