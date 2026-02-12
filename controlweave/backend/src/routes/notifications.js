@@ -1,3 +1,5 @@
+'use strict';
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
@@ -6,33 +8,39 @@ const { validateBody, requireFields } = require('../middleware/validate');
 
 router.use(authenticate);
 
-// GET /notifications
+const NOTIFICATION_TYPES = ['control_due', 'assessment_needed', 'status_change', 'system', 'crosswalk'];
+
+// GET /notifications — supports limit, unread, type, page
 router.get('/', requirePermission('notifications.read'), async (req, res) => {
   try {
     const userId = req.user.id;
     const orgId = req.user.organization_id;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const offset = (page - 1) * limit;
     const unreadOnly = req.query.unread === 'true';
+    const typeFilter = req.query.type || null;
 
-    let query = `
-      SELECT id, type, title, message, link, is_read, created_at
-      FROM notifications
-      WHERE organization_id = $1 AND (user_id = $2 OR user_id IS NULL)
-    `;
     const params = [orgId, userId];
+    let where = 'WHERE organization_id = $1 AND (user_id = $2 OR user_id IS NULL)';
 
-    if (unreadOnly) {
-      query += ' AND is_read = false';
+    if (unreadOnly) where += ' AND is_read = false';
+    if (typeFilter) {
+      params.push(typeFilter);
+      where += ` AND type = $${params.length}`;
     }
 
-    query += ' ORDER BY created_at DESC LIMIT $3';
-    params.push(limit);
+    params.push(limit, offset);
+    const result = await pool.query(
+      `SELECT id, type, title, message, link, is_read, created_at
+       FROM notifications ${where}
+       ORDER BY created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
 
-    const result = await pool.query(query, params);
-
-    // Get unread count
     const countResult = await pool.query(
-      'SELECT COUNT(*) as count FROM notifications WHERE organization_id = $1 AND (user_id = $2 OR user_id IS NULL) AND is_read = false',
+      `SELECT COUNT(*) as count FROM notifications WHERE organization_id = $1 AND (user_id = $2 OR user_id IS NULL) AND is_read = false`,
       [orgId, userId]
     );
 
@@ -40,7 +48,9 @@ router.get('/', requirePermission('notifications.read'), async (req, res) => {
       success: true,
       data: {
         notifications: result.rows,
-        unreadCount: parseInt(countResult.rows[0].count)
+        unreadCount: parseInt(countResult.rows[0].count),
+        page,
+        limit
       }
     });
   } catch (error) {
@@ -105,6 +115,65 @@ router.post('/', requirePermission('notifications.write'), validateBody((body) =
     console.error('Create notification error:', error);
     res.status(500).json({ success: false, error: 'Failed to create notification' });
   }
+});
+
+// ─── Notification Preferences ─────────────────────────────────────────────────
+
+// GET /notifications/preferences
+router.get('/preferences', async (req, res) => {
+  try {
+    let stored = {};
+    try {
+      const result = await pool.query(
+        `SELECT type, in_app, email FROM notification_preferences WHERE user_id = $1`,
+        [req.user.id]
+      );
+      for (const row of result.rows) stored[row.type] = row;
+    } catch {
+      // Table may not exist if migration not run — return defaults
+    }
+
+    const prefs = NOTIFICATION_TYPES.map(type => ({
+      type,
+      in_app: stored[type]?.in_app ?? true,
+      email: stored[type]?.email ?? false
+    }));
+
+    res.json({ success: true, data: prefs });
+  } catch (error) {
+    console.error('Preferences error:', error);
+    res.status(500).json({ success: false, error: 'Failed to load preferences' });
+  }
+});
+
+// PUT /notifications/preferences
+router.put('/preferences', validateBody((body) => requireFields(body, ['type'])), async (req, res) => {
+  try {
+    const { type, in_app = true, email = false } = req.body;
+    if (!NOTIFICATION_TYPES.includes(type)) {
+      return res.status(400).json({ success: false, error: `type must be one of: ${NOTIFICATION_TYPES.join(', ')}` });
+    }
+
+    await pool.query(
+      `INSERT INTO notification_preferences (user_id, type, in_app, email)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, type) DO UPDATE SET in_app = $3, email = $4`,
+      [req.user.id, type, Boolean(in_app), Boolean(email)]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    if (error.code === '42P01') {
+      return res.status(503).json({ success: false, error: 'Run migrations first.' });
+    }
+    console.error('Preferences update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update preferences' });
+  }
+});
+
+// GET /notifications/email-status — whether SMTP is configured (for UI)
+router.get('/email-status', (req, res) => {
+  res.json({ success: true, data: { configured: Boolean(process.env.SMTP_HOST) } });
 });
 
 module.exports = router;

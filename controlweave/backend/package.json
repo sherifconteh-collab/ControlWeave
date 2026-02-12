@@ -33,6 +33,7 @@
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
+    "nodemailer": "^6.9.14",
     "openai": "^6.18.0",
     "openid-client": "^5.7.1",
     "pdf-parse": "^2.4.5",

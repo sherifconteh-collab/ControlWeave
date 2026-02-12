@@ -4,6 +4,7 @@ const pool = require('../config/database');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { enqueueWebhookEvent } = require('../services/webhookService');
 const { enqueueJob } = require('../services/jobService');
+const { createNotification } = require('../services/notificationService');
 
 router.use(authenticate);
 
@@ -271,6 +272,16 @@ router.post('/', requirePermission('controls.write'), async (req, res) => {
       status: item.status,
       priority: item.priority
     });
+
+    // Notify org admins of new POA&M item
+    await createNotification(
+      orgId,
+      null, // broadcast
+      'system',
+      'New POA&M Item Created',
+      `"${item.title}" (${item.priority} priority) has been added to your POA&M.`,
+      `/dashboard/operations`
+    );
 
     res.status(201).json({ success: true, data: item });
   } catch (error) {

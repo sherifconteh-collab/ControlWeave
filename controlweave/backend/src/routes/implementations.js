@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { validateBody, requireFields, isUuid } = require('../middleware/validate');
+const { createNotification } = require('../services/notificationService');
 
 router.use(authenticate);
 
@@ -281,6 +282,25 @@ router.patch('/:id/status', requirePermission('implementations.write'), validate
       [req.user.organization_id, req.user.id, existing.rows[0].id,
        JSON.stringify({ old_status: oldStatus, status, notes })]
     );
+
+    // Notify org when a control reaches 'verified'
+    if (status === 'verified') {
+      const ctrl = await pool.query(
+        `SELECT fc.control_id FROM control_implementations ci
+         JOIN framework_controls fc ON fc.id = ci.control_id
+         WHERE ci.id = $1 LIMIT 1`,
+        [req.params.id]
+      );
+      const controlRef = ctrl.rows[0]?.control_id || req.params.id;
+      await createNotification(
+        req.user.organization_id,
+        null, // broadcast to org
+        'status_change',
+        'Control Verified',
+        `Control ${controlRef} has been marked as Verified.`,
+        `/dashboard/controls/${ctrl.rows[0]?.id || req.params.id}`
+      );
+    }
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {

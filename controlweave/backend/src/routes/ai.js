@@ -72,11 +72,13 @@ async function getAIParams(req) {
 }
 
 // Helper: wrap AI handler with logging
-function aiHandler(feature, fn) {
+function aiHandler(feature, fn, opts = {}) {
   return async (req, res) => {
     const params = await getAIParams(req);
     const startMs = Date.now();
     let resultText = null;
+    const correlationId = require('crypto').randomUUID();
+    const sessionId = req.headers['x-request-id'] || require('crypto').randomUUID();
     try {
       const result = await fn(req, params);
       const durationMs = Date.now() - startMs;
@@ -91,11 +93,19 @@ function aiHandler(feature, fn) {
         byokUsed: !!req.aiUsageByok,
         ipAddress: req.ip || null,
         durationMs,
+        resourceType: opts.resourceType ? (typeof opts.resourceType === 'function' ? opts.resourceType(req) : opts.resourceType) : null,
+        resourceId: opts.resourceId ? (typeof opts.resourceId === 'function' ? opts.resourceId(req) : opts.resourceId) : null,
       }).catch(() => {});
 
       // For high-stakes features, also write to ai_decision_log with hashed I/O
       const inputContext = JSON.stringify(req.body || {});
-      await llm.logAIDecision(params.organizationId, feature, inputContext, resultText).catch(() => {});
+      await llm.logAIDecision(params.organizationId, feature, inputContext, resultText, {
+        modelVersion: params.model || null,
+        correlationId,
+        sessionId,
+        resourceType: opts.resourceType ? (typeof opts.resourceType === 'function' ? opts.resourceType(req) : opts.resourceType) : null,
+        resourceId: opts.resourceId ? (typeof opts.resourceId === 'function' ? opts.resourceId(req) : opts.resourceId) : null,
+      }).catch(() => {});
 
       res.json({ success: true, data: { result, feature, provider: params.provider } });
     } catch (err) {
@@ -161,6 +171,23 @@ router.get('/status', async (req, res) => {
           bypassTiers: byokPolicy.bypassTiers || []
         },
         tier,
+        bias_coverage: await (async () => {
+          try {
+            const bc = await pool.query(
+              `SELECT
+                COUNT(*) FILTER (WHERE bias_flags != '[]'::jsonb) as decisions_with_bias_flags,
+                COUNT(*) FILTER (WHERE bias_flags != '[]'::jsonb AND bias_reviewed = true) as bias_flags_reviewed,
+                COUNT(*) FILTER (WHERE risk_level = 'high' AND human_reviewed = false) as high_risk_unreviewed
+               FROM ai_decision_log WHERE organization_id = $1`,
+              [req.user.organization_id]
+            );
+            return {
+              decisions_with_bias_flags: parseInt(bc.rows[0].decisions_with_bias_flags) || 0,
+              bias_flags_reviewed: parseInt(bc.rows[0].bias_flags_reviewed) || 0,
+              high_risk_unreviewed: parseInt(bc.rows[0].high_risk_unreviewed) || 0
+            };
+          } catch { return null; }
+        })(),
         features: {
           // All features available to all tiers, just usage-limited
           gapAnalysis: true,
@@ -388,6 +415,112 @@ router.get('/usage-report', requirePermission('settings.manage'), async (req, re
   } catch (err) {
     console.error('AI usage report error:', err);
     res.status(500).json({ success: false, error: 'Failed to fetch AI usage report' });
+  }
+});
+
+// ======================== AI DECISION REVIEW ========================
+
+// GET /ai/decisions — paginated decision log for admin review
+router.get('/decisions', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 25, 100);
+    const offset = (page - 1) * limit;
+    const reviewedFilter = req.query.reviewed; // 'true' | 'false' | undefined
+    const featureFilter = req.query.feature || null;
+    const riskFilter = req.query.risk_level || null;
+
+    const params = [orgId];
+    let where = 'WHERE organization_id = $1';
+
+    if (reviewedFilter === 'true') { where += ' AND human_reviewed = true'; }
+    else if (reviewedFilter === 'false') { where += ' AND human_reviewed = false'; }
+    if (featureFilter) { params.push(featureFilter); where += ` AND feature = $${params.length}`; }
+    if (riskFilter) { params.push(riskFilter); where += ` AND risk_level = $${params.length}`; }
+
+    params.push(limit, offset);
+    const result = await pool.query(
+      `SELECT id, processing_timestamp as created_at,
+              regulatory_framework, risk_level, model_version, correlation_id,
+              input_hash, output_hash, human_reviewed, review_outcome,
+              reviewed_by, review_timestamp, bias_flags, bias_reviewed,
+              LEFT(input_data::text, 500) as input_preview,
+              LEFT(output_data::text, 500) as output_preview
+       FROM ai_decision_log ${where}
+       ORDER BY processing_timestamp DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as total FROM ai_decision_log WHERE organization_id = $1`,
+      [orgId]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+      pagination: { page, limit, total: parseInt(countResult.rows[0].total) }
+    });
+  } catch (err) {
+    console.error('AI decisions error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /ai/decisions/:id/review — mark a decision as human-reviewed
+router.patch('/decisions/:id/review', requirePermission('assessments.write'), async (req, res) => {
+  try {
+    const { outcome, notes } = req.body;
+    const VALID_OUTCOMES = ['approved', 'rejected', 'needs_revision'];
+    if (!outcome || !VALID_OUTCOMES.includes(outcome)) {
+      return res.status(400).json({ success: false, error: `outcome must be one of: ${VALID_OUTCOMES.join(', ')}` });
+    }
+
+    const result = await pool.query(
+      `UPDATE ai_decision_log
+       SET human_reviewed = true,
+           reviewed_by = $1,
+           review_timestamp = NOW(),
+           review_outcome = $2,
+           review_notes = $3
+       WHERE id = $4 AND organization_id = $5
+       RETURNING id`,
+      [req.user.id, outcome, notes || null, req.params.id, req.user.organization_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, error: 'Decision not found.' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('AI decision review error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /ai/decisions/:id/bias-review — mark bias flags as reviewed
+router.patch('/decisions/:id/bias-review', requirePermission('assessments.write'), async (req, res) => {
+  try {
+    const { notes } = req.body;
+    const result = await pool.query(
+      `UPDATE ai_decision_log
+       SET bias_reviewed = true,
+           bias_reviewed_by = $1,
+           bias_review_timestamp = NOW(),
+           fairness_notes = $2
+       WHERE id = $3 AND organization_id = $4
+       RETURNING id`,
+      [req.user.id, notes || null, req.params.id, req.user.organization_id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, error: 'Decision not found.' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Bias review error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

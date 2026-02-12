@@ -876,7 +876,7 @@ export const reportsAPI = {
 
 // Notifications APIs
 export const notificationsAPI = {
-  getAll: (params?: { limit?: number; unread?: string }) =>
+  getAll: (params?: { limit?: number; unread?: string; type?: string; page?: number }) =>
     api.get('/notifications', { params }),
 
   markRead: (id: string) =>
@@ -884,6 +884,27 @@ export const notificationsAPI = {
 
   markAllRead: () =>
     api.post('/notifications/read-all'),
+
+  getPreferences: () =>
+    api.get('/notifications/preferences'),
+
+  updatePreference: (data: { type: string; in_app?: boolean; email?: boolean }) =>
+    api.put('/notifications/preferences', data),
+
+  getEmailStatus: () =>
+    api.get('/notifications/email-status'),
+};
+
+// AI Decision log APIs (admin)
+export const aiDecisionsAPI = {
+  list: (params?: { page?: number; limit?: number; reviewed?: string; feature?: string; risk_level?: string }) =>
+    api.get('/ai/decisions', { params }),
+
+  review: (id: string, data: { outcome: string; notes?: string }) =>
+    api.patch(`/ai/decisions/${id}/review`, data),
+
+  biasReview: (id: string, data: { notes?: string }) =>
+    api.patch(`/ai/decisions/${id}/bias-review`, data),
 };
 
 // Operations APIs (admin/operator workspace)

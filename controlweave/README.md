@@ -101,10 +101,24 @@ Per-org OIDC single sign-on — works with **any** OIDC-compatible IdP:
 All AI usage is tracked with full accountability (applies to every tier, including free):
 
 - **Per-call log**: org, user, feature, provider, model, BYOK status, tokens in/out, duration, success/failure, IP address
-- **Decision log**: SHA-256 hash of inputs and outputs for 7 high-stakes features (gap analysis, forecasting, remediation, incident response, executive reports, risk heatmap, vendor risk)
+- **Decision log**: SHA-256 hash of inputs and outputs for 7 high-stakes features; records model version, correlation ID, session ID, and regulatory framework mapping
+- **Bias tracking**: lightweight heuristic detection flags potential bias in executive reports, vendor risk assessments, and remediation playbooks; human review workflow with fairness notes
+- **EU AI Act readiness**: bias coverage metrics in `/ai/status` — decisions with flags, flags reviewed, high-risk unreviewed
+- **Human review workflow**: admins can approve/reject/flag AI decisions and record outcomes (Settings → AI Decisions tab)
 - **Audit trail**: key add/remove events logged to the org audit log
-- **Usage reporting**: admin endpoint to query AI activity with filters (Settings → AI Activity tab)
+- **Usage reporting**: query AI activity with filters (Settings → AI Activity tab)
 - **Org-shared BYOK**: one API key configured by the admin is available to all org members — no per-user key setup needed
+
+---
+
+## Notifications
+
+Event-driven in-app notifications with optional email delivery:
+
+- **Triggers**: control status changes to verified, POA&M item created, control due reminders, assessment needed, crosswalk recommendations
+- **Per-user preferences**: each user can toggle in-app and email delivery per notification type (Settings → Notifications tab)
+- **Email delivery**: disabled by default; set `SMTP_HOST` + related env vars to enable (see `.env.example`)
+- **Notification bell**: unread count badge in the sidebar; full notification center at `/dashboard/notifications`
 
 ---
 

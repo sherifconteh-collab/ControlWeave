@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
-import api, { auditAPI, integrationsAPI, opsAPI, passkeyAPI, rolesAPI, settingsAPI, siemAPI, ssoAPI, usersAPI } from '@/lib/api';
+import api, { aiDecisionsAPI, auditAPI, integrationsAPI, notificationsAPI, opsAPI, passkeyAPI, rolesAPI, settingsAPI, siemAPI, ssoAPI, usersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission, hasTierAtLeast } from '@/lib/access';
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
@@ -111,8 +111,8 @@ function SettingsPageInner() {
   const canUseSplunk = canManageSettings && hasTierAtLeast(user, 'starter');
   const canUsePasskeys = hasTierAtLeast(user, 'professional');
   const canUseSso = canManageSettings && hasTierAtLeast(user, 'professional');
-  const defaultTab: 'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform' | 'security' = canManageRoles ? 'roles' : 'llm';
-  const [activeTab, setActiveTab] = useState<'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform' | 'security'>('roles');
+  const defaultTab: 'roles' | 'llm' | 'ai_activity' | 'ai_decisions' | 'notifications' | 'integrations' | 'content' | 'audit' | 'platform' | 'security' = canManageRoles ? 'roles' : 'llm';
+  const [activeTab, setActiveTab] = useState<'roles' | 'llm' | 'ai_activity' | 'ai_decisions' | 'notifications' | 'integrations' | 'content' | 'audit' | 'platform' | 'security'>('roles');
 
   // Roles state
   const [roles, setRoles] = useState<Role[]>([]);
@@ -186,6 +186,114 @@ function SettingsPageInner() {
   const [aiActivityPage, setAiActivityPage] = useState(1);
   const [aiActivityTotal, setAiActivityTotal] = useState(0);
   const AI_ACTIVITY_LIMIT = 50;
+
+  // Notifications preferences tab state
+  const [notifPrefs, setNotifPrefs] = useState<{ type: string; in_app: boolean; email: boolean }[]>([]);
+  const [notifPrefsLoading, setNotifPrefsLoading] = useState(false);
+  const [notifEmailConfigured, setNotifEmailConfigured] = useState(false);
+  const [notifSavingType, setNotifSavingType] = useState<string | null>(null);
+
+  const loadNotifPrefs = async () => {
+    setNotifPrefsLoading(true);
+    try {
+      const [prefsRes, emailRes] = await Promise.all([
+        notificationsAPI.getPreferences(),
+        notificationsAPI.getEmailStatus(),
+      ]);
+      setNotifPrefs(prefsRes.data?.data || []);
+      setNotifEmailConfigured(emailRes.data?.data?.configured ?? false);
+    } catch {
+      // silently fail
+    } finally {
+      setNotifPrefsLoading(false);
+    }
+  };
+
+  const handleNotifPrefChange = async (type: string, field: 'in_app' | 'email', value: boolean) => {
+    setNotifSavingType(type);
+    const existing = notifPrefs.find(p => p.type === type) || { type, in_app: true, email: false };
+    const updated = { ...existing, [field]: value };
+    setNotifPrefs(prev => prev.map(p => p.type === type ? updated : p));
+    try {
+      await notificationsAPI.updatePreference(updated);
+    } catch {
+      // revert on error
+      setNotifPrefs(prev => prev.map(p => p.type === type ? existing : p));
+    } finally {
+      setNotifSavingType(null);
+    }
+  };
+
+  // AI Decisions tab state
+  const [aiDecisions, setAiDecisions] = useState<any[]>([]);
+  const [aiDecisionsLoading, setAiDecisionsLoading] = useState(false);
+  const [aiDecisionsPage, setAiDecisionsPage] = useState(1);
+  const [aiDecisionsTotal, setAiDecisionsTotal] = useState(0);
+  const [aiDecisionsFilterReviewed, setAiDecisionsFilterReviewed] = useState('');
+  const [aiDecisionsFilterFeature, setAiDecisionsFilterFeature] = useState('');
+  const [aiDecisionsFilterRisk, setAiDecisionsFilterRisk] = useState('');
+  const [aiDecisionsSelected, setAiDecisionsSelected] = useState<any | null>(null);
+  const [aiDecisionsOutcome, setAiDecisionsOutcome] = useState('');
+  const [aiDecisionsNotes, setAiDecisionsNotes] = useState('');
+  const [aiDecisionsBiasNotes, setAiDecisionsBiasNotes] = useState('');
+  const [aiDecisionsSaving, setAiDecisionsSaving] = useState(false);
+  const AI_DECISIONS_LIMIT = 50;
+
+  const loadAiDecisions = async (page = 1) => {
+    if (!canManageSettings) return;
+    setAiDecisionsLoading(true);
+    try {
+      const res = await aiDecisionsAPI.list({
+        page,
+        limit: AI_DECISIONS_LIMIT,
+        reviewed: aiDecisionsFilterReviewed || undefined,
+        feature: aiDecisionsFilterFeature || undefined,
+        risk_level: aiDecisionsFilterRisk || undefined,
+      });
+      const data = res.data?.data || {};
+      setAiDecisions(data.decisions || []);
+      setAiDecisionsTotal(data.total || 0);
+      setAiDecisionsPage(page);
+    } catch {
+      // silently fail
+    } finally {
+      setAiDecisionsLoading(false);
+    }
+  };
+
+  const handleAiDecisionReview = async () => {
+    if (!aiDecisionsSelected || !aiDecisionsOutcome) return;
+    setAiDecisionsSaving(true);
+    try {
+      await aiDecisionsAPI.review(aiDecisionsSelected.id, { outcome: aiDecisionsOutcome, notes: aiDecisionsNotes });
+      setAiDecisions(prev => prev.map(d => d.id === aiDecisionsSelected.id
+        ? { ...d, human_reviewed: true, review_outcome: aiDecisionsOutcome }
+        : d));
+      setAiDecisionsSelected(null);
+      showToast('Review saved');
+    } catch {
+      showToast('Failed to save review');
+    } finally {
+      setAiDecisionsSaving(false);
+    }
+  };
+
+  const handleAiDecisionBiasReview = async () => {
+    if (!aiDecisionsSelected) return;
+    setAiDecisionsSaving(true);
+    try {
+      await aiDecisionsAPI.biasReview(aiDecisionsSelected.id, { notes: aiDecisionsBiasNotes });
+      setAiDecisions(prev => prev.map(d => d.id === aiDecisionsSelected.id
+        ? { ...d, bias_reviewed: true }
+        : d));
+      setAiDecisionsSelected(null);
+      showToast('Bias review saved');
+    } catch {
+      showToast('Failed to save bias review');
+    } finally {
+      setAiDecisionsSaving(false);
+    }
+  };
 
   // Audit Logs tab state
   const [auditRows, setAuditRows] = useState<any[]>([]);
@@ -381,7 +489,7 @@ function SettingsPageInner() {
 
   useEffect(() => {
     const tabParam = searchParams?.get('tab');
-    const validTabs = ['roles', 'llm', 'ai_activity', 'integrations', 'content', 'audit', 'platform', 'security'];
+    const validTabs = ['roles', 'llm', 'ai_activity', 'ai_decisions', 'notifications', 'integrations', 'content', 'audit', 'platform', 'security'];
     if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab(tabParam as any);
     } else {
@@ -422,6 +530,12 @@ function SettingsPageInner() {
     }
     if (activeTab === 'integrations' && siemConfigs.length === 0) {
       loadSiemConfigs();
+    }
+    if (activeTab === 'notifications' && notifPrefs.length === 0) {
+      loadNotifPrefs();
+    }
+    if (activeTab === 'ai_decisions' && canManageSettings && aiDecisions.length === 0) {
+      loadAiDecisions(1);
     }
   }, [activeTab]);
 
@@ -1152,6 +1266,24 @@ function SettingsPageInner() {
             >
               Security
             </button>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'notifications' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Notifications
+            </button>
+            {canManageSettings && (
+              <button
+                onClick={() => setActiveTab('ai_decisions')}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'ai_decisions' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                AI Decisions
+              </button>
+            )}
           </nav>
         </div>
 
@@ -2695,6 +2827,382 @@ function SettingsPageInner() {
             </div>
           </div>
         )}
+        {/* ===== NOTIFICATIONS TAB ===== */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Notification Preferences</h2>
+                  <p className="text-sm text-gray-500 mt-1">Control which notifications you receive in-app and by email.</p>
+                </div>
+                {notifEmailConfigured ? (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Email configured</span>
+                ) : (
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Email not configured</span>
+                )}
+              </div>
+
+              {notifPrefsLoading ? (
+                <div className="py-8 text-center text-sm text-gray-400">Loading preferences...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-xs text-gray-500 font-medium">
+                        <th className="pb-2 pr-4">Notification Type</th>
+                        <th className="pb-2 pr-4 text-center">In-App</th>
+                        {notifEmailConfigured && <th className="pb-2 text-center">Email</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[
+                        { type: 'control_due', label: 'Control Due', desc: 'Reminders when controls are approaching their review date' },
+                        { type: 'assessment_needed', label: 'Assessment Needed', desc: 'Alerts when assessments require attention' },
+                        { type: 'status_change', label: 'Status Change', desc: 'Notifications when a control status changes to verified' },
+                        { type: 'system', label: 'System', desc: 'POA&M items and other system-generated notifications' },
+                        { type: 'crosswalk', label: 'Crosswalk', desc: 'Framework crosswalk recommendations and updates' },
+                      ].map(({ type, label, desc }) => {
+                        const pref = notifPrefs.find(p => p.type === type) || { type, in_app: true, email: false };
+                        const saving = notifSavingType === type;
+                        return (
+                          <tr key={type} className="hover:bg-gray-50">
+                            <td className="py-3 pr-4">
+                              <div className="font-medium text-gray-800">{label}</div>
+                              <div className="text-xs text-gray-500">{desc}</div>
+                            </td>
+                            <td className="py-3 pr-4 text-center">
+                              <input
+                                type="checkbox"
+                                checked={pref.in_app}
+                                disabled={saving}
+                                onChange={e => handleNotifPrefChange(type, 'in_app', e.target.checked)}
+                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                              />
+                            </td>
+                            {notifEmailConfigured && (
+                              <td className="py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={pref.email}
+                                  disabled={saving}
+                                  onChange={e => handleNotifPrefChange(type, 'email', e.target.checked)}
+                                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                                />
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {!notifEmailConfigured && (
+                <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  <span>Email notifications are disabled. Set <code className="bg-amber-100 px-1 rounded">SMTP_HOST</code> and related environment variables on the server to enable email delivery.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== AI DECISIONS TAB ===== */}
+        {activeTab === 'ai_decisions' && canManageSettings && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">AI Decision Log</h2>
+                  <p className="text-sm text-gray-500 mt-1">Every AI decision recorded for traceability, human review, and EU AI Act compliance.</p>
+                </div>
+                <button
+                  onClick={() => loadAiDecisions(1)}
+                  disabled={aiDecisionsLoading}
+                  className="text-sm border border-gray-200 rounded-md px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {aiDecisionsLoading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-3 mb-4">
+                <select
+                  value={aiDecisionsFilterReviewed}
+                  onChange={e => { setAiDecisionsFilterReviewed(e.target.value); }}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">All reviews</option>
+                  <option value="false">Unreviewed</option>
+                  <option value="true">Reviewed</option>
+                </select>
+                <select
+                  value={aiDecisionsFilterRisk}
+                  onChange={e => { setAiDecisionsFilterRisk(e.target.value); }}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">All risk levels</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Filter by feature..."
+                  value={aiDecisionsFilterFeature}
+                  onChange={e => setAiDecisionsFilterFeature(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={() => loadAiDecisions(1)}
+                  className="text-sm bg-purple-600 text-white px-4 py-1.5 rounded-md hover:bg-purple-700"
+                >
+                  Apply
+                </button>
+              </div>
+
+              {aiDecisionsLoading && aiDecisions.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">Loading decisions...</div>
+              ) : aiDecisions.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">No AI decisions recorded yet.</div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-xs text-gray-500 font-medium">
+                          <th className="pb-2 pr-3">Date</th>
+                          <th className="pb-2 pr-3">Feature</th>
+                          <th className="pb-2 pr-3">Risk</th>
+                          <th className="pb-2 pr-3">Framework</th>
+                          <th className="pb-2 pr-3">Reviewed</th>
+                          <th className="pb-2 pr-3">Bias</th>
+                          <th className="pb-2 pr-3">Input Hash</th>
+                          <th className="pb-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {aiDecisions.map((row: any) => (
+                          <tr key={row.id} className="hover:bg-gray-50">
+                            <td className="py-2 pr-3 text-gray-600 whitespace-nowrap text-xs">
+                              {new Date(row.processing_timestamp || row.created_at).toLocaleString()}
+                            </td>
+                            <td className="py-2 pr-3">
+                              <span className="font-mono text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">
+                                {row.feature || '—'}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-3">
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                row.risk_level === 'high' ? 'bg-red-100 text-red-700' :
+                                row.risk_level === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {row.risk_level || 'low'}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-3 text-xs text-gray-600">{row.regulatory_framework || '—'}</td>
+                            <td className="py-2 pr-3">
+                              {row.human_reviewed ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                                  {row.review_outcome || 'Reviewed'}
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Pending</span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-3">
+                              {Array.isArray(row.bias_flags) && row.bias_flags.length > 0 ? (
+                                row.bias_reviewed ? (
+                                  <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Cleared</span>
+                                ) : (
+                                  <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                                    {row.bias_flags.length} flag{row.bias_flags.length !== 1 ? 's' : ''}
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-3 font-mono text-xs text-gray-400">
+                              {row.input_hash ? row.input_hash.slice(0, 12) + '…' : '—'}
+                            </td>
+                            <td className="py-2">
+                              <button
+                                onClick={() => {
+                                  setAiDecisionsSelected(row);
+                                  setAiDecisionsOutcome(row.review_outcome || '');
+                                  setAiDecisionsNotes(row.review_notes || '');
+                                  setAiDecisionsBiasNotes(row.fairness_notes || '');
+                                }}
+                                className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+                              >
+                                Review
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {aiDecisionsTotal > AI_DECISIONS_LIMIT && (
+                    <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+                      <span>{aiDecisionsTotal} total records</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => loadAiDecisions(aiDecisionsPage - 1)}
+                          disabled={aiDecisionsPage <= 1 || aiDecisionsLoading}
+                          className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1">Page {aiDecisionsPage}</span>
+                        <button
+                          onClick={() => loadAiDecisions(aiDecisionsPage + 1)}
+                          disabled={aiDecisionsPage * AI_DECISIONS_LIMIT >= aiDecisionsTotal || aiDecisionsLoading}
+                          className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* AI Decision Review Side Panel */}
+        {aiDecisionsSelected && (
+          <div className="fixed inset-0 z-50 flex">
+            <div className="fixed inset-0 bg-black opacity-40" onClick={() => setAiDecisionsSelected(null)} />
+            <div className="relative ml-auto bg-white w-full max-w-lg h-full overflow-y-auto shadow-xl p-6 flex flex-col gap-5 z-10">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Decision Review</h3>
+                <button onClick={() => setAiDecisionsSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex gap-4">
+                  <span className="text-gray-500 w-24 shrink-0">Feature</span>
+                  <span className="font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{aiDecisionsSelected.feature}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-gray-500 w-24 shrink-0">Risk level</span>
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    aiDecisionsSelected.risk_level === 'high' ? 'bg-red-100 text-red-700' :
+                    aiDecisionsSelected.risk_level === 'medium' ? 'bg-amber-100 text-amber-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>{aiDecisionsSelected.risk_level || 'low'}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-gray-500 w-24 shrink-0">Framework</span>
+                  <span className="text-gray-800">{aiDecisionsSelected.regulatory_framework || '—'}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-gray-500 w-24 shrink-0">Date</span>
+                  <span className="text-gray-800">{new Date(aiDecisionsSelected.processing_timestamp || aiDecisionsSelected.created_at).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Input summary */}
+              {aiDecisionsSelected.input_data && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-1">Input</h4>
+                  <pre className="text-xs bg-gray-50 border border-gray-200 rounded-md p-3 overflow-auto max-h-32 whitespace-pre-wrap">
+                    {typeof aiDecisionsSelected.input_data === 'string'
+                      ? aiDecisionsSelected.input_data.slice(0, 500)
+                      : JSON.stringify(aiDecisionsSelected.input_data, null, 2).slice(0, 500)}
+                    {(typeof aiDecisionsSelected.input_data === 'string'
+                      ? aiDecisionsSelected.input_data.length
+                      : JSON.stringify(aiDecisionsSelected.input_data).length) > 500 ? '…' : ''}
+                  </pre>
+                </div>
+              )}
+
+              {/* Bias flags */}
+              {Array.isArray(aiDecisionsSelected.bias_flags) && aiDecisionsSelected.bias_flags.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Bias Flags</h4>
+                  <ul className="space-y-1">
+                    {aiDecisionsSelected.bias_flags.map((flag: any, i: number) => (
+                      <li key={i} className="text-xs flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                        <span className="text-amber-600 font-semibold shrink-0">{flag.type || 'FLAG'}</span>
+                        <span className="text-amber-800">{flag.description || JSON.stringify(flag)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <hr className="border-gray-200" />
+
+              {/* Human review section */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-700">Human Review</h4>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Outcome</label>
+                  <select
+                    value={aiDecisionsOutcome}
+                    onChange={e => setAiDecisionsOutcome(e.target.value)}
+                    className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select outcome…</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="needs_revision">Needs Revision</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                  <textarea
+                    value={aiDecisionsNotes}
+                    onChange={e => setAiDecisionsNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Optional reviewer notes..."
+                    className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <button
+                  onClick={handleAiDecisionReview}
+                  disabled={aiDecisionsSaving || !aiDecisionsOutcome}
+                  className="w-full py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {aiDecisionsSaving ? 'Saving…' : 'Save Review'}
+                </button>
+              </div>
+
+              {/* Bias review section */}
+              {Array.isArray(aiDecisionsSelected.bias_flags) && aiDecisionsSelected.bias_flags.length > 0 && !aiDecisionsSelected.bias_reviewed && (
+                <div className="space-y-3 border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700">Bias Review</h4>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Fairness Notes</label>
+                    <textarea
+                      value={aiDecisionsBiasNotes}
+                      onChange={e => setAiDecisionsBiasNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Explain bias flag assessment and mitigation steps..."
+                      className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAiDecisionBiasReview}
+                    disabled={aiDecisionsSaving}
+                    className="w-full py-2 bg-amber-600 text-white text-sm font-medium rounded-md hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    {aiDecisionsSaving ? 'Saving…' : 'Mark Bias Reviewed'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </DashboardLayout>
   );
