@@ -257,6 +257,17 @@ router.patch('/:id/status', requirePermission('implementations.write'), validate
 
     const oldStatus = existing.rows[0].status;
 
+    // Forward-only status enforcement
+    const STATUS_ORDER = ['not_started', 'in_progress', 'implemented', 'verified'];
+    const currentIdx = STATUS_ORDER.indexOf(oldStatus);
+    const newIdx = STATUS_ORDER.indexOf(status);
+    if (newIdx !== -1 && currentIdx !== -1 && newIdx < currentIdx) {
+      return res.status(400).json({ success: false, error: 'Status cannot be moved backward.' });
+    }
+    if (status === 'verified' && req.user.role !== 'admin' && req.user.role !== 'auditor') {
+      return res.status(403).json({ success: false, error: 'Only auditors or admins can set status to Verified.' });
+    }
+
     const result = await pool.query(`
       UPDATE control_implementations SET status = $1, notes = COALESCE($2, notes),
         implementation_date = CASE WHEN $4 = 'implemented' THEN CURRENT_DATE ELSE implementation_date END
@@ -333,6 +344,37 @@ router.post('/:id/review', requirePermission('implementations.write'), validateB
   } catch (error) {
     console.error('Review error:', error);
     res.status(500).json({ success: false, error: 'Failed to submit review' });
+  }
+});
+
+// PATCH /implementations/:id/test-result
+// Records auditor/tester overall verdict at the control level
+router.patch('/:id/test-result', requirePermission('assessments.write'), validateBody((body) => {
+  const errors = [];
+  const valid = ['not_assessed', 'satisfied', 'other_than_satisfied', 'not_applicable'];
+  if (!body.test_result) {
+    errors.push('test_result is required');
+  } else if (!valid.includes(body.test_result)) {
+    errors.push(`test_result must be one of: ${valid.join(', ')}`);
+  }
+  return errors;
+}), async (req, res) => {
+  try {
+    const { test_result, test_notes } = req.body;
+    const result = await pool.query(
+      `UPDATE control_implementations
+       SET test_result = $1, test_notes = $2, updated_at = NOW()
+       WHERE id = $3 AND organization_id = $4
+       RETURNING id, test_result, test_notes, updated_at`,
+      [test_result, test_notes || null, req.params.id, req.user.organization_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Implementation not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Test result update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update test result' });
   }
 });
 

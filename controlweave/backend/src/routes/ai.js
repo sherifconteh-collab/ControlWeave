@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { createOrgRateLimiter } = require('../middleware/rateLimit');
 const llm = require('../services/llmService');
+const pool = require('../config/database');
 const { normalizeTier, shouldEnforceAiLimitForByok, getByokPolicy } = require('../config/tierPolicy');
 
 const aiOrgRateLimiter = createOrgRateLimiter({
@@ -19,7 +20,7 @@ router.use(aiOrgRateLimiter);
 // ---------- Middleware: Check AI usage limits ----------
 async function checkAIUsage(req, res, next) {
   try {
-    const params = getAIParams(req);
+    const params = await getAIParams(req);
     const tier = normalizeTier(req.user.organization_tier);
     const limit = llm.getUsageLimit(tier);
     const enforceByokLimits = shouldEnforceAiLimitForByok(tier);
@@ -59,9 +60,12 @@ async function checkAIUsage(req, res, next) {
 }
 
 // Helper: extract provider/model from request
-function getAIParams(req) {
+// Uses the org's saved default_provider when none is explicitly supplied
+async function getAIParams(req) {
+  const explicitProvider = req.body.provider || req.query.provider;
+  const provider = explicitProvider || await llm.getOrgDefaultProvider(req.user.organization_id);
   return {
-    provider: req.body.provider || req.query.provider || 'claude',
+    provider,
     model: req.body.model || req.query.model || null,
     organizationId: req.user.organization_id
   };
@@ -70,14 +74,41 @@ function getAIParams(req) {
 // Helper: wrap AI handler with logging
 function aiHandler(feature, fn) {
   return async (req, res) => {
-    const params = getAIParams(req);
+    const params = await getAIParams(req);
+    const startMs = Date.now();
+    let resultText = null;
     try {
       const result = await fn(req, params);
-      // Log usage
-      await llm.logAIUsage(params.organizationId, req.user.id, feature, params.provider, params.model).catch(() => {});
+      const durationMs = Date.now() - startMs;
+
+      // Capture text output for high-stakes decision logging
+      if (typeof result === 'string') resultText = result;
+      else if (result && typeof result === 'object') resultText = JSON.stringify(result);
+
+      // Log usage with extended context
+      await llm.logAIUsage(params.organizationId, req.user.id, feature, params.provider, params.model, {
+        success: true,
+        byokUsed: !!req.aiUsageByok,
+        ipAddress: req.ip || null,
+        durationMs,
+      }).catch(() => {});
+
+      // For high-stakes features, also write to ai_decision_log with hashed I/O
+      const inputContext = JSON.stringify(req.body || {});
+      await llm.logAIDecision(params.organizationId, feature, inputContext, resultText).catch(() => {});
+
       res.json({ success: true, data: { result, feature, provider: params.provider } });
     } catch (err) {
+      const durationMs = Date.now() - startMs;
       console.error(`AI ${feature} error:`, err);
+      // Still log failed attempts
+      await llm.logAIUsage(params.organizationId, req.user.id, feature, params.provider, params.model, {
+        success: false,
+        errorMessage: err.message ? err.message.slice(0, 500) : 'Unknown error',
+        byokUsed: !!req.aiUsageByok,
+        ipAddress: req.ip || null,
+        durationMs,
+      }).catch(() => {});
       res.status(err.message?.includes('No API key') ? 400 : 500).json({
         success: false,
         error: err.message || `AI ${feature} failed`
@@ -307,5 +338,57 @@ router.post('/generate-policy', checkAIUsage, aiHandler('policy_generator', (req
 router.post('/chat', checkAIUsage, aiHandler('chat', (req, params) =>
   llm.chat({ ...params, messages: req.body.messages, systemPrompt: req.body.systemPrompt })
 ));
+
+// ======================== ADMIN: AI USAGE REPORT ========================
+// Returns paginated AI usage log for the org — admin only
+router.get('/usage-report', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const { startDate, endDate, userId, feature, page = 1, limit = 50 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageLimit = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+    const offset = (pageNum - 1) * pageLimit;
+
+    const conditions = ['l.organization_id = $1'];
+    const values = [orgId];
+    let idx = 2;
+
+    if (startDate) { conditions.push(`l.created_at >= $${idx++}`); values.push(startDate); }
+    if (endDate)   { conditions.push(`l.created_at <= $${idx++}`); values.push(endDate); }
+    if (userId)    { conditions.push(`l.user_id = $${idx++}`);     values.push(userId); }
+    if (feature)   { conditions.push(`l.feature = $${idx++}`);     values.push(feature); }
+
+    const where = conditions.join(' AND ');
+
+    const [rows, countRow] = await Promise.all([
+      pool.query(`
+        SELECT l.id, l.created_at, l.feature, l.provider, l.model,
+               l.success, l.error_message, l.tokens_input, l.tokens_output,
+               l.duration_ms, l.byok_used, l.ip_address,
+               l.resource_type, l.resource_id,
+               u.email AS user_email, u.name AS user_name
+        FROM ai_usage_log l
+        LEFT JOIN users u ON u.id = l.user_id
+        WHERE ${where}
+        ORDER BY l.created_at DESC
+        LIMIT $${idx++} OFFSET $${idx++}
+      `, [...values, pageLimit, offset]),
+      pool.query(`SELECT COUNT(*) AS total FROM ai_usage_log l WHERE ${where}`, values),
+    ]);
+
+    res.json({
+      success: true,
+      data: rows.rows,
+      pagination: {
+        page: pageNum,
+        limit: pageLimit,
+        total: parseInt(countRow.rows[0].total, 10),
+      },
+    });
+  } catch (err) {
+    console.error('AI usage report error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch AI usage report' });
+  }
+});
 
 module.exports = router;

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
-import { integrationsAPI, rolesAPI, settingsAPI, usersAPI } from '@/lib/api';
+import api, { auditAPI, integrationsAPI, opsAPI, rolesAPI, settingsAPI, usersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission, hasTierAtLeast } from '@/lib/access';
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
@@ -101,7 +101,7 @@ interface ContentPackDraft {
   created_at: string;
 }
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const canManageRoles = hasPermission(user, 'roles.manage');
@@ -109,8 +109,8 @@ export default function SettingsPage() {
   const canManageUsers = hasPermission(user, 'users.manage');
   const canManageSettings = hasPermission(user, 'settings.manage');
   const canUseSplunk = canManageSettings && hasTierAtLeast(user, 'starter');
-  const defaultTab: 'roles' | 'llm' = canManageRoles ? 'roles' : 'llm';
-  const [activeTab, setActiveTab] = useState<'roles' | 'llm'>('roles');
+  const defaultTab: 'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform' = canManageRoles ? 'roles' : 'llm';
+  const [activeTab, setActiveTab] = useState<'roles' | 'llm' | 'ai_activity' | 'integrations' | 'content' | 'audit' | 'platform'>('roles');
 
   // Roles state
   const [roles, setRoles] = useState<Role[]>([]);
@@ -178,10 +178,75 @@ export default function SettingsPage() {
   const [contentPackJson, setContentPackJson] = useState('');
   const [contentPackImporting, setContentPackImporting] = useState(false);
 
+  // AI Activity log state
+  const [aiActivityRows, setAiActivityRows] = useState<any[]>([]);
+  const [aiActivityLoading, setAiActivityLoading] = useState(false);
+  const [aiActivityPage, setAiActivityPage] = useState(1);
+  const [aiActivityTotal, setAiActivityTotal] = useState(0);
+  const AI_ACTIVITY_LIMIT = 50;
+
+  // Audit Logs tab state
+  const [auditRows, setAuditRows] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const AUDIT_LIMIT = 50;
+
+  const loadAuditLogs = async (page = 1) => {
+    if (!canManageSettings) return;
+    try {
+      setAuditLoading(true);
+      const offset = (page - 1) * AUDIT_LIMIT;
+      const res = await auditAPI.getLogs({ limit: AUDIT_LIMIT, offset });
+      setAuditRows(res.data.data?.logs || res.data.data || []);
+      setAuditTotal(res.data.data?.total || 0);
+      setAuditPage(page);
+    } catch {
+      // silently fail
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  // Platform Admin tab state
+  const [platformActionLoading, setPlatformActionLoading] = useState('');
+  const [platformActionMsg, setPlatformActionMsg] = useState('');
+
+  const handlePlatformAction = async (action: 'process_jobs' | 'run_retention' | 'process_webhooks') => {
+    setPlatformActionLoading(action);
+    setPlatformActionMsg('');
+    try {
+      if (action === 'process_jobs') await opsAPI.processJobs({ limit: 25 });
+      if (action === 'run_retention') await opsAPI.runRetention();
+      if (action === 'process_webhooks') await opsAPI.processWebhooks({ limit: 50 });
+      setPlatformActionMsg('Done.');
+    } catch (err: any) {
+      setPlatformActionMsg(err.response?.data?.error || 'Operation failed.');
+    } finally {
+      setPlatformActionLoading('');
+    }
+  };
+
+  const loadAiActivity = async (page = 1) => {
+    if (!canManageSettings) return;
+    try {
+      setAiActivityLoading(true);
+      const res = await api.get(`/ai/usage-report?page=${page}&limit=${AI_ACTIVITY_LIMIT}`);
+      setAiActivityRows(res.data.data || []);
+      setAiActivityTotal(res.data.pagination?.total || 0);
+      setAiActivityPage(page);
+    } catch {
+      // silently fail — not critical
+    } finally {
+      setAiActivityLoading(false);
+    }
+  };
+
   useEffect(() => {
     const tabParam = searchParams?.get('tab');
-    if (tabParam === 'llm') {
-      setActiveTab('llm');
+    const validTabs = ['roles', 'llm', 'ai_activity', 'integrations', 'content', 'audit', 'platform'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam as any);
     } else {
       setActiveTab(defaultTab);
     }
@@ -204,6 +269,16 @@ export default function SettingsPage() {
       setLlmLoading(false);
     }
   }, [defaultTab, canManageRoles, canManageSettings, canUseSplunk]);
+
+  // Load data when tabs are first opened
+  useEffect(() => {
+    if (activeTab === 'ai_activity' && canManageSettings && aiActivityRows.length === 0) {
+      loadAiActivity(1);
+    }
+    if (activeTab === 'audit' && canManageSettings && auditRows.length === 0) {
+      loadAuditLogs(1);
+    }
+  }, [activeTab]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -874,6 +949,56 @@ export default function SettingsPage() {
                 LLM Configuration
               </button>
             )}
+            {canManageSettings && (
+              <button
+                onClick={() => setActiveTab('ai_activity')}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'ai_activity' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                AI Activity
+              </button>
+            )}
+            {canManageSettings && canUseSplunk && (
+              <button
+                onClick={() => setActiveTab('integrations')}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'integrations' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Integrations
+              </button>
+            )}
+            {canManageSettings && (
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'content' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Content Packs
+              </button>
+            )}
+            {canManageSettings && (
+              <button
+                onClick={() => setActiveTab('audit')}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'audit' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Audit Logs
+              </button>
+            )}
+            {canManageSettings && (
+              <button
+                onClick={() => setActiveTab('platform')}
+                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'platform' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Platform Admin
+              </button>
+            )}
           </nav>
         </div>
 
@@ -883,6 +1008,13 @@ export default function SettingsPage() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-1">LLM API Keys (BYOK)</h2>
               <p className="text-sm text-gray-500 mb-2">Bring your own API keys to power AI features. Keys are stored encrypted.</p>
+              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm text-blue-800">
+                <span className="mt-0.5 shrink-0">ℹ️</span>
+                <span>
+                  <strong>Org-wide key:</strong> Any API key you add here is automatically available to all members of your organization.
+                  Individual users do not need to enter their own keys. All AI usage is logged and attributed per user.
+                </span>
+              </div>
               <div className="flex flex-wrap gap-2 mb-5 text-xs">
                 <span className="bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded">✅ Gemini — Free tier (aistudio.google.com)</span>
                 <span className="bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded">✅ Groq — Free tier (console.groq.com)</span>
@@ -1576,6 +1708,241 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* ===== AI ACTIVITY TAB ===== */}
+        {activeTab === 'ai_activity' && canManageSettings && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">AI Activity Log</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Every AI call made by any user in your organization — who triggered it, which feature, provider, key type, and outcome.
+                  </p>
+                </div>
+                <button
+                  onClick={() => loadAiActivity(1)}
+                  disabled={aiActivityLoading}
+                  className="text-sm border border-gray-200 rounded-md px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {aiActivityLoading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+
+              {aiActivityLoading && aiActivityRows.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">Loading AI activity...</div>
+              ) : aiActivityRows.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">No AI activity recorded yet.</div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-xs text-gray-500 font-medium">
+                          <th className="pb-2 pr-3">Date / Time</th>
+                          <th className="pb-2 pr-3">User</th>
+                          <th className="pb-2 pr-3">Feature</th>
+                          <th className="pb-2 pr-3">Provider</th>
+                          <th className="pb-2 pr-3">Key</th>
+                          <th className="pb-2 pr-3">Tokens In / Out</th>
+                          <th className="pb-2 pr-3">Duration</th>
+                          <th className="pb-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {aiActivityRows.map((row: any) => (
+                          <tr key={row.id} className="hover:bg-gray-50">
+                            <td className="py-2 pr-3 text-gray-600 whitespace-nowrap">
+                              {new Date(row.created_at).toLocaleString()}
+                            </td>
+                            <td className="py-2 pr-3 text-gray-800 max-w-[160px] truncate" title={row.user_email}>
+                              {row.user_name || row.user_email || '—'}
+                            </td>
+                            <td className="py-2 pr-3">
+                              <span className="font-mono text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">
+                                {row.feature}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-3 text-gray-700 capitalize">{row.provider || '—'}</td>
+                            <td className="py-2 pr-3">
+                              {row.byok_used ? (
+                                <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">Org key</span>
+                              ) : (
+                                <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Platform</span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-3 text-gray-600 text-xs">
+                              {row.tokens_input != null ? `${row.tokens_input} / ${row.tokens_output ?? '?'}` : '—'}
+                            </td>
+                            <td className="py-2 pr-3 text-gray-600 text-xs">
+                              {row.duration_ms != null ? `${row.duration_ms}ms` : '—'}
+                            </td>
+                            <td className="py-2">
+                              {row.success ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">OK</span>
+                              ) : (
+                                <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded" title={row.error_message || ''}>
+                                  Failed
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {aiActivityTotal > AI_ACTIVITY_LIMIT && (
+                    <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+                      <span>{aiActivityTotal} total records</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => loadAiActivity(aiActivityPage - 1)}
+                          disabled={aiActivityPage <= 1 || aiActivityLoading}
+                          className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1">Page {aiActivityPage}</span>
+                        <button
+                          onClick={() => loadAiActivity(aiActivityPage + 1)}
+                          disabled={aiActivityPage * AI_ACTIVITY_LIMIT >= aiActivityTotal || aiActivityLoading}
+                          className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== INTEGRATIONS TAB ===== */}
+        {activeTab === 'integrations' && canManageSettings && canUseSplunk && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Integrations</h2>
+              <p className="text-sm text-gray-500 mb-2">Connect external services to ControlWeave.</p>
+              <p className="text-sm text-gray-400">The Splunk Evidence Connector is available in the LLM Configuration tab while tab reorganization is in progress.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ===== CONTENT PACKS TAB ===== */}
+        {activeTab === 'content' && canManageSettings && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Content Packs</h2>
+              <p className="text-sm text-gray-500 mb-2">Licensed control procedure packs are available in the LLM Configuration tab while tab reorganization is in progress.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ===== AUDIT LOGS TAB ===== */}
+        {activeTab === 'audit' && canManageSettings && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Audit Logs</h2>
+                  <p className="text-sm text-gray-500 mt-1">Full event trail for your organization — user actions, configuration changes, and AI activity.</p>
+                </div>
+                <button onClick={() => loadAuditLogs(1)} disabled={auditLoading}
+                  className="text-sm border border-gray-200 rounded-md px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50">
+                  {auditLoading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+              {auditLoading && auditRows.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">Loading...</div>
+              ) : auditRows.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">No audit events yet.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-xs text-gray-500 font-medium">
+                        <th className="pb-2 pr-4">Time</th>
+                        <th className="pb-2 pr-4">Event</th>
+                        <th className="pb-2 pr-4">Resource</th>
+                        <th className="pb-2 pr-4">Actor</th>
+                        <th className="pb-2 pr-4">IP</th>
+                        <th className="pb-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {auditRows.map((row: any) => (
+                        <tr key={row.id} className="hover:bg-gray-50 text-xs">
+                          <td className="py-2 pr-4 text-gray-500 whitespace-nowrap">{new Date(row.created_at).toLocaleString()}</td>
+                          <td className="py-2 pr-4 font-mono text-purple-700">{row.event_type}</td>
+                          <td className="py-2 pr-4 text-gray-700">{row.resource_type || '—'}</td>
+                          <td className="py-2 pr-4 text-gray-800">{row.user_name || row.email || '—'}</td>
+                          <td className="py-2 pr-4 text-gray-500">{row.ip_address || '—'}</td>
+                          <td className="py-2">
+                            {row.success === false ? (
+                              <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Failed</span>
+                            ) : (
+                              <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">OK</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {auditTotal > AUDIT_LIMIT && (
+                    <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+                      <span>{auditTotal} total</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => loadAuditLogs(auditPage - 1)} disabled={auditPage <= 1 || auditLoading}
+                          className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40">Previous</button>
+                        <span className="px-3 py-1">Page {auditPage}</span>
+                        <button onClick={() => loadAuditLogs(auditPage + 1)} disabled={auditPage * AUDIT_LIMIT >= auditTotal || auditLoading}
+                          className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40">Next</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== PLATFORM ADMIN TAB ===== */}
+        {activeTab === 'platform' && canManageSettings && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Platform Admin</h2>
+              <p className="text-sm text-gray-500 mb-6">Internal system operations. Use with care.</p>
+              <div className="space-y-3 max-w-sm">
+                {[
+                  { key: 'process_jobs', label: 'Process Jobs', desc: 'Run up to 25 queued background jobs' },
+                  { key: 'process_webhooks', label: 'Flush Webhooks', desc: 'Deliver up to 50 pending webhooks' },
+                  { key: 'run_retention', label: 'Run Retention', desc: 'Execute data retention policy' },
+                ].map(({ key, label, desc }) => (
+                  <div key={key} className="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{label}</div>
+                      <div className="text-xs text-gray-500">{desc}</div>
+                    </div>
+                    <button
+                      onClick={() => handlePlatformAction(key as any)}
+                      disabled={platformActionLoading !== ''}
+                      className="text-sm px-4 py-1.5 bg-gray-900 text-white rounded-md hover:bg-gray-700 disabled:opacity-50"
+                    >
+                      {platformActionLoading === key ? 'Running...' : 'Run'}
+                    </button>
+                  </div>
+                ))}
+                {platformActionMsg && (
+                  <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">{platformActionMsg}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ===== ROLES TAB ===== */}
         {activeTab === 'roles' && canManageRoles && (
           <>
@@ -1847,5 +2214,13 @@ export default function SettingsPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<DashboardLayout><div className="py-12 text-center text-gray-500">Loading...</div></DashboardLayout>}>
+      <SettingsPageInner />
+    </Suspense>
   );
 }

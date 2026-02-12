@@ -346,6 +346,9 @@ export const implementationsAPI = {
   review: (id: string, data: { notes?: string; stillApplicable?: boolean; evidenceUpdated?: boolean }) =>
     api.post(`/implementations/${id}/review`, data),
 
+  updateTestResult: (id: string, data: { test_result: string; test_notes?: string }) =>
+    api.patch(`/implementations/${id}/test-result`, data),
+
   getActivityFeed: (params?: { limit?: number; offset?: number }) =>
     api.get('/implementations/activity/feed', { params }),
 
@@ -892,6 +895,15 @@ export const opsAPI = {
   processJobs: (data?: { limit?: number }) => api.post('/ops/jobs/process', data || {}),
   runRetention: () => api.post('/ops/retention/run', {}),
   processWebhooks: (data?: { limit?: number }) => api.post('/ops/webhooks/process', data || {})
+};
+
+// POA&M APIs
+export const poamAPI = {
+  getList: (params?: { status?: string; priority?: string; controlId?: string; limit?: number; offset?: number }) =>
+    api.get('/poam', { params }),
+  getById: (id: string) => api.get(`/poam/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/poam', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/poam/${id}`, data),
 };
 
 export default api;

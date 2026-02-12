@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
-import { controlsAPI, implementationsAPI, usersAPI, aiAPI, assessmentsAPI, evidenceAPI } from '@/lib/api';
+import { controlsAPI, implementationsAPI, usersAPI, aiAPI, assessmentsAPI, evidenceAPI, poamAPI, vulnerabilitiesAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/access';
 
@@ -131,7 +131,16 @@ export default function ControlDetailPage() {
   const [procedureEditors, setProcedureEditors] = useState<Record<string, boolean>>({});
   const [procedureDrafts, setProcedureDrafts] = useState<Record<string, any>>({});
   const [procedureSavingId, setProcedureSavingId] = useState<string | null>(null);
-  const [rollupSaving, setRollupSaving] = useState<string | null>(null);
+
+  // Risk summary — POA&Ms and vulnerabilities linked to this control
+  const [controlPoams, setControlPoams] = useState<any[]>([]);
+  const [controlVulns, setControlVulns] = useState<any[]>([]);
+  const [riskLoading, setRiskLoading] = useState(false);
+
+  // Control-level test result (auditor verdict)
+  const [testResult, setTestResult] = useState('not_assessed');
+  const [testNotes, setTestNotes] = useState('');
+  const [testSaving, setTestSaving] = useState(false);
 
   // Evidence linking
   const [evidenceModalOpen, setEvidenceModalOpen] = useState(false);
@@ -145,7 +154,10 @@ export default function ControlDetailPage() {
   const [evidenceUploadTags, setEvidenceUploadTags] = useState('');
 
   useEffect(() => {
-    if (id) loadData();
+    if (id) {
+      loadData();
+      loadRiskSummary();
+    }
   }, [id]);
 
   const showToast = (msg: string) => {
@@ -172,6 +184,8 @@ export default function ControlDetailPage() {
         setSelectedStatus(impl.status);
         setAssignedUserId(impl.assigned_to || '');
         setDueDate(impl.due_date ? impl.due_date.split('T')[0] : '');
+        setTestResult(impl.test_result || 'not_assessed');
+        setTestNotes(impl.test_notes || '');
       } else if (canUpdateImplementation) {
         // Create a baseline implementation record so assignment/status/evidence linking works.
         const ensured = await implementationsAPI.ensureForControl(id);
@@ -181,6 +195,8 @@ export default function ControlDetailPage() {
         setSelectedStatus(impl.status || 'not_started');
         setAssignedUserId(impl.assigned_to || '');
         setDueDate(impl.due_date ? impl.due_date.split('T')[0] : '');
+        setTestResult(impl.test_result || 'not_assessed');
+        setTestNotes(impl.test_notes || '');
       } else {
         setImplementation(null);
         setSelectedStatus('not_started');
@@ -206,6 +222,20 @@ export default function ControlDetailPage() {
   const refreshProcedures = async () => {
     const procRes = await assessmentsAPI.getProceduresByControl(id);
     setAssessmentProcedures(procRes.data.data.procedures || []);
+  };
+
+  const loadRiskSummary = async () => {
+    setRiskLoading(true);
+    try {
+      const [poamRes, vulnRes] = await Promise.allSettled([
+        poamAPI.getList({ controlId: id, limit: 10 }),
+        vulnerabilitiesAPI.getAll({ limit: 10 }),
+      ]);
+      if (poamRes.status === 'fulfilled') setControlPoams(poamRes.value.data.data || []);
+      if (vulnRes.status === 'fulfilled') setControlVulns(vulnRes.value.data.data || []);
+    } finally {
+      setRiskLoading(false);
+    }
   };
 
   const testResultCounts = useMemo(() => {
@@ -238,27 +268,20 @@ export default function ControlDetailPage() {
     return { status: 'not_assessed', incomplete: false };
   }, [assessmentProcedures.length, testResultCounts]);
 
-  const applyRollupTestStatus = async (nextStatus: 'satisfied' | 'other_than_satisfied' | 'not_applicable') => {
+  const quickSetProcedureStatus = async (
+    procId: string,
+    status: 'satisfied' | 'other_than_satisfied' | 'not_applicable'
+  ) => {
     if (!canWriteAssessments) return;
-    if (assessmentProcedures.length === 0) return;
-
-    setRollupSaving(nextStatus);
-    setError('');
+    setProcedureSavingId(procId);
     try {
-      await Promise.all(
-        assessmentProcedures.map((proc) =>
-          assessmentsAPI.recordResult({
-            procedure_id: String(proc.id),
-            status: nextStatus
-          })
-        )
-      );
-      showToast('Test results updated');
+      await assessmentsAPI.recordResult({ procedure_id: procId, status });
+      showToast('Result saved');
       await refreshProcedures();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update test results');
+      setError(err.response?.data?.error || 'Failed to save result');
     } finally {
-      setRollupSaving(null);
+      setProcedureSavingId(null);
     }
   };
 
@@ -461,6 +484,34 @@ export default function ControlDetailPage() {
     }
   };
 
+  const handleTestResultSave = async () => {
+    if (!canWriteAssessments || !implementation) return;
+    setTestSaving(true);
+    try {
+      await implementationsAPI.updateTestResult(implementation.id, { test_result: testResult, test_notes: testNotes || undefined });
+      showToast('Test result saved');
+      loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to save test result');
+    } finally {
+      setTestSaving(false);
+    }
+  };
+
+  // Forward-only status progression — only show states the user can move to
+  const STATUS_ORDER = ['not_started', 'in_progress', 'implemented', 'verified'];
+  function getAllowedNextStatuses(currentStatus: string) {
+    const currentIdx = STATUS_ORDER.indexOf(currentStatus);
+    return VALID_STATUSES.filter((s) => {
+      if (s.value === 'not_applicable') return true;          // always available
+      if (s.value === currentStatus) return true;             // keep current shown
+      const idx = STATUS_ORDER.indexOf(s.value);
+      if (idx < currentIdx) return false;                     // no going back
+      if (s.value === 'verified' && user?.role !== 'admin' && user?.role !== 'auditor') return false;
+      return true;
+    });
+  }
+
   const runAI = async (feature: string) => {
     if (!canUseAI) return;
     setAiLoading(feature);
@@ -605,75 +656,108 @@ export default function ControlDetailPage() {
           </div>
         )}
 
-        {/* Test Results (Control-level Rollup) */}
-        {assessmentProcedures.length > 0 && (
+        {/* Control Testing Card — auditor/tester overall verdict */}
+        {canWriteAssessments && implementation && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Control Testing</h3>
+            <p className="text-sm text-gray-500 mb-4">Record your overall verdict for this control independent of individual procedures.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Test Results</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Flip the control result to <span className="font-semibold">Compliant</span>, <span className="font-semibold">Non-compliant</span>, or <span className="font-semibold">N/A</span>.
-                  This applies to all assessment procedures under this control.
-                </p>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Test Result</label>
+                <select
+                  value={testResult}
+                  onChange={(e) => setTestResult(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                >
+                  <option value="not_assessed">Not Tested</option>
+                  <option value="satisfied">Compliant</option>
+                  <option value="other_than_satisfied">Non-compliant</option>
+                  <option value="not_applicable">N/A</option>
+                </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-semibold px-2 py-1 rounded ${getTestResultInfo(rollupTestStatus.status).color}`}>
-                  {getTestResultInfo(rollupTestStatus.status).label}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Testing Notes</label>
+                <textarea
+                  value={testNotes}
+                  onChange={(e) => setTestNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Observations, methodology, rationale..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-3">
+              {testResult !== 'not_assessed' && (
+                <span className={`text-xs px-2 py-1 rounded font-medium ${TEST_RESULT_STATUS_META[testResult]?.color || 'bg-gray-100 text-gray-700'}`}>
+                  Current: {TEST_RESULT_STATUS_META[testResult]?.label || testResult}
                 </span>
-                {rollupTestStatus.incomplete && (
-                  <span className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-                    Some procedures not tested yet
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              )}
               <button
-                onClick={() => applyRollupTestStatus('satisfied')}
-                disabled={!canWriteAssessments || !!rollupSaving}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 transition-colors"
+                onClick={handleTestResultSave}
+                disabled={testSaving}
+                className="ml-auto px-4 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:opacity-50 transition-colors"
               >
-                {rollupSaving === 'satisfied' ? 'Updating...' : 'Compliant'}
-              </button>
-              <button
-                onClick={() => applyRollupTestStatus('other_than_satisfied')}
-                disabled={!canWriteAssessments || !!rollupSaving}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 transition-colors"
-              >
-                {rollupSaving === 'other_than_satisfied' ? 'Updating...' : 'Non-compliant'}
-              </button>
-              <button
-                onClick={() => applyRollupTestStatus('not_applicable')}
-                disabled={!canWriteAssessments || !!rollupSaving}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 transition-colors"
-              >
-                {rollupSaving === 'not_applicable' ? 'Updating...' : 'N/A'}
+                {testSaving ? 'Saving...' : 'Save Test Result'}
               </button>
             </div>
+          </div>
+        )}
 
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-700">
-              <div className="bg-gray-50 border border-gray-200 rounded p-2">
-                <div className="font-semibold">Not Tested</div>
-                <div>{testResultCounts.not_assessed}</div>
-              </div>
-              <div className="bg-green-50 border border-green-200 rounded p-2">
-                <div className="font-semibold">Compliant</div>
-                <div>{testResultCounts.satisfied}</div>
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded p-2">
-                <div className="font-semibold">Non-compliant</div>
-                <div>{testResultCounts.other_than_satisfied}</div>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded p-2">
-                <div className="font-semibold">N/A</div>
-                <div>{testResultCounts.not_applicable}</div>
-              </div>
-            </div>
-
-            {!canWriteAssessments && (
-              <div className="mt-4 bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded text-xs">
-                Read-only mode. Updating test results requires <code className="mx-1">assessments.write</code>.
+        {/* Risk & Compliance Summary — linked POA&Ms and vulnerabilities */}
+        {(controlPoams.length > 0 || controlVulns.length > 0 || riskLoading) && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Risk & Compliance Summary</h3>
+            {riskLoading ? (
+              <div className="text-sm text-gray-400">Loading...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* POA&Ms */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-700">POA&amp;Ms</h4>
+                    <Link href={`/dashboard/poam?controlId=${id}`} className="text-xs text-purple-600 hover:underline">View all →</Link>
+                  </div>
+                  {controlPoams.length === 0 ? (
+                    <p className="text-xs text-gray-400">No open POA&amp;Ms for this control.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {controlPoams.slice(0, 5).map((p: any) => (
+                        <div key={p.id} className="flex items-center justify-between text-xs bg-gray-50 rounded px-3 py-2">
+                          <span className="text-gray-800 truncate max-w-[180px]" title={p.weakness_name || p.title}>{p.weakness_name || p.title || '—'}</span>
+                          <span className={`ml-2 shrink-0 px-1.5 py-0.5 rounded font-medium ${
+                            p.status === 'open' ? 'bg-red-100 text-red-700' :
+                            p.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>{p.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Vulnerabilities */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-700">Vulnerabilities</h4>
+                    <Link href="/dashboard/vulnerabilities" className="text-xs text-purple-600 hover:underline">View all →</Link>
+                  </div>
+                  {controlVulns.length === 0 ? (
+                    <p className="text-xs text-gray-400">No vulnerabilities linked.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {controlVulns.slice(0, 5).map((v: any) => (
+                        <div key={v.id} className="flex items-center justify-between text-xs bg-gray-50 rounded px-3 py-2">
+                          <span className="text-gray-800 font-mono truncate max-w-[160px]" title={v.cve_id || v.rule_id}>{v.cve_id || v.rule_id || '—'}</span>
+                          <span className={`ml-2 shrink-0 px-1.5 py-0.5 rounded font-medium ${
+                            v.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                            v.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                            v.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>{v.severity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -750,16 +834,28 @@ export default function ControlDetailPage() {
                   )}
 
                   {canWriteAssessments && (
-                    <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-gray-500 font-medium">Mark:</span>
+                      {[
+                        { status: 'satisfied',            label: 'Compliant',     cls: 'bg-green-100 hover:bg-green-200 text-green-800' },
+                        { status: 'other_than_satisfied', label: 'Non-compliant', cls: 'bg-red-100 hover:bg-red-200 text-red-800' },
+                        { status: 'not_applicable',       label: 'N/A',           cls: 'bg-purple-100 hover:bg-purple-200 text-purple-800' },
+                      ].map(({ status, label, cls }) => (
+                        <button
+                          key={status}
+                          onClick={() => quickSetProcedureStatus(String(proc.id), status as 'satisfied' | 'other_than_satisfied' | 'not_applicable')}
+                          disabled={procedureSavingId === String(proc.id) || proc.result_status === status}
+                          className={`text-xs px-2 py-1 rounded font-medium transition-colors disabled:opacity-40 ${cls}`}
+                        >
+                          {procedureSavingId === String(proc.id) ? '...' : label}
+                        </button>
+                      ))}
                       <button
                         onClick={() => toggleProcedureEditor(proc)}
-                        className="text-xs bg-white border border-gray-200 hover:border-purple-300 text-gray-800 px-3 py-1.5 rounded-md transition-colors"
+                        className="text-xs bg-white border border-gray-200 hover:border-purple-300 text-gray-700 px-2 py-1 rounded-md ml-auto transition-colors"
                       >
-                        {procedureEditors[String(proc.id)] ? 'Close Result Editor' : (proc.result_status ? 'Edit Result' : 'Record Result')}
+                        {procedureEditors[String(proc.id)] ? 'Close editor' : 'Add notes →'}
                       </button>
-                      <span className="text-xs text-gray-500">
-                        Saved results roll up into Assessments and reporting.
-                      </span>
                     </div>
                   )}
 
@@ -876,10 +972,11 @@ export default function ControlDetailPage() {
                 disabled={!canUpdateImplementation}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                {VALID_STATUSES.map((s) => (
+                {getAllowedNextStatuses(implementation?.status || 'not_started').map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
+              <p className="text-xs text-gray-400 mt-1">Status progression is one-way. &ldquo;Verified&rdquo; requires an auditor or admin.</p>
             </div>
 
             <div className="mb-4">

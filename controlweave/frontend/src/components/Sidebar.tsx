@@ -91,12 +91,6 @@ const navigation: NavigationItem[] = [
     minTier: 'starter'
   },
   {
-    name: 'Audit Logs',
-    href: '/dashboard/audit',
-    icon: '📝',
-    requiredPermissions: ['audit.read']
-  },
-  {
     name: 'Operations',
     href: '/dashboard/operations',
     icon: '🧭',

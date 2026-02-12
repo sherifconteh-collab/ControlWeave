@@ -866,7 +866,7 @@ async function getOrgDefaultLlmConfig(organizationId) {
     values[row.setting_key] = row.setting_value;
   });
 
-  const provider = ['claude', 'openai', 'gemini', 'grok'].includes(String(values.default_provider || ''))
+  const provider = ['claude', 'openai', 'gemini', 'grok', 'groq', 'ollama'].includes(String(values.default_provider || ''))
     ? String(values.default_provider)
     : 'claude';
 
@@ -1294,7 +1294,7 @@ router.post(
         aiColumnMapping.attempted = true;
         try {
           const defaults = await getOrgDefaultLlmConfig(orgId);
-          const provider = ['claude', 'openai', 'gemini', 'grok'].includes(String(req.query.provider || ''))
+          const provider = ['claude', 'openai', 'gemini', 'grok', 'groq', 'ollama'].includes(String(req.query.provider || ''))
             ? String(req.query.provider)
             : defaults.provider;
           const model = nonEmptyString(req.query.model) ? String(req.query.model) : defaults.model;

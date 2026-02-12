@@ -8,6 +8,7 @@ const llm = require('../services/llmService');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validate');
 const { normalizeTier, shouldEnforceAiLimitForByok } = require('../config/tierPolicy');
+const { encrypt, decrypt } = require('../utils/encrypt');
 
 router.use(authenticate);
 
@@ -129,9 +130,11 @@ router.get('/llm', requirePermission('settings.manage'), async (req, res) => {
     const settings = {};
     for (const row of result.rows) {
       if ((row.setting_key.includes('api_key') || row.setting_key === 'ollama_base_url') && row.setting_value) {
+        // Decrypt before masking so the last-4 reflect the real key, not the ciphertext
+        const plainValue = row.is_encrypted ? decrypt(row.setting_value) : row.setting_value;
         settings[row.setting_key] = {
           configured: true,
-          masked: row.setting_key === 'ollama_base_url' ? row.setting_value : '****' + row.setting_value.slice(-4),
+          masked: row.setting_key === 'ollama_base_url' ? plainValue : '****' + plainValue.slice(-4),
           updated_at: row.updated_at
         };
       } else {
@@ -175,7 +178,7 @@ router.put('/llm', requirePermission('settings.manage'), validateBody((body) => 
     const orgId = req.user.organization_id;
     const { anthropic_api_key, openai_api_key, gemini_api_key, xai_api_key, groq_api_key, ollama_base_url, default_provider, default_model } = req.body;
 
-    const upsert = async (key, value, encrypted = false) => {
+    const upsert = async (key, value, shouldEncrypt = false) => {
       if (value === undefined) return;
       if (value === null || value === '') {
         await pool.query(
@@ -184,13 +187,23 @@ router.put('/llm', requirePermission('settings.manage'), validateBody((body) => 
         );
         return;
       }
+      const storedValue = shouldEncrypt ? encrypt(value) : value;
       await pool.query(`
         INSERT INTO organization_settings (organization_id, setting_key, setting_value, is_encrypted, updated_at)
         VALUES ($1, $2, $3, $4, NOW())
         ON CONFLICT (organization_id, setting_key)
         DO UPDATE SET setting_value = $3, is_encrypted = $4, updated_at = NOW()
-      `, [orgId, key, value, encrypted]);
+      `, [orgId, key, storedValue, shouldEncrypt]);
     };
+
+    // Track which API key providers were updated for audit logging
+    const updatedProviders = [];
+    if (anthropic_api_key !== undefined && anthropic_api_key !== null && anthropic_api_key !== '') updatedProviders.push('claude');
+    if (openai_api_key !== undefined && openai_api_key !== null && openai_api_key !== '') updatedProviders.push('openai');
+    if (gemini_api_key !== undefined && gemini_api_key !== null && gemini_api_key !== '') updatedProviders.push('gemini');
+    if (xai_api_key !== undefined && xai_api_key !== null && xai_api_key !== '') updatedProviders.push('grok');
+    if (groq_api_key !== undefined && groq_api_key !== null && groq_api_key !== '') updatedProviders.push('groq');
+    if (ollama_base_url !== undefined && ollama_base_url !== null && ollama_base_url !== '') updatedProviders.push('ollama');
 
     await upsert('anthropic_api_key', anthropic_api_key, true);
     await upsert('openai_api_key', openai_api_key, true);
@@ -200,6 +213,14 @@ router.put('/llm', requirePermission('settings.manage'), validateBody((body) => 
     await upsert('ollama_base_url', ollama_base_url, false);
     await upsert('default_provider', default_provider);
     await upsert('default_model', default_model);
+
+    // Audit log each provider key that was set/updated
+    if (updatedProviders.length > 0) {
+      await pool.query(`
+        INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details, ip_address, success, created_at)
+        VALUES ($1, $2, 'api_key_updated', 'org_settings', $1, $3, $4, true, NOW())
+      `, [orgId, req.user.id, JSON.stringify({ providers: updatedProviders, action: 'set' }), req.ip || null]).catch(() => {});
+    }
 
     res.json({
       success: true,
@@ -330,6 +351,12 @@ router.delete('/llm/:provider', requirePermission('settings.manage'), async (req
       'DELETE FROM organization_settings WHERE organization_id = $1 AND setting_key = $2',
       [orgId, settingKey]
     );
+
+    // Audit log key removal
+    await pool.query(`
+      INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details, ip_address, success, created_at)
+      VALUES ($1, $2, 'api_key_removed', 'org_settings', $1, $3, $4, true, NOW())
+    `, [orgId, req.user.id, JSON.stringify({ provider: req.params.provider, action: 'remove' }), req.ip || null]).catch(() => {});
 
     res.json({ success: true, message: `${req.params.provider} API key removed` });
   } catch (err) {

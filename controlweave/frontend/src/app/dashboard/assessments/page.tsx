@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { assessmentsAPI, usersAPI, aiAPI } from '@/lib/api';
 import { useAutoAIResult } from '@/lib/useAutoAI';
@@ -60,7 +60,7 @@ interface Stats {
   recent_results: any[];
 }
 
-export default function AssessmentsPage() {
+function AssessmentsPageInner() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const canWriteAssessments = hasPermission(user, 'assessments.write');
@@ -1034,5 +1034,13 @@ export default function AssessmentsPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function AssessmentsPage() {
+  return (
+    <Suspense fallback={<DashboardLayout><div className="py-12 text-center text-gray-500">Loading...</div></DashboardLayout>}>
+      <AssessmentsPageInner />
+    </Suspense>
   );
 }

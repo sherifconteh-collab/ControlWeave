@@ -1,8 +1,10 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
+const crypto = require('crypto');
 const pool = require('../config/database');
 const { getAiUsageLimit } = require('../config/tierPolicy');
 const { buildOrgContext } = require('./orgContextService');
+const { decrypt } = require('../utils/encrypt');
 
 // Default clients (platform keys from .env)
 let defaultAnthropicClient = null;
@@ -37,6 +39,23 @@ const PROVIDERS = {
   ollama:  { name: 'Ollama (Local)',      models: ['llama3.2', 'mistral'] }
 };
 
+// ---------- Org default provider ----------
+const VALID_PROVIDERS = new Set(['claude', 'openai', 'gemini', 'grok', 'groq', 'ollama']);
+
+async function getOrgDefaultProvider(organizationId) {
+  try {
+    const result = await pool.query(
+      `SELECT setting_value FROM organization_settings
+       WHERE organization_id = $1 AND setting_key = 'default_provider' LIMIT 1`,
+      [organizationId]
+    );
+    const v = result.rows[0]?.setting_value;
+    return VALID_PROVIDERS.has(v) ? v : 'claude';
+  } catch {
+    return 'claude';
+  }
+}
+
 // ---------- BYOK: Fetch user-provided keys from org settings ----------
 async function getOrgApiKey(organizationId, provider) {
   const keyMap = { claude: 'anthropic_api_key', openai: 'openai_api_key', gemini: 'gemini_api_key', grok: 'xai_api_key', groq: 'groq_api_key', ollama: 'ollama_base_url' };
@@ -44,10 +63,14 @@ async function getOrgApiKey(organizationId, provider) {
   if (!settingKey) return null;
 
   const result = await pool.query(
-    'SELECT setting_value FROM organization_settings WHERE organization_id = $1 AND setting_key = $2',
+    'SELECT setting_value, is_encrypted FROM organization_settings WHERE organization_id = $1 AND setting_key = $2',
     [organizationId, settingKey]
   );
-  return result.rows.length > 0 ? result.rows[0].setting_value : null;
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  // Decrypt if the value was stored with AES-256-GCM encryption.
+  // decrypt() gracefully returns plain-text for legacy unencrypted rows.
+  return row.is_encrypted ? decrypt(row.setting_value) : row.setting_value;
 }
 
 function getClient(provider, orgApiKey) {
@@ -1348,17 +1371,76 @@ Return:
 }
 
 // ---------- Usage tracking ----------
-async function logAIUsage(organizationId, userId, feature, provider, model) {
+/**
+ * Log an AI call to ai_usage_log.
+ * @param {string} organizationId
+ * @param {string} userId
+ * @param {string} feature
+ * @param {string} provider
+ * @param {string|null} model
+ * @param {object} [opts] - Extended fields: success, errorMessage, tokensInput, tokensOutput,
+ *                          resourceType, resourceId, ipAddress, durationMs, byokUsed
+ */
+async function logAIUsage(organizationId, userId, feature, provider, model, opts = {}) {
+  const {
+    success = true,
+    errorMessage = null,
+    tokensInput = null,
+    tokensOutput = null,
+    resourceType = null,
+    resourceId = null,
+    ipAddress = null,
+    durationMs = null,
+    byokUsed = false,
+  } = opts;
+
   await pool.query(`
-    INSERT INTO ai_usage_log (organization_id, user_id, feature, provider, model, created_at)
-    VALUES ($1, $2, $3, $4, $5, NOW())
-  `, [organizationId, userId, feature, provider, model]);
+    INSERT INTO ai_usage_log
+      (organization_id, user_id, feature, provider, model,
+       success, error_message, tokens_input, tokens_output,
+       resource_type, resource_id, ip_address, duration_ms, byok_used, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+  `, [organizationId, userId, feature, provider, model,
+      success, errorMessage, tokensInput, tokensOutput,
+      resourceType, resourceId, ipAddress, durationMs, byokUsed]);
+}
+
+// High-stakes features that warrant a full ai_decision_log entry
+const HIGH_STAKES_FEATURES = new Set([
+  'gap_analysis', 'compliance_forecast', 'remediation_playbook',
+  'incident_response', 'executive_report', 'risk_heatmap', 'vendor_risk'
+]);
+
+/**
+ * Write to ai_decision_log for high-stakes AI outputs.
+ * Captures SHA-256 hashes of input and output for integrity verification.
+ */
+async function logAIDecision(organizationId, feature, inputText, outputText) {
+  if (!HIGH_STAKES_FEATURES.has(feature)) return;
+  try {
+    const inputHash  = crypto.createHash('sha256').update(inputText  || '').digest('hex');
+    const outputHash = crypto.createHash('sha256').update(outputText || '').digest('hex');
+    const riskLevel  = ['incident_response', 'remediation_playbook'].includes(feature) ? 'high' : 'limited';
+
+    await pool.query(`
+      INSERT INTO ai_decision_log
+        (organization_id, input_data, input_hash, output_data, output_hash,
+         human_reviewed, risk_level, processing_timestamp)
+      VALUES ($1, $2, $3, $4, $5, false, $6, NOW())
+    `, [organizationId, inputText || '', inputHash, outputText || '', outputHash, riskLevel]);
+  } catch (err) {
+    // Non-critical — never block the response due to logging failure
+    console.error('logAIDecision error:', err.message);
+  }
 }
 
 async function getUsageCount(organizationId) {
+  // Only count successful calls — failed attempts should not burn the monthly quota
   const result = await pool.query(`
     SELECT COUNT(*) as count FROM ai_usage_log
-    WHERE organization_id = $1 AND created_at >= DATE_TRUNC('month', NOW())
+    WHERE organization_id = $1
+      AND created_at >= DATE_TRUNC('month', NOW())
+      AND (success IS NULL OR success = true)
   `, [organizationId]);
   return parseInt(result.rows[0].count);
 }
@@ -1406,9 +1488,11 @@ module.exports = {
   generateAuditWorkpaperDraft,
   generateAuditFindingDraft,
   logAIUsage,
+  logAIDecision,
   getUsageCount,
   getUsageLimit,
   getProviderStatus,
   getOrgApiKey,
+  getOrgDefaultProvider,
   PROVIDERS
 };
