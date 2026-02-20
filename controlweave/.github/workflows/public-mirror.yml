@@ -30,7 +30,7 @@ env:
 
 jobs:
   mirror:
-    if: github.repository == 'sherifconteh-collab/ai-grc-platform-pro'
+    if: github.repository == 'sherifconteh-collab/ControlWeave' || github.repository == 'sherifconteh-collab/ai-grc-platform-pro'
     runs-on: ubuntu-latest
 
     steps:
