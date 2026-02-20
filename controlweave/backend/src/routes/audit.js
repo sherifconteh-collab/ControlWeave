@@ -2,9 +2,59 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { createRateLimiter } = require('../middleware/rateLimit');
 const splunk = require('../services/splunkService');
 
 router.use(authenticate);
+
+const auditReadLimiter = createRateLimiter({ windowMs: 60000, max: 120, label: 'audit-read' });
+
+// GET /audit/logs/oneline — compact one-line format inspired by git log --oneline
+router.get('/logs/oneline', auditReadLimiter, requirePermission('audit.read'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const { limit, offset, eventType } = req.query;
+
+    let query = `
+      SELECT al.id, al.event_type, al.success, al.created_at,
+             u.email as user_email
+      FROM audit_logs al
+      LEFT JOIN users u ON u.id = al.user_id
+      WHERE al.organization_id = $1
+    `;
+    const params = [orgId];
+    let idx = 2;
+
+    if (eventType) {
+      query += ` AND al.event_type = $${idx}`;
+      params.push(eventType);
+      idx++;
+    }
+
+    query += ' ORDER BY al.created_at DESC';
+    query += ` LIMIT $${idx}`;
+    params.push(parseInt(limit) || 100);
+    idx++;
+    query += ` OFFSET $${idx}`;
+    params.push(parseInt(offset) || 0);
+
+    const result = await pool.query(query, params);
+
+    const lines = result.rows.map((row) => {
+      // IDs are UUIDs (32 hex chars after stripping hyphens); take first 7 for a short identifier
+      const shortId = String(row.id).replace(/-/g, '').substring(0, 7);
+      const ts = new Date(row.created_at).toISOString().replace('T', ' ').substring(0, 19);
+      const status = row.success ? 'SUCCESS' : 'FAILED';
+      const email = row.user_email || 'unknown';
+      return `${shortId} ${ts} ${row.event_type} ${email} [${status}]`;
+    });
+
+    res.json({ success: true, data: lines });
+  } catch (error) {
+    console.error('Audit oneline error:', error);
+    res.status(500).json({ success: false, error: 'Failed to load audit logs' });
+  }
+});
 
 // GET /audit/logs
 router.get('/logs', requirePermission('audit.read'), async (req, res) => {

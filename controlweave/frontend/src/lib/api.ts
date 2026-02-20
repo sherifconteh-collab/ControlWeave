@@ -259,6 +259,9 @@ export const auditAPI = {
     offset?: number;
   }) => api.get('/audit/logs', { params }),
 
+  getOneline: (params?: { limit?: number; offset?: number; eventType?: string }) =>
+    api.get('/audit/logs/oneline', { params }),
+
   getStats: (params: { startDate?: string; endDate?: string }) =>
     api.get('/audit/stats', { params }),
 
