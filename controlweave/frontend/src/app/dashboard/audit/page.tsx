@@ -31,9 +31,13 @@ interface SplunkLiveResponseData {
   results?: Array<Record<string, unknown>>;
 }
 
+type ViewMode = 'table' | 'oneline';
+
 export default function AuditPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [onelineEntries, setOnelineEntries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [eventTypes, setEventTypes] = useState<string[]>([]);
   const [selectedEventType, setSelectedEventType] = useState<string>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
@@ -67,13 +71,18 @@ export default function AuditPage() {
 
   const loadLogs = async () => {
     try {
+      setLoading(true);
       const params: any = { limit: 100, offset: 0 };
       if (selectedEventType !== 'all') {
         params.eventType = selectedEventType;
       }
 
-      const response = await auditAPI.getLogs(params);
-      const payload = response.data.data;
+      const [tableResponse, onelineResponse] = await Promise.all([
+        auditAPI.getLogs(params),
+        auditAPI.getOneline(params),
+      ]);
+
+      const payload = tableResponse.data.data;
       const rawLogs = Array.isArray(payload) ? payload : payload?.logs || [];
 
       const mappedLogs: AuditLog[] = rawLogs.map((log: any) => ({
@@ -92,6 +101,7 @@ export default function AuditPage() {
       }));
 
       setLogs(mappedLogs);
+      setOnelineEntries(Array.isArray(onelineResponse.data.data) ? onelineResponse.data.data : []);
     } catch (err) {
       console.error('Failed to load audit logs:', err);
     } finally {
@@ -262,6 +272,15 @@ export default function AuditPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleCopyOneline = async () => {
+    if (onelineEntries.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(onelineEntries.join('\n'));
+    } catch {
+      console.error('Failed to copy audit log to clipboard');
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -275,7 +294,7 @@ export default function AuditPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event Type
@@ -293,6 +312,33 @@ export default function AuditPage() {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                View
+              </label>
+              <div className="flex rounded-md border border-gray-300 overflow-hidden">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition ${
+                    viewMode === 'table'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Table
+                </button>
+                <button
+                  onClick={() => setViewMode('oneline')}
+                  className={`flex-1 px-4 py-2 text-sm font-medium transition border-l border-gray-300 ${
+                    viewMode === 'oneline'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Oneline
+                </button>
+              </div>
+            </div>
             <div className="flex items-end">
               <button
                 onClick={loadLogs}
@@ -302,13 +348,23 @@ export default function AuditPage() {
               </button>
             </div>
             <div className="flex items-end">
-              <button
-                onClick={handleExport}
-                disabled={logs.length === 0}
-                className="px-6 py-2 border border-purple-600 text-purple-700 font-medium rounded-md hover:bg-purple-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Export CSV
-              </button>
+              {viewMode === 'table' ? (
+                <button
+                  onClick={handleExport}
+                  disabled={logs.length === 0}
+                  className="px-6 py-2 border border-purple-600 text-purple-700 font-medium rounded-md hover:bg-purple-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Export CSV
+                </button>
+              ) : (
+                <button
+                  onClick={handleCopyOneline}
+                  disabled={onelineEntries.length === 0}
+                  className="px-6 py-2 border border-purple-600 text-purple-700 font-medium rounded-md hover:bg-purple-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Copy
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -329,12 +385,12 @@ export default function AuditPage() {
           </div>
         </div>
 
-        {/* Audit Logs Table */}
+        {/* Audit Logs — Table or Oneline */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
           </div>
-        ) : (
+        ) : viewMode === 'table' ? (
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -402,6 +458,34 @@ export default function AuditPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-900 rounded-lg shadow-md overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
+              <span className="text-xs font-mono text-gray-400">audit log --oneline</span>
+              <span className="text-xs text-gray-500">{onelineEntries.length} entries</span>
+            </div>
+            <div className="p-4 overflow-x-auto max-h-[600px] overflow-y-auto">
+              {onelineEntries.length > 0 ? (
+                <pre className="text-sm font-mono leading-6 whitespace-pre">
+                  {onelineEntries.map((line, i) => {
+                    const [shortId, ...rest] = line.split(' ');
+                    const isSuccess = line.endsWith('[SUCCESS]');
+                    return (
+                      <span key={i} className="block">
+                        <span className="text-yellow-400">{shortId}</span>
+                        {' '}
+                        <span className={isSuccess ? 'text-green-400' : 'text-red-400'}>
+                          {rest.join(' ')}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </pre>
+              ) : (
+                <p className="text-gray-500 text-sm font-mono">No audit logs found</p>
+              )}
             </div>
           </div>
         )}
