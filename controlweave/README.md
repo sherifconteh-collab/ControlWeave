@@ -2,8 +2,6 @@
 
 Open source, self-hostable GRC (Governance, Risk, and Compliance) platform. Free tier features, no subscription required.
 
-> **Looking for the full-featured hosted product?** Visit [app.controlweave.io](https://app.controlweave.io) for ControlWeave Pro — unlimited frameworks, CMDB, evidence management, reports, vulnerability tracking, auditor workspace, and more.
-
 ---
 
 ## What's Included (Free Tier)
@@ -51,26 +49,6 @@ Bring your own API key (BYOK) for any supported provider. 3 AI requests/month on
 - **MCP server** — connect to Claude Desktop, Cursor, and other MCP-compatible LLM clients
 - **Organization multi-tenancy** — full data isolation per organization
 - **RBAC** — Admin, Auditor, Viewer, and custom roles
-
----
-
-## What's in ControlWeave Pro
-
-[ControlWeave Pro](https://app.controlweave.io) (hosted edition) adds:
-
-- All compliance frameworks (no 2-framework limit)
-- Unlimited AI requests with BYOK
-- CMDB asset management (hardware, software, AI agents, service accounts, environments)
-- SBOM / AIBOM management
-- Vulnerability tracking with AI remediation
-- Evidence management and PDF/Excel reporting
-- Plan of Action & Milestones (POA&M)
-- Auditor Workspace (engagements, PBC requests, workpapers, findings, sign-offs)
-- Webhooks and outbound integrations
-- Splunk connector for SIEM evidence import
-- Data governance and sensitivity classification
-- Custom dashboard builder
-- Maturity scoring
 
 ---
 
@@ -148,9 +126,6 @@ OLLAMA_BASE_URL=http://localhost:11434/v1
 # frontend/.env.local
 
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
-
-# URL shown on upgrade prompts. Set to empty to hide upgrade links.
-NEXT_PUBLIC_PRO_URL=https://app.controlweave.io
 ```
 
 ---

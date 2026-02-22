@@ -120,8 +120,7 @@ export default function AICopilot() {
       const msg = err.response?.data?.error || err.message || 'AI request failed';
       setError(msg);
       if (err.response?.data?.upgradeRequired) {
-        const proUrl = process.env.NEXT_PUBLIC_PRO_URL || 'https://app.controlweave.io';
-        setError(`AI limit reached for Community Edition. Get ControlWeave Pro for unlimited AI at ${proUrl}`);
+        setError('AI monthly limit reached for Community Edition. Add your own API key in Settings to continue.');
       }
     } finally {
       setLoading(false);

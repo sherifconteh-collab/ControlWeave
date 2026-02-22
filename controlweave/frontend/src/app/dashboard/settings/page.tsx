@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { integrationsAPI, rolesAPI, settingsAPI, usersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { hasPermission, hasTierAtLeast } from '@/lib/access';
+import { hasPermission } from '@/lib/access';
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
 
 interface Permission {
@@ -108,7 +108,7 @@ export default function SettingsPage() {
   const canReadUsers = hasPermission(user, 'users.read') || hasPermission(user, 'users.manage');
   const canManageUsers = hasPermission(user, 'users.manage');
   const canManageSettings = hasPermission(user, 'settings.manage');
-  const canUseSplunk = canManageSettings && hasTierAtLeast(user, 'starter');
+  const canUseSplunk = false;
   const defaultTab: 'roles' | 'llm' = canManageRoles ? 'roles' : 'llm';
   const [activeTab, setActiveTab] = useState<'roles' | 'llm'>('roles');
 
@@ -769,7 +769,6 @@ export default function SettingsPage() {
   );
 
   const organizationTier = 'free';
-  const PRO_URL = process.env.NEXT_PUBLIC_PRO_URL || 'https://app.controlweave.io';
 
   if (!canManageRoles && !canManageSettings) {
     return (
@@ -820,7 +819,7 @@ export default function SettingsPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm">
             <div className="border border-gray-200 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 mb-2">Community Edition (Free)</h3>
               <ul className="text-gray-600 space-y-1">
@@ -830,23 +829,6 @@ export default function SettingsPage() {
                 <li>AI Copilot chat</li>
                 <li>Open source — self-host for free</li>
               </ul>
-            </div>
-            <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-              <h3 className="font-semibold text-purple-900 mb-2">ControlWeave Pro</h3>
-              <ul className="text-purple-800 space-y-1 mb-3">
-                <li>All frameworks + unlimited AI</li>
-                <li>CMDB, vulnerabilities, SBOM/AIBOM</li>
-                <li>Evidence management and reports</li>
-                <li>Auditor Workspace, webhooks, integrations</li>
-              </ul>
-              <a
-                href={PRO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block w-full text-center bg-purple-600 text-white text-xs px-4 py-2 rounded hover:bg-purple-700 font-medium"
-              >
-                Get ControlWeave Pro →
-              </a>
             </div>
           </div>
         </div>
@@ -1251,8 +1233,8 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
-                    Splunk integration is available on Starter tier and above.
+                  <div className="bg-gray-50 border border-gray-200 text-gray-600 px-4 py-3 rounded">
+                    Splunk integration is not available in this edition.
                   </div>
                 )}
               </div>

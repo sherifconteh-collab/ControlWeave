@@ -32,7 +32,7 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
       if (err.response?.status === 403) {
-        setError('Report generation is available in ControlWeave Pro. Visit ' + (process.env.NEXT_PUBLIC_PRO_URL || 'https://app.controlweave.io') + ' to learn more.');
+        setError('Report generation is not available in this edition.');
       } else {
         setError('Failed to generate report. Please try again.');
       }
@@ -128,10 +128,10 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* Tier info */}
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <p className="text-sm text-purple-800">
-            <strong>Starter tier required.</strong> Report generation is available on Starter ($49/mo) and above. Free tier users can view compliance data on the dashboard.
+        {/* Info */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p className="text-sm text-gray-600">
+            Report generation is not available in the Community Edition. Compliance data is available on the dashboard.
           </p>
         </div>
       </div>

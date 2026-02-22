@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from './NotificationBell';
 import { APP_NAME } from '@/lib/branding';
-import { AccessUser, canAccessAuditorWorkspace, hasAnyPermission, hasPermission, hasTierAtLeast, OrganizationTier } from '@/lib/access';
+import { AccessUser, canAccessAuditorWorkspace, hasAnyPermission, hasPermission } from '@/lib/access';
 
 interface NavigationItem {
   name: string;
@@ -13,7 +13,6 @@ interface NavigationItem {
   icon: string;
   requiredPermissions?: string[];
   requiredPermissionsAny?: string[];
-  minTier?: OrganizationTier;
   isVisible?: (user: AccessUser | null | undefined) => boolean;
 }
 
@@ -43,34 +42,6 @@ const navigation: NavigationItem[] = [
     requiredPermissions: ['organizations.read']
   },
   {
-    name: 'Evidence',
-    href: '/dashboard/evidence',
-    icon: '📄',
-    requiredPermissions: ['evidence.read'],
-    minTier: 'starter'
-  },
-  {
-    name: 'Assets',
-    href: '/dashboard/assets',
-    icon: '🏗️',
-    requiredPermissions: ['assets.read'],
-    minTier: 'starter'
-  },
-  {
-    name: 'Vulnerabilities',
-    href: '/dashboard/vulnerabilities',
-    icon: '🛡️',
-    requiredPermissions: ['assets.read'],
-    minTier: 'starter'
-  },
-  {
-    name: 'SBOM',
-    href: '/dashboard/sbom',
-    icon: '📦',
-    requiredPermissions: ['assets.read'],
-    minTier: 'professional'
-  },
-  {
     name: 'Assessments',
     href: '/dashboard/assessments',
     icon: '📋',
@@ -82,13 +53,6 @@ const navigation: NavigationItem[] = [
     icon: '🗂️',
     requiredPermissions: ['assessments.read'],
     isVisible: (currentUser) => canAccessAuditorWorkspace(currentUser)
-  },
-  {
-    name: 'Reports',
-    href: '/dashboard/reports',
-    icon: '📑',
-    requiredPermissions: ['reports.read'],
-    minTier: 'starter'
   },
   {
     name: 'Audit Logs',
@@ -120,12 +84,9 @@ export default function Sidebar() {
     const hasAnyRequiredPermission = item.requiredPermissionsAny
       ? hasAnyPermission(user, item.requiredPermissionsAny)
       : true;
-    const hasRequiredTier = item.minTier
-      ? hasTierAtLeast(user, item.minTier)
-      : true;
     const passesVisibilityGate = item.isVisible ? item.isVisible(user) : true;
 
-    return hasRequiredPermission && hasAnyRequiredPermission && hasRequiredTier && passesVisibilityGate;
+    return hasRequiredPermission && hasAnyRequiredPermission && passesVisibilityGate;
   });
 
   return (

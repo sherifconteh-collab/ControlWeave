@@ -14,9 +14,6 @@ Optional (for AI features):
 - Google Gemini API key ([aistudio.google.com](https://aistudio.google.com/))
 - xAI API key ([console.x.ai](https://console.x.ai/))
 
-Optional (for SIEM evidence import):
-- Splunk instance with REST API access and bearer token
-
 ## 1. Clone & Install
 
 ```bash
@@ -195,33 +192,6 @@ $env:GRC_API_TOKEN='<JWT_ACCESS_TOKEN>'
 npm run mcp
 ```
 
-## 9. Configure Splunk Evidence Import (Optional)
-
-1. Go to **Settings** > **LLM Configuration** > **Splunk Evidence Connector**
-2. Enter Splunk base URL (for example `https://your-splunk-host:8089`)
-3. Add Splunk API bearer token
-4. Set default index (optional)
-5. Click **Test Connection**, then **Save Splunk Settings**
-6. Go to **Evidence** and click **Import from Splunk**
-
-AI features available:
-- Gap Analysis
-- Crosswalk Optimizer
-- Compliance Forecast
-- Regulatory Monitor
-- Remediation Playbooks
-- Incident Response Plans
-- Executive Reports
-- Risk Heatmaps
-- Vendor Risk Assessment
-- Audit Readiness Scoring
-- Asset-Control Mapping
-- Shadow IT Detection
-- AI Governance Assessment
-- Compliance Q&A
-- Training Recommendations
-- Evidence Suggestions
-
 ## Common Issues
 
 ### Database connection failed
@@ -252,10 +222,9 @@ AI features available:
 │                     │     │                      │
 │ - Dashboard         │     │ - JWT Auth           │
 │ - Controls          │     │ - REST API           │
-│ - Assessments       │     │ - Tier Middleware     │
-│ - AI Analysis       │     │ - LLM Service        │
-│ - CMDB              │     │                      │
-│ - Evidence          │     │   ┌──────────────┐   │
+│ - Assessments       │     │ - LLM Service        │
+│ - AI Analysis       │     │                      │
+│ - Settings          │     │   ┌──────────────┐   │
 │ - Settings          │     │   │  PostgreSQL  │   │
 └─────────────────────┘     │   │  (port 5432) │   │
                             │   └──────────────┘   │
@@ -270,8 +239,5 @@ AI features available:
 ## Next Steps
 
 - Read the full [README](README.md) for API documentation
-- Review product messaging guardrails in [docs/POSITIONING_GUARDRAILS.md](docs/POSITIONING_GUARDRAILS.md)
 - Configure role-based access under **Settings** > **Roles**
 - Set up assessment plans under **Assessments**
-- Upload evidence documents under **Evidence**
-- Track assets in the **CMDB**

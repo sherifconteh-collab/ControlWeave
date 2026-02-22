@@ -207,7 +207,7 @@ export default function FrameworksPage() {
         const tierLabel = userTier.charAt(0).toUpperCase() + userTier.slice(1);
         setMessage({
           type: 'error',
-          text: `${tierLabel} plan allows up to ${frameworkLimit} framework${frameworkLimit === 1 ? '' : 's'}. Deselect one first, or upgrade to ControlWeave Pro for more.`
+          text: `${tierLabel} plan allows up to ${frameworkLimit} framework${frameworkLimit === 1 ? '' : 's'}. Deselect one to add a different framework.`
         });
         return prev;
       }
@@ -317,7 +317,7 @@ export default function FrameworksPage() {
 
         {/* Tier framework limit banner */}
         {isLimitedTier && canManageFrameworks && (
-          <div className={`border rounded-lg p-4 flex items-center justify-between gap-4 ${
+          <div className={`border rounded-lg p-4 ${
             selectedFrameworks.length >= frameworkLimit
               ? 'bg-amber-50 border-amber-300'
               : 'bg-blue-50 border-blue-200'
@@ -329,16 +329,6 @@ export default function FrameworksPage() {
               {selectedFrameworks.length} of {frameworkLimit} framework{frameworkLimit === 1 ? '' : 's'} selected
               {selectedFrameworks.length >= frameworkLimit && ' — limit reached'}
             </p>
-            {process.env.NEXT_PUBLIC_PRO_URL && (
-              <a
-                href={process.env.NEXT_PUBLIC_PRO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 text-xs px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
-              >
-                Get ControlWeave Pro
-              </a>
-            )}
           </div>
         )}
 
