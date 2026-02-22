@@ -9,6 +9,7 @@ QUICK_START.md
 
 # GitHub workflows and mirror config
 .github/workflows/ci.yml
+.github/workflows/paid-tier-check.yml
 .github/public-mirror-allowlist.txt
 
 # Public docs
@@ -29,6 +30,7 @@ backend/src/**
 # Backend scripts safe for community usage
 backend/scripts/check-syntax.js
 backend/scripts/check-db.js
+backend/scripts/check-paid-tier.js
 backend/scripts/migrate-all.js
 backend/scripts/run-migration.js
 backend/scripts/ip-hygiene-check.js

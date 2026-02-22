@@ -1,5 +1,4 @@
 // ControlWeave Community Edition — no trials, all users start on free tier.
-// For the full-featured hosted product, see: https://app.controlweave.io
 
 const { normalizeTier } = require('../config/tierPolicy');
 

@@ -1,0 +1,76 @@
+name: Paid Tier Content Check
+
+# Runs on every push to main (catching mirror syncs) and on every pull request.
+# On push to main: violations are auto-fixed and committed before the check fails.
+# On pull requests:  detect-only — violations fail the check so the author can fix them.
+# On workflow_dispatch: always runs in detect+fix mode on a push-capable branch.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to push auto-fix commits
+
+# Do not re-trigger on commits produced by this workflow itself.
+concurrency:
+  group: paid-tier-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paid-tier-check:
+    # Skip the job entirely when the triggering commit was made by this workflow.
+    if: "!contains(github.event.head_commit.message, '[paid-tier-autofix]')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Use GITHUB_TOKEN so auto-fix commits can be pushed.
+          # Pushes made with GITHUB_TOKEN do NOT re-trigger workflow runs,
+          # preventing infinite loops.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── Detect ────────────────────────────────────────────────────────────────
+      - name: Detect paid-tier references
+        id: detect
+        working-directory: controlweave
+        run: node backend/scripts/check-paid-tier.js
+        continue-on-error: true
+
+      # ── Auto-fix (push to main / workflow_dispatch only) ──────────────────────
+      - name: Auto-fix paid-tier references
+        if: >
+          steps.detect.outcome == 'failure' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        working-directory: controlweave
+        run: node backend/scripts/check-paid-tier.js --fix
+
+      - name: Commit and push auto-fixes
+        if: >
+          steps.detect.outcome == 'failure' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit — all violations were unfixable (manual review required)."
+          else
+            git commit -m "chore: remove paid-tier references detected by paid-tier scan [paid-tier-autofix]"
+            git push
+            echo "Auto-fix commit pushed."
+          fi
+
+      # ── Verify: re-run check after auto-fix (or on PRs where no fix ran) ──────
+      - name: Verify — no paid-tier references remain
+        working-directory: controlweave
+        run: node backend/scripts/check-paid-tier.js

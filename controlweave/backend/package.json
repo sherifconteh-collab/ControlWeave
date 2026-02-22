@@ -14,6 +14,8 @@
     "qa:e2e:dynamic": "node scripts/qa-dynamic.js",
     "qa:e2e:dynamic:all": "node scripts/qa-dynamic.js --suites=syntax,mega,dynamic,auditor,legacy",
     "check:ip-hygiene": "node scripts/ip-hygiene-check.js",
+    "check:paid-tier": "node scripts/check-paid-tier.js",
+    "fix:paid-tier": "node scripts/check-paid-tier.js --fix",
     "seed:demo-accounts": "node scripts/seed-demo-accounts.js",
     "seed:demo-full": "npm run seed:demo-accounts",
     "seed:cmdb-demo": "node scripts/seed-cmdb-data.js",
