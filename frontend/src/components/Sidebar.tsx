@@ -1,0 +1,327 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import NotificationBell from './NotificationBell';
+import BrandLogo from './BrandLogo';
+import { AccessUser, canAccessAuditorWorkspace, hasAnyPermission, hasPermission, hasTierAtLeast, hasRmfFramework, isPlatformAdmin, OrganizationTier } from '@/lib/access';
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: string;
+  requiredPermissions?: string[];
+  requiredPermissionsAny?: string[];
+  minTier?: OrganizationTier;
+  isVisible?: (user: AccessUser | null | undefined) => boolean;
+}
+
+const navigation: NavigationItem[] = [
+  {
+    name: 'Dashboard',
+    href: '/dashboard',
+    icon: '📊',
+    requiredPermissions: ['dashboard.read']
+  },
+  {
+    name: 'Controls',
+    href: '/dashboard/controls',
+    icon: '✅',
+    requiredPermissions: ['organizations.read']
+  },
+  {
+    name: 'Frameworks',
+    href: '/dashboard/frameworks',
+    icon: '📐',
+    requiredPermissions: ['organizations.read']
+  },
+  {
+    name: 'Evidence',
+    href: '/dashboard/evidence',
+    icon: '📄',
+    requiredPermissions: ['evidence.read'],
+    minTier: 'starter'
+  },
+  {
+    name: 'Assets',
+    href: '/dashboard/assets',
+    icon: '🏗️',
+    requiredPermissions: ['assets.read'],
+    minTier: 'starter'
+  },
+  {
+    name: 'Vulnerabilities',
+    href: '/dashboard/vulnerabilities',
+    icon: '🛡️',
+    requiredPermissions: ['assets.read'],
+    minTier: 'starter'
+  },
+  {
+    name: 'SBOM',
+    href: '/dashboard/sbom',
+    icon: '📦',
+    requiredPermissions: ['assets.read'],
+    minTier: 'professional'
+  },
+  {
+    name: 'Financial Compliance',
+    href: '/dashboard/cmdb/financial-services-workspace',
+    icon: '🏦',
+    requiredPermissions: ['assets.read'],
+    minTier: 'utilities'
+  },
+  {
+    name: 'Assessments',
+    href: '/dashboard/assessments',
+    icon: '📋',
+    requiredPermissions: ['assessments.read']
+  },
+  {
+    name: 'RMF Lifecycle',
+    href: '/dashboard/rmf',
+    icon: '🔄',
+    requiredPermissions: ['assessments.read'],
+    isVisible: (currentUser) => hasRmfFramework(currentUser)
+  },
+  {
+    name: 'Auditor Workspace',
+    href: '/dashboard/auditor-workspace',
+    icon: '🗂️',
+    requiredPermissions: ['assessments.read'],
+    isVisible: (currentUser) => canAccessAuditorWorkspace(currentUser)
+  },
+  {
+    name: 'Reports',
+    href: '/dashboard/reports',
+    icon: '📑',
+    requiredPermissions: ['reports.read'],
+    minTier: 'starter'
+  },
+  {
+    name: 'Regulatory News',
+    href: '/dashboard/regulatory-news',
+    icon: '📰',
+    requiredPermissions: ['organizations.read'],
+    minTier: 'starter'
+  },
+  {
+    name: 'AI Monitoring',
+    href: '/dashboard/ai-monitoring',
+    icon: '🤖',
+    requiredPermissions: ['settings.manage'],
+    minTier: 'starter'
+  },
+  {
+    name: 'AI Analysis',
+    href: '/dashboard/ai-analysis',
+    icon: '✨',
+    requiredPermissions: ['ai.use'],
+    minTier: 'starter'
+  },
+  {
+    name: 'Knowledge Base',
+    href: '/dashboard/knowledge-base',
+    icon: '📚',
+    requiredPermissions: ['ai.use'],
+    minTier: 'professional'
+  },
+  {
+    name: 'Data Governance',
+    href: '/dashboard/data-governance',
+    icon: '🔒',
+    requiredPermissions: ['settings.manage'],
+    minTier: 'professional'
+  },
+  {
+    name: 'Security Posture',
+    href: '/dashboard/security-posture',
+    icon: '🛡️',
+    requiredPermissions: ['ai.use'],
+    minTier: 'starter'
+  },
+  {
+    name: 'Threat Intelligence',
+    href: '/dashboard/threat-intel',
+    icon: '🎯',
+    requiredPermissions: ['assets.read'],
+    minTier: 'professional'
+  },
+  {
+    name: 'Vendor Risk',
+    href: '/dashboard/vendor-risk',
+    icon: '🤝',
+    requiredPermissions: ['organizations.read'],
+    minTier: 'starter'
+  },
+  {
+    name: 'Third-Party Risk',
+    href: '/dashboard/tprm',
+    icon: '🔗',
+    requiredPermissions: ['organizations.read'],
+    minTier: 'professional'
+  },
+  {
+    name: 'AI Governance',
+    href: '/dashboard/ai-governance',
+    icon: '🏛️',
+    requiredPermissions: ['organizations.read'],
+    minTier: 'professional'
+  },
+  {
+    name: 'Organization Profile',
+    href: '/dashboard/organization',
+    icon: '🏢',
+    requiredPermissions: ['organizations.read']
+  },
+  {
+    name: 'Operations',
+    href: '/dashboard/operations',
+    icon: '🧭',
+    requiredPermissions: ['settings.manage']
+  },
+  {
+    name: 'Settings',
+    href: '/dashboard/settings',
+    icon: '⚙️',
+    requiredPermissionsAny: ['settings.manage', 'roles.manage']
+  },
+  {
+    name: 'Notifications',
+    href: '/dashboard/notifications',
+    icon: '🔔',
+    requiredPermissions: ['dashboard.read']
+  },
+  {
+    name: 'Help Center',
+    href: '/dashboard/help',
+    icon: '❓',
+    requiredPermissions: ['dashboard.read']
+  }
+];
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const visibleNavigation = navigation.filter((item) => {
+    const hasRequiredPermission = item.requiredPermissions
+      ? item.requiredPermissions.every((permission) => hasPermission(user, permission))
+      : true;
+    const hasAnyRequiredPermission = item.requiredPermissionsAny
+      ? hasAnyPermission(user, item.requiredPermissionsAny)
+      : true;
+    const hasRequiredTier = item.minTier
+      ? hasTierAtLeast(user, item.minTier)
+      : true;
+    const passesVisibilityGate = item.isVisible ? item.isVisible(user) : true;
+
+    return hasRequiredPermission && hasAnyRequiredPermission && hasRequiredTier && passesVisibilityGate;
+  });
+
+  return (
+    <div className="relative z-20 flex h-screen flex-col w-64 bg-gray-900 overflow-hidden">
+      {/* Logo */}
+      <div className="flex items-center h-16 px-4 bg-gray-800 border-b border-gray-700">
+        <BrandLogo
+          className="flex items-center gap-3"
+          imageClassName="h-9 w-9 rounded-full"
+          showTagline={false}
+          showWordmark={true}
+          size={36}
+          wordmarkClassName="text-lg font-bold text-white leading-tight"
+        />
+      </div>
+
+      {/* User Info */}
+      <div className="relative z-30 p-4 border-b border-gray-700 overflow-visible">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-semibold">
+            {user?.fullName?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {user?.fullName || 'User'}
+            </p>
+            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+          </div>
+          <NotificationBell />
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+        {visibleNavigation.map((item) => {
+          const isActive = item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={`${item.href}-${item.name}`}
+              href={item.href}
+              className={`
+                flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                ${
+                  isActive
+                    ? 'bg-purple-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }
+              `}
+            >
+              <span className="mr-3 text-lg">{item.icon}</span>
+              {item.name}
+            </Link>
+          );
+        })}
+        {isPlatformAdmin(user) && (
+          <>
+            <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+              Platform Admin
+            </div>
+            <Link
+              href="/dashboard/platform"
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                pathname === '/dashboard/platform'
+                  ? 'bg-amber-600 text-white'
+                  : 'text-amber-100 hover:bg-amber-800/40 hover:text-white'
+              }`}
+            >
+              <span className="mr-3 text-lg">🛰️</span>
+              Platform Overview
+            </Link>
+            <Link
+              href="/dashboard/platform/settings"
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                pathname === '/dashboard/platform/settings'
+                  ? 'bg-amber-600 text-white'
+                  : 'text-amber-100 hover:bg-amber-800/40 hover:text-white'
+              }`}
+            >
+              <span className="mr-3 text-lg">🎛️</span>
+              Platform Settings
+            </Link>
+            <Link
+              href="/dashboard/platform/organizations"
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                pathname.startsWith('/dashboard/platform/organizations')
+                  ? 'bg-amber-600 text-white'
+                  : 'text-amber-100 hover:bg-amber-800/40 hover:text-white'
+              }`}
+            >
+              <span className="mr-3 text-lg">🏢</span>
+              All Organizations
+            </Link>
+          </>
+        )}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-gray-700">
+        <button
+          onClick={logout}
+          className="w-full flex items-center px-4 py-2 text-sm font-medium text-gray-300 rounded-lg hover:bg-gray-800 hover:text-white transition-colors"
+        >
+          <span className="mr-3">🚪</span>
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
