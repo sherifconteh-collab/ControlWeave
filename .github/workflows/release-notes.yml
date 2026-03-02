@@ -1,0 +1,100 @@
+name: Release Notes
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Create Release Notes
+    runs-on: ubuntu-latest
+    # Only run when a mirror sync commit is pushed
+    if: contains(github.event.head_commit.message, 'Mirror from')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./backend/package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          BASE_TAG="v${{ steps.version.outputs.version }}"
+          # If the tag already exists (checked locally; fetch-depth: 0 includes all tags),
+          # append a datestamp to make it unique
+          if git tag -l "${BASE_TAG}" | grep -q "^${BASE_TAG}$"; then
+            SUFFIX=$(date -u +%Y%m%d%H%M%S)
+            TAG="${BASE_TAG}-${SUFFIX}"
+          else
+            TAG="${BASE_TAG}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract upstream mirror details
+        id: upstream
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          # Message format: "Mirror from <repo>@<sha>"
+          UPSTREAM_SHA=$(echo "${MSG}" | grep -oP '(?<=@)[a-fA-F0-9]{40}' || true)
+          UPSTREAM_REPO=$(echo "${MSG}" | grep -oP '(?<=Mirror from )[^@]+' || true)
+          SHORT_SHA=$(echo "${UPSTREAM_SHA}" | cut -c1-7)
+          echo "upstream_sha=${UPSTREAM_SHA}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "upstream_repo=${UPSTREAM_REPO}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect changed files
+        id: changed
+        run: |
+          # List files changed in the mirror commit.
+          # Limited to 100 entries to keep release notes readable.
+          git diff --name-only HEAD~1 HEAD 2>/dev/null | head -100 > /tmp/changed-files.txt || true
+          if [ ! -s /tmp/changed-files.txt ]; then
+            echo "(no previous commit — initial mirror sync)" > /tmp/changed-files.txt
+          fi
+          echo "count=$(wc -l < /tmp/changed-files.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        id: notes
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          UPSTREAM_REPO="${{ steps.upstream.outputs.upstream_repo }}"
+          SHORT_SHA="${{ steps.upstream.outputs.short_sha }}"
+          CHANGED_COUNT="${{ steps.changed.outputs.count }}"
+
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "This release was automatically synced from the upstream mirror."
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| **Source repository** | \`${UPSTREAM_REPO}\` |"
+            echo "| **Upstream commit** | \`${SHORT_SHA}\` |"
+            echo "| **Mirror commit** | [\`$(echo ${{ github.sha }} | cut -c1-7)\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |"
+            echo "| **Files changed** | ${CHANGED_COUNT} |"
+            echo ""
+            echo "### Changed Files"
+            echo ""
+            while IFS= read -r f; do
+              echo "- \`${f}\`"
+            done < /tmp/changed-files.txt
+          } > /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --title "ControlWeave ${{ steps.tag.outputs.tag }}" \
+            --notes-file /tmp/release-notes.md \
+            --repo "${{ github.repository }}"
