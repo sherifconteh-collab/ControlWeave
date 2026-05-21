@@ -27,7 +27,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.2",
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.9.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.2",
