@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^8.55.0",
-    "@simplewebauthn/browser": "^13.2.2",
+    "@simplewebauthn/browser": "^13.3.0",
     "axios": "^1.15.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.475.0",
