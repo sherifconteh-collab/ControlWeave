@@ -1,0 +1,11 @@
+{
+  "agentName": "ControlWeave Project Shepherd",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "weekly-cm-discipline-check",
+      "schedule": "0 11 * * 3",
+      "instruction": "Run a weekly CM discipline check on the repository:\n1. Check for any branches that don't follow the naming convention (<type>/CW-<number>/<description>)\n2. Identify stale branches (no commits in 14+ days) that should be cleaned up\n3. Review recent PRs for proper commit message format (<type>(<scope>): <description>)\n4. Check for any merged branches that haven't been deleted\n5. Summarize findings and post to #cw-gtm-alerts if any violations found\n\nFocus on: branch naming violations, stale branches, and commit message format."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Reference
+
+Suggested source files:
+
+- `PIPELINE_ARCHITECTURE.md`
+- `CI_CD_PIPELINE_GUIDE.md`
+- `CI_CD_QUICK_REFERENCE.md`
+- `PERFORMANCE_MONITORING_GUIDE.md`

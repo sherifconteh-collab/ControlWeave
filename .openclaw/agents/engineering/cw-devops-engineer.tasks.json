@@ -1,0 +1,11 @@
+{
+  "agentName": "ControlWeave DevOps Engineer",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "infrastructure-health-check",
+      "schedule": "0 7 * * 1,4",
+      "instruction": "Perform an infrastructure health check:\n1. Check GitHub for any failed CI/CD workflow runs on the main branch\n2. Review recent deployment status — any failed or rolled-back deployments\n3. Check if any database migrations are pending or failed\n4. Verify the orchestrator health endpoint is responding\n5. Check for open GitHub issues labeled 'infra' or 'deployment' that are unresolved\n6. For each confirmed infrastructure failure (failed build, failed migration, deployment outage): call github_create_issue with title '[P{severity}] {issue}', labels (severity:p1 or severity:p2, infra), and details including the workflow run URL or migration filename\n7. Post a summary to #cw-gtm-alerts listing findings and any GitHub issues created\n\nOnly create issues for confirmed recurring or blocking problems — not transient failures."
+    }
+  ]
+}

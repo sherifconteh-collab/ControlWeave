@@ -1,0 +1,47 @@
+{
+  "description": "DISA STIG version manifest — update this file when DISA publishes new STIG releases. The quarterly workflow compares seeded framework versions against these entries and warns when an update is available.",
+  "last_reviewed": "2026-03-22",
+  "source": "https://public.cyber.mil/stigs/downloads/",
+  "stigs": [
+    {
+      "code": "disa_stig_app",
+      "name": "DISA Application Security and Development STIG",
+      "current_version": "V5R3",
+      "release_date": "2024-10-25",
+      "disa_url": "https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=app-security",
+      "seed_script": "seed-disa-stig-framework.js"
+    },
+    {
+      "code": "disa_stig_app_server",
+      "name": "DISA Application Server SRG",
+      "current_version": "V3R1",
+      "release_date": "2024-06-06",
+      "disa_url": "https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=app-security",
+      "seed_script": "seed-disa-stig-app-server.js"
+    },
+    {
+      "code": "disa_stig_postgresql",
+      "name": "DISA PostgreSQL STIG",
+      "current_version": "V2R3",
+      "release_date": "2024-01-26",
+      "disa_url": "https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=operating-systems",
+      "seed_script": "seed-disa-stig-postgresql.js"
+    },
+    {
+      "code": "disa_stig_web_server",
+      "name": "DISA Web Server SRG",
+      "current_version": "V3R1",
+      "release_date": "2024-06-06",
+      "disa_url": "https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=web-servers",
+      "seed_script": "seed-disa-stig-web-server.js"
+    },
+    {
+      "code": "disa_stig_gpos",
+      "name": "DISA General Purpose Operating System STIG",
+      "current_version": "V2R1",
+      "release_date": "2024-06-06",
+      "disa_url": "https://public.cyber.mil/stigs/downloads/?_dl_facet_stigs=operating-systems",
+      "seed_script": "seed-disa-stig-gpos.js"
+    }
+  ]
+}

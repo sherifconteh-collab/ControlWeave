@@ -1,0 +1,407 @@
+{
+  "featureMapping": {
+    "readme": {
+      "codePatterns": [
+        "README.md",
+        "controlweave/README.md"
+      ],
+      "documentation": [
+        "README.md",
+        "controlweave/README.md"
+      ],
+      "screenshots": [],
+      "changeTypes": ["major", "minor", "patch"]
+    },
+    "authentication": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/auth.js",
+        "controlweave/backend/src/middleware/authenticate.js",
+        "controlweave/frontend/src/app/login/**",
+        "controlweave/frontend/src/app/register/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/guides/ACCOUNT_SETUP.md"
+      ],
+      "screenshots": [
+        "register-form-01.png",
+        "login-page-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "frameworks": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/frameworks.js",
+        "controlweave/backend/scripts/seed-frameworks.js",
+        "controlweave/frontend/src/app/dashboard/frameworks/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/FRAMEWORKS.md",
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "frameworks-list-01.png",
+        "frameworks-activate-button-01.png",
+        "frameworks-active-badge-01.png",
+        "framework-details-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "controls": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/controls.js",
+        "controlweave/backend/src/routes/implementations.js",
+        "controlweave/frontend/src/app/dashboard/controls/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/CONTROLS.md",
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "controls-list-01.png",
+        "control-detail-01.png",
+        "control-edit-implementation-01.png",
+        "control-status-dropdown-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "assessments": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/assessments.js",
+        "controlweave/frontend/src/app/dashboard/assessments/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/ASSESSMENTS.md",
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "assessments-list-01.png",
+        "assessment-create-form-01.png",
+        "assessment-conduct-01.png",
+        "assessment-results-options-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "ai-copilot": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/ai.js",
+        "controlweave/backend/src/services/llm/**",
+        "controlweave/frontend/src/components/AICopilot/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/AI_COPILOT.md",
+        "controlweave/docs/guides/AI_ANALYSIS.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "ai-copilot-button-01.png",
+        "ai-copilot-panel-open-01.png",
+        "ai-copilot-chat-interface-01.png",
+        "ai-copilot-quick-actions-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "ai-analysis": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/ai.js",
+        "controlweave/backend/src/services/llm/**",
+        "controlweave/frontend/src/app/dashboard/ai-analysis/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/AI_ANALYSIS.md",
+        "controlweave/docs/guides/AI_COPILOT.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "ai-analysis-menu-01.png",
+        "ai-gap-analysis-01.png",
+        "ai-crosswalk-optimizer-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "evidence": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/evidence.js",
+        "controlweave/backend/src/routes/pendingEvidence.js",
+        "controlweave/backend/src/routes/autoEvidenceCollection.js",
+        "controlweave/frontend/src/app/dashboard/evidence/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/EVIDENCE.md",
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/USER_GUIDE.md",
+        "controlweave/docs/TIER_COMPARISON.md"
+      ],
+      "screenshots": [
+        "evidence-upload-form-01.png",
+        "evidence-drag-drop-01.png",
+        "evidence-uploaded-success-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "cmdb": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/cmdb.js",
+        "controlweave/backend/src/routes/assets.js",
+        "controlweave/frontend/src/app/dashboard/cmdb/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/CMDB.md",
+        "controlweave/docs/USER_GUIDE.md",
+        "controlweave/docs/TIER_COMPARISON.md"
+      ],
+      "screenshots": [
+        "cmdb-dashboard-01.png",
+        "cmdb-asset-types-01.png",
+        "cmdb-add-hardware-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "vulnerabilities": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/vulnerabilities.js",
+        "controlweave/frontend/src/app/dashboard/vulnerabilities/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/VULNERABILITIES.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "vulnerabilities-list-01.png",
+        "vulnerability-add-01.png",
+        "vulnerability-detail-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "poam": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/poam.js",
+        "controlweave/frontend/src/app/dashboard/poam/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/POAM.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "poam-list-01.png",
+        "poam-create-01.png",
+        "poam-detail-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "dashboard": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/dashboard.js",
+        "controlweave/frontend/src/app/dashboard/page.tsx",
+        "controlweave/frontend/src/components/Dashboard/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/DASHBOARD.md",
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "dashboard-overview-01.png",
+        "dashboard-compliance-panel-01.png",
+        "dashboard-framework-progress-01.png",
+        "dashboard-priority-actions-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "auditor-workspace": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/auditorWorkspace.js",
+        "controlweave/frontend/src/app/dashboard/auditor/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/AUDITOR_WORKSPACE.md",
+        "controlweave/docs/USER_GUIDE.md",
+        "controlweave/docs/TIER_COMPARISON.md"
+      ],
+      "screenshots": [
+        "auditor-workspace-dashboard-01.png",
+        "auditor-engagements-list-01.png",
+        "auditor-pbc-requests-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "reports": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/reports.js",
+        "controlweave/frontend/src/app/dashboard/reports/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/REPORTS.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "reports-menu-01.png",
+        "report-framework-status-01.png",
+        "report-export-options-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "settings": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/orgSettings.js",
+        "controlweave/backend/src/routes/users.js",
+        "controlweave/frontend/src/app/dashboard/settings/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/SETTINGS.md",
+        "controlweave/docs/guides/GETTING_STARTED.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "settings-menu-01.png",
+        "organization-settings-01.png",
+        "settings-llm-config-01.png",
+        "settings-users-list-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "notifications": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/notifications.js",
+        "controlweave/frontend/src/components/Notifications/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/NOTIFICATIONS.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "notification-bell-icon-01.png",
+        "notification-dropdown-01.png",
+        "notification-center-full-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "billing": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/billing.js",
+        "controlweave/frontend/src/app/dashboard/billing/**"
+      ],
+      "documentation": [
+        "controlweave/docs/TIER_COMPARISON.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "billing-overview-01.png",
+        "billing-upgrade-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    },
+    "help-center": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/help.js"
+      ],
+      "documentation": [
+        "controlweave/docs/TIER_COMPARISON.md",
+        "controlweave/docs/USER_GUIDE.md",
+        "controlweave/docs/guides/AI_ANALYSIS.md",
+        "controlweave/docs/guides/AI_COPILOT.md",
+        "controlweave/docs/guides/GETTING_STARTED.md"
+      ],
+      "screenshots": [],
+      "changeTypes": ["major", "minor", "patch"]
+    },
+    "integrations": {
+      "codePatterns": [
+        "controlweave/backend/src/routes/splunk.js",
+        "controlweave/backend/src/routes/sso.js",
+        "controlweave/backend/src/routes/webhooks.js",
+        "controlweave/frontend/src/app/dashboard/integrations/**"
+      ],
+      "documentation": [
+        "controlweave/docs/guides/INTEGRATIONS.md",
+        "controlweave/docs/integrations/API_DOCS.md",
+        "controlweave/docs/integrations/OLLAMA.md",
+        "controlweave/docs/integrations/SPLUNK.md",
+        "controlweave/docs/integrations/SSO.md",
+        "controlweave/docs/integrations/WEBHOOKS.md",
+        "controlweave/docs/USER_GUIDE.md"
+      ],
+      "screenshots": [
+        "integrations-hub-01.png",
+        "integrations-splunk-01.png",
+        "integrations-webhooks-01.png"
+      ],
+      "changeTypes": ["major", "minor", "removal"]
+    }
+  },
+  "changeDetectionRules": {
+    "major": {
+      "patterns": [
+        "breaking change",
+        "BREAKING CHANGE:",
+        "removed feature",
+        "deprecated",
+        "migration required"
+      ],
+      "fileChanges": [
+        "route removed",
+        "API endpoint removed",
+        "component deleted"
+      ]
+    },
+    "minor": {
+      "patterns": [
+        "feat:",
+        "feature:",
+        "add:",
+        "new feature"
+      ],
+      "fileChanges": [
+        "new route",
+        "new API endpoint",
+        "new component"
+      ]
+    },
+    "patch": {
+      "patterns": [
+        "fix:",
+        "bugfix:",
+        "patch:"
+      ]
+    },
+    "ui-change": {
+      "patterns": [
+        "ui:",
+        "style:",
+        "design:"
+      ],
+      "filePatterns": [
+        "*.tsx",
+        "*.jsx",
+        "*.css",
+        "components/**"
+      ]
+    }
+  },
+  "screenshotConfig": {
+    "baseUrl": "http://localhost:3000",
+    "viewportWidth": 1920,
+    "viewportHeight": 1080,
+    "deviceScaleFactor": 1,
+    "timeout": 30000,
+    "waitForSelectors": true,
+    "captureFullPage": false
+  },
+  "documentationTemplates": {
+    "featureAdded": "## New Feature: {featureName}\n\n{description}\n\n### How to Use\n\n1. {step1}\n2. {step2}\n3. {step3}\n\n![{featureName}](../screenshots/{screenshot})\n*Figure: {caption}*\n\n### Availability\n\n- **Community**: {communityAvailability}\n- **Pro**: {proAvailability}\n- **Enterprise**: {enterpriseAvailability}\n- **Gov Cloud**: {govcloudAvailability}\n",
+    "featureChanged": "## Updated: {featureName}\n\n**What Changed**: {changeDescription}\n\n**Impact**: {impact}\n\n### Migration Guide\n\n{migrationSteps}\n\n![Updated {featureName}](../screenshots/{screenshot})\n*Figure: {caption}*\n",
+    "featureRemoved": "## ⚠️ Removed: {featureName}\n\n**Reason**: {reason}\n\n**Alternative**: {alternative}\n\n### Migration Guide\n\n{migrationSteps}\n\n**Removed in version**: {version}\n"
+  },
+  "reviewers": {
+    "default": ["@docs-team"],
+    "byFeature": {
+      "ai-copilot": ["@docs-team", "@ai-team"],
+      "ai-analysis": ["@docs-team", "@ai-team"],
+      "security": ["@docs-team", "@security-team"],
+      "integrations": ["@docs-team", "@integrations-team"]
+    }
+  }
+}

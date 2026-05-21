@@ -1,0 +1,11 @@
+{
+  "agentName": "ControlWeave Backend Architect",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "backend-pattern-review",
+      "schedule": "0 8 * * 3",
+      "instruction": "Review recent backend code changes for architectural and security pattern violations:\n1. Check GitHub for recent commits (last 3 days) touching src/routes/ or src/services/\n2. Scan for violations of ControlWeave backend patterns:\n   - Queries missing organization_id filter (cross-tenant leak risk)\n   - String interpolation in SQL instead of parameterized queries\n   - ES module syntax (import/export) instead of CommonJS (require/module.exports)\n   - Pool imported as { pool } instead of directly\n   - Missing audit log entries on write operations\n   - Tier limits not checked before returning premium features\n3. Check GitHub for open issues labeled 'backend' or 'architecture' older than 5 days with no activity\n4. For each confirmed pattern violation without an existing open GitHub issue: call github_create_issue with title '[P{severity}] Backend: {violation}', labels (severity:p2 or severity:p3, backend), file path and line reference\n5. Post a summary to #cw-gtm-alerts\n\nFocus on: multi-tenant isolation, SQL safety, CommonJS compliance, audit logging."
+    }
+  ]
+}

@@ -1,0 +1,603 @@
+# Azure DevOps CI/CD Pipeline for ControlWeave
+# Includes SAST, DAST scanning, and SBOM/AIBOM generation
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+      - release/*
+  paths:
+    exclude:
+      - docs/**
+      - '*.md'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - docs/**
+      - '*.md'
+
+variables:
+  nodeVersion: '20.x'
+  dockerImageTag: '$(Build.BuildId)'
+  # Azure Container Registry (configure in Azure DevOps)
+  containerRegistry: 'controlweaveacr'
+  imageName: 'controlweave'
+  
+stages:
+  # ============================================================================
+  # STAGE 1: BUILD & TEST (NIST 800-160: Verification at Build)
+  # ============================================================================
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: Backend
+        displayName: 'Backend Build & Test'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: |
+              cd controlweave/backend
+              npm install
+            displayName: 'Install Backend Dependencies'
+
+          - script: |
+              cd controlweave/backend
+              npm run check:syntax
+            displayName: 'Backend Syntax Check (MANDATORY)'
+
+          - script: |
+              cd controlweave/backend
+              npm run check:migrations
+            displayName: 'Backend Migration Validation (MANDATORY)'
+
+          - script: |
+              cd controlweave/backend
+              npm run check:ip-hygiene
+            displayName: 'Backend IP Hygiene Check (MANDATORY)'
+            env:
+              IP_HYGIENE_FAIL_ON_STANDARDS: 'true'
+
+          - script: |
+              cd controlweave/backend
+              npm run build
+            displayName: 'Backend Build'
+
+          - script: |
+              cd controlweave/backend
+              npm run check:runtime-linkage
+            displayName: 'Runtime Linkage Check (MANDATORY)'
+
+          - script: |
+              cd controlweave/backend
+              npm audit --audit-level=moderate --production
+            displayName: 'Backend Security Audit (MANDATORY)'
+
+          - task: PublishTestResults@2
+            displayName: 'Publish Backend Test Results'
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'controlweave/backend/test-results/*.xml'
+              mergeTestResults: true
+              failTaskOnFailedTests: true
+
+      - job: Frontend
+        displayName: 'Frontend Build & Test'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: |
+              cd controlweave/frontend
+              npm install
+            displayName: 'Install Frontend Dependencies'
+
+          - script: |
+              cd controlweave/frontend
+              npm run generate:api-types || echo "Skipping API type generation"
+            displayName: 'Generate API Types'
+            continueOnError: true
+
+          - script: |
+              cd controlweave/frontend
+              npm run typecheck
+            displayName: 'Frontend Type Check (MANDATORY)'
+
+          - script: |
+              cd controlweave/frontend
+              npm run lint
+            displayName: 'Frontend Lint (MANDATORY)'
+
+          - script: |
+              cd controlweave/frontend
+              npm run build
+            displayName: 'Frontend Build'
+
+          - script: |
+              cd controlweave/frontend
+              npm audit --audit-level=moderate --production
+            displayName: 'Frontend Security Audit (MANDATORY)'
+
+      # QA Testing Job
+      - job: QA_Testing
+        displayName: 'Comprehensive QA Testing Suite'
+        dependsOn:
+          - Backend
+          - Frontend
+        pool:
+          vmImage: 'ubuntu-latest'
+        services:
+          postgres:
+            image: postgres:17
+            env:
+              POSTGRES_USER: controlweave_test
+              POSTGRES_PASSWORD: test_password
+              POSTGRES_DB: controlweave_test
+            ports:
+              - 5432:5432
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: |
+              cd controlweave/backend
+              npm install
+            displayName: 'Install Backend Dependencies'
+
+          - script: |
+              cd controlweave/backend
+              npm run migrate || echo "Migrations skipped for CI"
+            displayName: 'Run Database Migrations'
+            env:
+              DATABASE_URL: postgresql://controlweave_test:test_password@localhost:5432/controlweave_test
+              NODE_ENV: test
+
+          - script: |
+              cd controlweave/backend
+              npm run check:syntax
+            displayName: 'QA Test - Syntax Check'
+
+          - script: |
+              cd controlweave/backend
+              npm run check:migrations
+            displayName: 'QA Test - Migration Validation'
+
+          - script: |
+              cd controlweave/backend
+              npm run check:ip-hygiene
+            displayName: 'QA Test - IP Hygiene'
+            env:
+              IP_HYGIENE_FAIL_ON_STANDARDS: 'true'
+
+          - script: |
+              cd controlweave/backend
+              npm run qa:e2e:dynamic || echo "E2E tests require running server"
+            displayName: 'QA Test - Dynamic E2E Suite'
+            env:
+              DATABASE_URL: postgresql://controlweave_test:test_password@localhost:5432/controlweave_test
+              QA_DYNAMIC_SUITES: syntax,mega,dynamic,auditor
+              QA_DYNAMIC_FAIL_FAST: 'true'
+              NODE_ENV: test
+              PORT: 3001
+              JWT_SECRET: test_jwt_secret_for_ci_pipeline_only
+              CORS_ORIGIN: http://localhost:3000
+            continueOnError: true
+
+          - script: |
+              cd controlweave/backend
+              npm run qa:crosswalk:live || echo "Crosswalk test requires deployed instance"
+            displayName: 'QA Test - Crosswalk Verification'
+            env:
+              DATABASE_URL: postgresql://controlweave_test:test_password@localhost:5432/controlweave_test
+            continueOnError: true
+
+          - task: PublishTestResults@2
+            displayName: 'Publish QA Test Results'
+            condition: always()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'controlweave/backend/qa-results/*.xml'
+              mergeTestResults: true
+              failTaskOnFailedTests: false
+
+  # ============================================================================
+  # STAGE 2: SAST (Static Application Security Testing)
+  # ============================================================================
+  - stage: SAST
+    displayName: 'SAST Security Scanning'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: CodeQL
+        displayName: 'CodeQL Analysis'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          # Initialize CodeQL
+          - script: |
+              # Install CodeQL CLI
+              wget https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.tar.gz
+              tar -xvzf codeql-bundle-linux64.tar.gz
+              echo "##vso[task.prependpath]$(Build.SourcesDirectory)/codeql"
+            displayName: 'Install CodeQL'
+
+          - script: |
+              cd controlweave/backend
+              npm install
+            displayName: 'Install Backend Dependencies for Analysis'
+
+          - script: |
+              codeql database create codeql-db-backend \
+                --language=javascript \
+                --source-root=controlweave/backend \
+                --command="cd controlweave/backend && npm run build"
+            displayName: 'Create CodeQL Database - Backend'
+
+          - script: |
+              codeql database analyze codeql-db-backend \
+                --format=sarif-latest \
+                --output=backend-codeql-results.sarif \
+                javascript-security-and-quality
+            displayName: 'Run CodeQL Analysis - Backend'
+
+          - script: |
+              cd controlweave/frontend
+              npm install
+            displayName: 'Install Frontend Dependencies for Analysis'
+
+          - script: |
+              codeql database create codeql-db-frontend \
+                --language=javascript \
+                --source-root=controlweave/frontend
+            displayName: 'Create CodeQL Database - Frontend'
+
+          - script: |
+              codeql database analyze codeql-db-frontend \
+                --format=sarif-latest \
+                --output=frontend-codeql-results.sarif \
+                javascript-security-and-quality
+            displayName: 'Run CodeQL Analysis - Frontend'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish CodeQL Results'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'CodeQL-Results'
+              publishLocation: 'Container'
+            condition: always()
+
+      - job: DependencyScan
+        displayName: 'Dependency Vulnerability Scan'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: |
+              cd controlweave/backend
+              npm install
+              npm audit --json > ../../backend-audit.json || true
+            displayName: 'Backend Dependency Audit'
+
+          - script: |
+              cd controlweave/frontend
+              npm install
+              npm audit --json > ../../frontend-audit.json || true
+            displayName: 'Frontend Dependency Audit'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Audit Results'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'Dependency-Audit-Results'
+              publishLocation: 'Container'
+
+      - job: SecretsScan
+        displayName: 'Secrets Scanning'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              # Install TruffleHog for secrets scanning
+              pip install truffleHog
+              trufflehog --json --regex --entropy=True . > trufflehog-results.json || true
+            displayName: 'Run Secrets Scanning with TruffleHog'
+            continueOnError: true
+
+          - script: |
+              # Install gitleaks for secrets scanning
+              wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz
+              tar -xzf gitleaks_8.18.1_linux_x64.tar.gz
+              ./gitleaks detect --source . --report-path gitleaks-report.json -v || true
+            displayName: 'Run Secrets Scanning with Gitleaks'
+            continueOnError: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Secrets Scan Results'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'Secrets-Scan-Results'
+              publishLocation: 'Container'
+            condition: always()
+
+  # ============================================================================
+  # STAGE 3: SBOM & AIBOM GENERATION
+  # ============================================================================
+  - stage: BOM_Generation
+    displayName: 'Generate SBOM & AIBOM'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: SBOM
+        displayName: 'Software Bill of Materials'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: |
+              # Install CycloneDX CLI for SBOM generation
+              npm install -g @cyclonedx/cyclonedx-npm
+            displayName: 'Install CycloneDX CLI'
+
+          - script: |
+              cd controlweave/backend
+              npm install
+            displayName: 'Install Backend Dependencies'
+
+          - script: |
+              cd controlweave/backend
+              cyclonedx-npm --output-file ../../sbom-backend.json --output-format json
+            displayName: 'Generate Backend SBOM'
+
+          - script: |
+              cd controlweave/frontend
+              npm install
+            displayName: 'Install Frontend Dependencies'
+
+          - script: |
+              cd controlweave/frontend
+              cyclonedx-npm --output-file ../../sbom-frontend.json --output-format json
+            displayName: 'Generate Frontend SBOM'
+
+          - script: |
+              # Merge SBOMs if needed
+              echo "Backend and Frontend SBOMs generated"
+              ls -lh sbom-*.json
+            displayName: 'Verify SBOM Files'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish SBOM Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'SBOM-Artifacts'
+              publishLocation: 'Container'
+
+      - job: AIBOM
+        displayName: 'AI Bill of Materials'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: |
+              # Generate AIBOM using custom script
+              node $(Build.SourcesDirectory)/scripts/generate-aibom.js
+            displayName: 'Generate AIBOM'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish AIBOM Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'AIBOM-Artifacts'
+              publishLocation: 'Container'
+
+  # ============================================================================
+  # STAGE 4: CONTAINER BUILD & SCAN
+  # ============================================================================
+  - stage: ContainerBuild
+    displayName: 'Build & Scan Containers'
+    dependsOn: 
+      - SAST
+      - BOM_Generation
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: BuildContainers
+        displayName: 'Build Docker Images'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Build Backend Image'
+            inputs:
+              command: 'build'
+              repository: '$(imageName)-backend'
+              dockerfile: 'controlweave/backend/Dockerfile'
+              tags: |
+                $(dockerImageTag)
+                latest
+              arguments: '--build-arg NODE_VERSION=$(nodeVersion)'
+
+          - task: Docker@2
+            displayName: 'Build Frontend Image'
+            inputs:
+              command: 'build'
+              repository: '$(imageName)-frontend'
+              dockerfile: 'controlweave/frontend/Dockerfile'
+              tags: |
+                $(dockerImageTag)
+                latest
+              arguments: '--build-arg NODE_VERSION=$(nodeVersion)'
+
+          - script: |
+              # Install Trivy for container scanning
+              wget https://github.com/aquasecurity/trivy/releases/download/v0.48.0/trivy_0.48.0_Linux-64bit.tar.gz
+              tar zxvf trivy_0.48.0_Linux-64bit.tar.gz
+              sudo mv trivy /usr/local/bin/
+            displayName: 'Install Trivy Scanner'
+
+          - script: |
+              trivy image --format json --output trivy-backend-results.json $(imageName)-backend:$(dockerImageTag) || true
+            displayName: 'Scan Backend Container with Trivy'
+            continueOnError: true
+
+          - script: |
+              trivy image --format json --output trivy-frontend-results.json $(imageName)-frontend:$(dockerImageTag) || true
+            displayName: 'Scan Frontend Container with Trivy'
+            continueOnError: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Container Scan Results'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'Container-Scan-Results'
+              publishLocation: 'Container'
+            condition: always()
+
+  # ============================================================================
+  # STAGE 5: DAST (Dynamic Application Security Testing)
+  # ============================================================================
+  - stage: DAST
+    displayName: 'DAST Security Scanning'
+    dependsOn: ContainerBuild
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: OWASP_ZAP
+        displayName: 'OWASP ZAP Scan'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: Docker@2
+            displayName: 'Pull OWASP ZAP Image'
+            inputs:
+              command: 'pull'
+              arguments: 'owasp/zap2docker-stable'
+
+          - script: |
+              # Start the application containers for testing
+              # Note: This requires a proper docker-compose or deployment setup
+              echo "Starting application for DAST scanning..."
+              # docker-compose -f docker-compose.test.yml up -d
+            displayName: 'Start Application for DAST'
+
+          - script: |
+              # Wait for application to be ready
+              sleep 30
+            displayName: 'Wait for Application Startup'
+
+          - script: |
+              # Run OWASP ZAP baseline scan
+              docker run --network host \
+                -v $(Build.SourcesDirectory):/zap/wrk/:rw \
+                owasp/zap2docker-stable \
+                zap-baseline.py \
+                -t http://localhost:3000 \
+                -r zap-baseline-report.html \
+                -J zap-baseline-report.json || true
+            displayName: 'Run OWASP ZAP Baseline Scan'
+            continueOnError: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish DAST Results'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)'
+              ArtifactName: 'DAST-Results'
+              publishLocation: 'Container'
+            condition: always()
+
+  # ============================================================================
+  # STAGE 6: SECURITY REPORT
+  # ============================================================================
+  - stage: SecurityReport
+    displayName: 'Generate Security Report'
+    dependsOn:
+      - SAST
+      - BOM_Generation
+      - DAST
+    condition: always()
+    jobs:
+      - job: ConsolidateReports
+        displayName: 'Consolidate Security Reports'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download All Security Artifacts'
+            inputs:
+              buildType: 'current'
+              downloadType: 'specific'
+              downloadPath: '$(Build.ArtifactStagingDirectory)'
+
+          - script: |
+              # Generate consolidated security report
+              node $(Build.SourcesDirectory)/scripts/generate-security-report.js \
+                --artifacts-dir "$(Build.ArtifactStagingDirectory)" \
+                --output-file consolidated-security-report.html
+            displayName: 'Generate Consolidated Report'
+            continueOnError: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Consolidated Security Report'
+            inputs:
+              PathtoPublish: '$(Build.SourcesDirectory)/consolidated-security-report.html'
+              ArtifactName: 'Security-Report'
+              publishLocation: 'Container'
+            condition: always()
+
+  # ============================================================================
+  # STAGE 7: DEPLOY (Optional - for main branch only)
+  # ============================================================================
+  - stage: Deploy
+    displayName: 'Deploy to Environment'
+    dependsOn:
+      - ContainerBuild
+      - DAST
+      - SecurityReport
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployToStaging
+        displayName: 'Deploy to Staging'
+        pool:
+          vmImage: 'ubuntu-latest'
+        environment: 'staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    echo "Deploying to staging environment..."
+                    # Add your deployment commands here
+                    # e.g., kubectl apply, docker push, helm upgrade, etc.
+                  displayName: 'Deploy Application'

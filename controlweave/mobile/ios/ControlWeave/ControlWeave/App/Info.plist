@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist — required for iOS App Store submission.
+  Add this file to the Xcode target's "Info" build settings
+  (INFOPLIST_FILE = ControlWeave/App/Info.plist) or reference it via
+  the Xcode 14+ "Info" tab in the target editor.
+
+  App Store Review requirements addressed:
+    - Privacy usage description strings for every sensitive permission
+    - App Transport Security (enforced via NSAllowsArbitraryLoads = false)
+    - ATT / ad-tracking opt-in string (required for AdMob)
+    - Privacy Policy URL (required for apps collecting personal data)
+    - Export compliance declaration
+    - Minimum OS version matching Package.swift (.iOS(.v17))
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- ─── Bundle identity ─────────────────────────────────────────── -->
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+    <key>CFBundleName</key>
+    <string>ControlWeave</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>ControlWeave</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>$(MARKETING_VERSION)</string>
+
+    <key>CFBundleVersion</key>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
+
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <!-- ─── Minimum OS ───────────────────────────────────────────────── -->
+    <key>MinimumOSVersion</key>
+    <string>17.0</string>
+
+    <!-- ─── Supported orientations ──────────────────────────────────── -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- ─── Privacy usage descriptions (App Store requirement) ─────── -->
+
+    <!-- Photo library — EvidenceListView uploads compliance evidence photos -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>ControlWeave uses your photo library so you can attach evidence photos to compliance controls and assessments.</string>
+
+    <!-- Camera — future direct-capture evidence upload -->
+    <key>NSCameraUsageDescription</key>
+    <string>ControlWeave uses the camera so you can photograph evidence documents directly from your device.</string>
+
+    <!-- App Tracking Transparency — AdMob personalised ads for Community tier -->
+    <key>NSUserTrackingUsageDescription</key>
+    <string>ControlWeave would like permission to track across apps and websites to show you relevant ads. Tracking is only used on the free Community tier to fund the product. You can opt out at any time in Settings.</string>
+
+    <!-- Face ID / Biometrics — future biometric lock screen -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>ControlWeave uses Face ID to let you unlock the app quickly and securely.</string>
+
+    <!-- ─── Push notifications ───────────────────────────────────────── -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- ─── Privacy Policy URL ──────────────────────────────────────── -->
+    <!--
+      Replace with the live public-facing Privacy Policy URL before App Store
+      submission. Required when the app collects personal data (email, usage
+      analytics, push tokens). The URL is surfaced in App Store Connect and
+      shown to users on the App Store product page.
+    -->
+    <key>NSPrivacyPolicyURL</key>
+    <string>https://controlweave.com/privacy</string>
+
+    <!-- ─── App Transport Security ──────────────────────────────────── -->
+    <!-- All API traffic goes to app.controlweave.com over HTTPS. -->
+    <!-- Arbitrary loads are disabled — no plain HTTP is permitted. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+
+    <!-- ─── Export compliance ───────────────────────────────────────── -->
+    <!--
+      The app uses standard HTTPS/TLS provided by the iOS operating system
+      (Security.framework, Network.framework). It does NOT implement any
+      custom cryptographic algorithms, non-standard ciphers, or encryption
+      beyond the OS-provided TLS stack.
+
+      Qualifies for the EAR 740.17(b)(1) mass-market encryption exemption:
+        - Encryption is limited to standard, publicly available protocols
+          (TLS 1.2/1.3 via OS APIs)
+        - No non-standard or proprietary cryptographic primitives are used
+        - Annual self-classification report filed with BIS and NSA per
+          15 CFR 740.17(e)(3)
+
+      When submitting to App Store Connect, select:
+        "Does your app use, contain, or incorporate cryptography or encryption?"
+        → Yes
+        "Does the cryptography qualify for an exemption?"
+        → Yes — uses only Apple-standard cryptographic APIs
+    -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+
+    <!-- ─── Scene configuration (SwiftUI lifecycle) ─────────────────── -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+
+</dict>
+</plist>

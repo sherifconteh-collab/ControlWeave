@@ -1,0 +1,19 @@
+{
+  "agentName": "ControlWeave Chief of Staff",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "daily-agent-kpi-briefing",
+      "schedule": "30 17 * * 2,4",
+      "model": "claude-3-5-haiku-latest",
+      "instruction": "Produce the daily agent fleet KPI briefing:\n\n1. Call get_agent_audit_summary to get today's totals (tasks started, completed, failed, per-agent breakdown)\n2. Only if the summary shows failures, missed runs, duration anomalies, or possible guardrail concerns: call get_agent_audit_details with outcome=\"failure\" to review failed tasks and their error messages\n3. For each agent that ran today, compute: task completion rate, success rate, average duration, and guardrail status based on the findings field\n4. Identify any expected agents that have zero audit entries today (missed runs)\n5. Determine overall fleet health: HEALTHY (all green), WATCH (1-2 failures or warnings), or CRITICAL (violations or 3+ failures)\n6. You are the single fleet summarizer — do not ask other agents to re-analyze the fleet\n7. If fleet is CRITICAL or any guardrail VIOLATION detected: DM Jaja immediately via slack_dm_jaja BEFORE posting the Slack report\n8. If deeper compliance context would help remediation recommendations, optionally call grc_get_swarm_configs and then grc_execute_swarm once as a backend shared-context analysis. Do not use swarm output for KPI counts.\n9. Post the formatted Daily Agent KPI Briefing to #cw-gtm-alerts\n10. If any agent has had the same failure 3+ times this week, create a GitHub issue with label 'agent-governance'\n\nAlways base every metric on real audit data — never estimate counts."
+    },
+    {
+      "taskType": "audit",
+      "taskName": "weekly-agent-performance-review",
+      "schedule": "0 16 * * 5",
+      "model": "claude-3-5-haiku-latest",
+      "instruction": "Produce the end-of-week agent performance review:\n\n1. Start from get_agent_audit_summary for today's baseline, then call get_agent_audit_details for each of the past 5 weekdays (Monday through today) to build a 5-day trend\n2. For each agent, calculate: weekly task completion rate, weekly success rate, total failures, average task duration, and any guardrail flags accumulated\n3. Identify positive trends (improving success rates, consistent on-time execution) and negative trends (recurring failures, increasing duration, repeated guardrail flags)\n4. You are the single fleet summarizer — do not ask other agents to re-analyze the fleet\n5. If deeper compliance context would help remediation recommendations, optionally call grc_get_swarm_configs and then grc_execute_swarm once as a backend shared-context analysis. Do not use swarm output for KPI counts.\n6. Highlight the top-performing agent and any agent that needs remediation attention\n7. Post the Weekly Agent Performance Review to #cw-gtm-alerts\n8. DM Jaja with a one-paragraph executive summary of fleet health and any remediation recommendations\n\nFocus on trends, not just today's snapshot."
+    },
+  ]
+}

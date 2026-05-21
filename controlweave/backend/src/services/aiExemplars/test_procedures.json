@@ -1,0 +1,84 @@
+[
+  {
+    "description": "Test procedures for AU-2 Event Logging",
+    "control_id": "AU-2",
+    "framework": "NIST_800_53",
+    "output": {
+      "control_id": "AU-2",
+      "objective": "Verify that the organization identifies the types of events that the system is capable of logging, and that logging is configured to capture those event types for audit purposes.",
+      "test_method": "examine",
+      "steps": [
+        {
+          "step": 1,
+          "test_type": "examine",
+          "procedure": "Review the organization's audit logging policy and compare against the AU-2 event types: authentication events (success/failure), privileged access, object access, policy changes, account management, process tracking. Verify the policy was approved within the last 12 months.",
+          "pass_criteria": "Policy exists, is approved, and lists at least the 6 required AU-2 event categories.",
+          "fail_criteria": "Policy missing, unapproved, older than 12 months, or omits event categories."
+        },
+        {
+          "step": 2,
+          "test_type": "test",
+          "procedure": "Perform a test login with a valid credential on a production system. Then perform a deliberate failed login. Retrieve the audit log and verify both events are captured with: timestamp, user identity, event type, source IP, and outcome.",
+          "pass_criteria": "Both events present in logs within 5 seconds. All required fields populated.",
+          "fail_criteria": "Events absent, delayed >60s, or missing required fields."
+        },
+        {
+          "step": 3,
+          "test_type": "interview",
+          "procedure": "Interview the system administrator responsible for logging configuration. Ask: (1) How are logging requirements communicated to development teams? (2) What is the process for adding new event types? (3) How are logging failures detected?",
+          "pass_criteria": "Administrator can demonstrate awareness of event requirements and escalation process for logging failures.",
+          "fail_criteria": "Administrator unaware of logging requirements or cannot describe failure detection."
+        }
+      ],
+      "expected_results": {
+        "pass": "All three test procedures produce evidence of appropriate event capture, policy coverage, and staff awareness.",
+        "fail": "One or more procedures reveal missing event types, policy gaps, or staff unfamiliarity with requirements."
+      },
+      "sample_size": "Select 3 production systems; test login events on each",
+      "frequency": "Annual + after any system change that affects logging configuration",
+      "evidence_to_collect": [
+        "Audit logging policy (approved, dated)",
+        "Log export showing test authentication events with all required fields",
+        "Interview notes with system administrator (signed)",
+        "Logging configuration screenshot (SIEM source config)"
+      ]
+    }
+  },
+  {
+    "description": "Test procedures for IA-5 Authenticator Management (password complexity)",
+    "control_id": "IA-5",
+    "framework": "NIST_800_53",
+    "output": {
+      "control_id": "IA-5",
+      "objective": "Verify that authenticator management practices enforce minimum password complexity, prohibit reuse, and require rotation in accordance with IA-5(1).",
+      "test_method": "test",
+      "steps": [
+        {
+          "step": 1,
+          "test_type": "examine",
+          "procedure": "Review the password policy in the identity provider (Active Directory, Okta, Cognito). Verify: minimum length ≥ 12 characters, complexity requirements (uppercase, lowercase, digit, special char), prohibition of last 10 passwords, maximum age ≤ 365 days.",
+          "pass_criteria": "All four parameters meet or exceed NIST SP 800-63B and IA-5(1) requirements.",
+          "fail_criteria": "Any parameter below minimum threshold."
+        },
+        {
+          "step": 2,
+          "test_type": "test",
+          "procedure": "Attempt to set a non-compliant password (e.g., 8 lowercase characters). Verify the system rejects it with an informative error. Attempt to reuse the last password after a forced reset. Verify rejection.",
+          "pass_criteria": "Both non-compliant attempts are rejected with clear user feedback.",
+          "fail_criteria": "Either attempt succeeds."
+        }
+      ],
+      "expected_results": {
+        "pass": "Policy configuration meets IA-5(1) requirements and enforcement is confirmed through testing.",
+        "fail": "Policy below threshold or enforcement can be bypassed."
+      },
+      "sample_size": "Test on primary production IdP; spot-check 2 application-level password policies",
+      "frequency": "Annual + after any IdP configuration change",
+      "evidence_to_collect": [
+        "Password policy configuration screenshot (IdP admin console)",
+        "Screen recording or screenshots of failed non-compliant password attempts",
+        "Password history enforcement test result"
+      ]
+    }
+  }
+]

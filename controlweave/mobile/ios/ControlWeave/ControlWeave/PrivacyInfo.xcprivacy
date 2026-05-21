@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Privacy manifest required by Apple for apps using AdMob and networking.
+  https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
+-->
+<plist version="1.0">
+<dict>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <!-- AdMob: device identifier for ad targeting -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising</string>
+            </array>
+        </dict>
+        <!-- Usage analytics for product improvement -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeProductInteraction</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <!-- UserDefaults — used by RevenueCat and AdMob SDKs -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+        <!-- File timestamp — used when reading photo picker items for evidence upload -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSPrivacyTracking</key>
+    <true/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array>
+        <string>googleadservices.com</string>
+        <string>googlesyndication.com</string>
+        <string>doubleclick.net</string>
+    </array>
+</dict>
+</plist>

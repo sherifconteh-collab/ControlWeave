@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ControlWeave Brand Assets</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #eef0f4; font-family: 'Segoe UI', sans-serif; padding: 48px 40px; }
+    h1  { color: #525f7f; font-size: 22px; margin-bottom: 4px; }
+    .sub { color: #aaa; font-size: 13px; margin-bottom: 40px; }
+    h2  { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin: 36px 0 14px; }
+    .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 32px; }
+    .card { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 2px 14px rgba(0,0,0,.07); }
+    .label { font-size: 11px; color: #aaa; margin-top: 10px; text-align: center; }
+    .btns { display: flex; gap: 8px; margin-top: 12px; }
+    .btn { flex: 1; padding: 9px 0; font-size: 12px; font-weight: 600; border: none;
+           border-radius: 7px; cursor: pointer; }
+    .btn-png { background: #0074d4; color: white; }
+    .btn-png:hover { background: #005aaa; }
+    .btn-svg { background: #f0f2f5; color: #525f7f; border: 1px solid #d0d4de; }
+    .btn-svg:hover { background: #e4e7ef; }
+  </style>
+</head>
+<body>
+
+<h1>ControlWeave Brand Assets</h1>
+<p class="sub">Download PNG for Stripe upload · Download SVG for editing</p>
+
+<!-- ══════════════════ ICON ══════════════════ -->
+<h2>Icon — Stripe "Icon" field (square)</h2>
+<div class="row">
+  <div class="card">
+    <svg id="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="256" height="256">
+      <defs>
+        <linearGradient id="iBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#525f7f"/><stop offset="100%" stop-color="#3a4a6b"/>
+        </linearGradient>
+        <linearGradient id="iAc" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0074d4"/><stop offset="100%" stop-color="#005aaa"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="96" fill="url(#iBg)"/>
+      <rect x="96"  y="156" width="320" height="44" rx="22" fill="white" opacity="0.15"/>
+      <rect x="96"  y="234" width="320" height="44" rx="22" fill="white" opacity="0.15"/>
+      <rect x="96"  y="312" width="320" height="44" rx="22" fill="white" opacity="0.15"/>
+      <rect x="156" y="96"  width="44" height="320" rx="22" fill="white" opacity="0.15"/>
+      <rect x="234" y="96"  width="44" height="320" rx="22" fill="white" opacity="0.15"/>
+      <rect x="312" y="96"  width="44" height="320" rx="22" fill="white" opacity="0.15"/>
+      <rect x="156" y="156" width="44" height="44" rx="8" fill="url(#iAc)" opacity="0.9"/>
+      <rect x="312" y="156" width="44" height="44" rx="8" fill="url(#iAc)" opacity="0.9"/>
+      <rect x="234" y="234" width="44" height="44" rx="8" fill="url(#iAc)"/>
+      <rect x="156" y="312" width="44" height="44" rx="8" fill="url(#iAc)" opacity="0.9"/>
+      <rect x="312" y="312" width="44" height="44" rx="8" fill="url(#iAc)" opacity="0.9"/>
+      <rect x="218" y="248" width="76" height="60" rx="10" fill="white" opacity="0.95"/>
+      <path d="M238 248v-18a18 18 0 0 1 36 0v18" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.95"/>
+      <circle cx="256" cy="272" r="6" fill="#0074d4"/>
+    </svg>
+    <div class="label">256px preview · exports at 512×512</div>
+    <div class="btns">
+      <button class="btn btn-png" onclick="exportPNG('icon','controlweave-icon.png',512,512)">Download PNG</button>
+      <button class="btn btn-svg" onclick="exportSVG('icon','controlweave-icon.svg')">Download SVG</button>
+    </div>
+  </div>
+
+  <div class="card" style="background:#1a1a2e;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="128" height="128">
+      <defs>
+        <linearGradient id="iBg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#525f7f"/><stop offset="100%" stop-color="#3a4a6b"/>
+        </linearGradient>
+        <linearGradient id="iAc2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0074d4"/><stop offset="100%" stop-color="#005aaa"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="96" fill="url(#iBg2)"/>
+      <rect x="96"  y="156" width="320" height="44" rx="22" fill="white" opacity="0.15"/>
+      <rect x="96"  y="234" width="320" height="44" rx="22" fill="white" opacity="0.15"/>
+      <rect x="96"  y="312" width="320" height="44" rx="22" fill="white" opacity="0.15"/>
+      <rect x="156" y="96"  width="44" height="320" rx="22" fill="white" opacity="0.15"/>
+      <rect x="234" y="96"  width="44" height="320" rx="22" fill="white" opacity="0.15"/>
+      <rect x="312" y="96"  width="44" height="320" rx="22" fill="white" opacity="0.15"/>
+      <rect x="156" y="156" width="44" height="44" rx="8" fill="url(#iAc2)" opacity="0.9"/>
+      <rect x="312" y="156" width="44" height="44" rx="8" fill="url(#iAc2)" opacity="0.9"/>
+      <rect x="234" y="234" width="44" height="44" rx="8" fill="url(#iAc2)"/>
+      <rect x="156" y="312" width="44" height="44" rx="8" fill="url(#iAc2)" opacity="0.9"/>
+      <rect x="312" y="312" width="44" height="44" rx="8" fill="url(#iAc2)" opacity="0.9"/>
+      <rect x="218" y="248" width="76" height="60" rx="10" fill="white" opacity="0.95"/>
+      <path d="M238 248v-18a18 18 0 0 1 36 0v18" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" opacity="0.95"/>
+      <circle cx="256" cy="272" r="6" fill="#0074d4"/>
+    </svg>
+    <div class="label" style="color:#555;">dark background preview</div>
+  </div>
+</div>
+
+<!-- ══════════════════ LOGO ══════════════════ -->
+<h2>Logo — Stripe "Logo" field (wide)</h2>
+<div class="row">
+  <div class="card" style="max-width:640px; width:100%;">
+    <svg id="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="600" height="200">
+      <defs>
+        <linearGradient id="lBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#525f7f"/><stop offset="100%" stop-color="#3a4a6b"/>
+        </linearGradient>
+        <linearGradient id="lAc" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0074d4"/><stop offset="100%" stop-color="#005aaa"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="400" rx="32" fill="url(#lBg)"/>
+      <rect x="60"  y="128" width="220" height="30" rx="15" fill="white" opacity="0.15"/>
+      <rect x="60"  y="185" width="220" height="30" rx="15" fill="white" opacity="0.15"/>
+      <rect x="60"  y="242" width="220" height="30" rx="15" fill="white" opacity="0.15"/>
+      <rect x="108" y="80"  width="30" height="240" rx="15" fill="white" opacity="0.15"/>
+      <rect x="165" y="80"  width="30" height="240" rx="15" fill="white" opacity="0.15"/>
+      <rect x="222" y="80"  width="30" height="240" rx="15" fill="white" opacity="0.15"/>
+      <rect x="108" y="128" width="30" height="30" rx="6" fill="url(#lAc)" opacity="0.9"/>
+      <rect x="222" y="128" width="30" height="30" rx="6" fill="url(#lAc)" opacity="0.9"/>
+      <rect x="165" y="185" width="30" height="30" rx="6" fill="url(#lAc)"/>
+      <rect x="108" y="242" width="30" height="30" rx="6" fill="url(#lAc)" opacity="0.9"/>
+      <rect x="222" y="242" width="30" height="30" rx="6" fill="url(#lAc)" opacity="0.9"/>
+      <rect x="148" y="196" width="64" height="52" rx="9" fill="white" opacity="0.95"/>
+      <path d="M163 196v-16a17 17 0 0 1 34 0v16" fill="none" stroke="white" stroke-width="7" stroke-linecap="round" opacity="0.95"/>
+      <circle cx="180" cy="218" r="6" fill="#0074d4"/>
+      <line x1="320" y1="80" x2="320" y2="320" stroke="white" stroke-width="1.5" stroke-opacity="0.2"/>
+      <text x="360" y="248" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="118" font-weight="700" letter-spacing="-3" fill="white">Control</text>
+      <text x="360" y="340" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="118" font-weight="300" letter-spacing="-3" fill="#0074d4">Weave</text>
+      <text x="362" y="374" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="24" font-weight="400" letter-spacing="4" fill="white" opacity="0.5">GRC PLATFORM</text>
+    </svg>
+    <div class="label">600×200 preview · exports at 1200×400</div>
+    <div class="btns">
+      <button class="btn btn-png" onclick="exportPNG('logo','controlweave-logo.png',1200,400)">Download PNG</button>
+      <button class="btn btn-svg" onclick="exportSVG('logo','controlweave-logo.svg')">Download SVG</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="offscreen" style="display:none;"></canvas>
+
+<script>
+function exportSVG(id, filename) {
+  const svg = document.getElementById(id);
+  const data = new XMLSerializer().serializeToString(svg);
+  const blob = new Blob([data], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function exportPNG(id, filename, w, h) {
+  const svg = document.getElementById(id);
+  const data = new XMLSerializer().serializeToString(svg);
+  // base64 encode — avoids canvas taint from blob URLs
+  const b64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(data)));
+
+  const canvas = document.getElementById('offscreen');
+  canvas.width  = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  const img = new Image();
+  img.onload = function () {
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const a = document.createElement('a');
+    a.download = filename;
+    a.href = canvas.toDataURL('image/png');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+  img.onerror = function() {
+    alert('PNG export failed in this browser. Use "Download SVG" instead, then convert at cloudconvert.com/svg-to-png');
+  };
+  img.src = b64;
+}
+</script>
+</body>
+</html>

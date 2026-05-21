@@ -1,0 +1,71 @@
+[
+  {
+    "_note": "ip-hygiene:ignore-file — This file contains paraphrased standards language (NIST 800-53, HIPAA §164.312) used as few-shot exemplars for AI output. All quoted standards text is paraphrased/summarized; any remaining near-verbatim phrasing is permitted under fair-use for internal model prompting. Entries without an 'output' field are metadata and ignored by the loader."
+  },
+  {
+    "description": "Gap analysis for a mid-size SaaS company on NIST 800-53 AC controls",
+    "input_summary": "Organization has 3 AC controls implemented, 15 not started. Primary app is cloud SaaS.",
+    "output": {
+      "executive_summary": "The organization has significant gaps in Access Control (AC) compliance under NIST 800-53 Rev 5. Only 3 of 18 AC controls are implemented, yielding an AC implementation rate of 16.7% — well below the 80% threshold required for ATO readiness. The most critical gaps center on privileged access management and session controls, which together represent the highest regulatory risk and potential for material finding in an audit.",
+      "audit_readiness_score": 22,
+      "gaps": [
+        {
+          "control_id": "AC-2",
+          "framework": "NIST_800_53",
+          "title": "Account Management — No formal provisioning/deprovisioning process",
+          "severity": "critical",
+          "description": "No documented account lifecycle process. Joiners/movers/leavers are managed ad-hoc. Auditors will flag the absence of an access review cadence and formal approval workflow as a material weakness under AC-2(1) and AC-2(3). Risk: unauthorized access from orphaned accounts.",
+          "evidence_required": ["User access request records", "Quarterly access review reports", "HR offboarding confirmations linked to account revocation"],
+          "estimated_effort_days": 21
+        },
+        {
+          "control_id": "AC-3",
+          "framework": "NIST_800_53",
+          "title": "Access Enforcement — Role-based access not consistently applied",
+          "severity": "high",
+          "description": "Access enforcement relies on application-level checks without a centralized RBAC policy. AC-3 requires enforcement of approved authorizations at the system boundary. Current approach creates inconsistent enforcement when new services are added.",
+          "evidence_required": ["RBAC policy document", "IAM role assignments export", "Access control matrix"],
+          "estimated_effort_days": 14
+        }
+      ],
+      "remediation_roadmap": {
+        "immediate": [
+          "Disable or document all dormant accounts (>90 days inactive) — directly addresses AC-2 finding",
+          "Export current IAM role assignments and review for least-privilege violations"
+        ],
+        "short_term": [
+          "Implement formal access request and approval workflow (ticketed change request with CAB approval)",
+          "Define and publish RBAC matrix for all production systems"
+        ],
+        "medium_term": [
+          "Automate quarterly access reviews with evidence capture",
+          "Integrate HR offboarding to trigger immediate account suspension"
+        ]
+      }
+    }
+  },
+  {
+    "description": "Gap analysis for a healthcare org on HIPAA Security Rule technical safeguards",
+    "input_summary": "Small healthcare provider, 2 technical safeguards implemented out of 8.",
+    "output": {
+      "executive_summary": "Critical HIPAA Security Rule gaps in Technical Safeguards (§164.312) place the organization at risk of OCR enforcement. Only 2 of 8 technical safeguard requirements are addressed. The most severe gaps — audit controls and transmission security — directly expose ePHI to unauthorized disclosure and create liability under 45 CFR §164.312(b) and §164.312(e)(1).",
+      "audit_readiness_score": 25,
+      "gaps": [
+        {
+          "control_id": "§164.312(b)",
+          "framework": "HIPAA",
+          "title": "Audit Controls — No system activity logging for ePHI access",
+          "severity": "critical",
+          "description": "HIPAA §164.312(b) requires hardware, software, and procedural mechanisms that record and examine activity in systems containing ePHI. No centralized audit log for ePHI access exists. In an OCR investigation, absence of audit logs is treated as an inability to detect or investigate breaches — a standalone violation.",
+          "evidence_required": ["Audit log configuration screenshots", "Sample log entries showing user, timestamp, action on ePHI", "Log retention policy"],
+          "estimated_effort_days": 10
+        }
+      ],
+      "remediation_roadmap": {
+        "immediate": ["Enable access logging on EHR and any system touching ePHI immediately"],
+        "short_term": ["Implement centralized SIEM ingesting ePHI system logs", "Establish 6-year log retention policy"],
+        "medium_term": ["Automated alerting on anomalous ePHI access patterns"]
+      }
+    }
+  }
+]

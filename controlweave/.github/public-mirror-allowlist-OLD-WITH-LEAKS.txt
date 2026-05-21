@@ -1,0 +1,170 @@
+# Public mirror allowlist for Controlweaver (community/open source repository).
+# One glob/path per line. Lines beginning with # are comments.
+#
+# This mirror includes core compliance management features:
+# - Framework and control management
+# - Assessment workflows
+# - Auditor workspace
+# - User and role management
+# - Policy and POAM tracking
+# - AI-powered analysis (with provider API keys)
+# - Audit logging and notifications
+
+# Top-level
+README.md
+LICENSE
+QUICK_START.md
+.gitignore
+OPTIMIZATION_SUMMARY.md
+
+# GitHub workflows and mirror config
+.github/workflows/ci.yml
+.github/public-mirror-allowlist.txt
+
+# Public docs (free tier only)
+docs/openapi.yaml
+docs/POSITIONING_GUARDRAILS.md
+docs/SMALL_START_DEPLOYMENT_PROFILE.md
+docs/CONTENT_PACKS.md
+docs/MCP_SETUP.md
+docs/PUBLIC_MIRROR_SETUP.md
+
+# Backend core files
+backend/package.json
+backend/apply-migration.mjs
+backend/run-migration.js
+
+# Backend migrations (core schema)
+backend/migrations/001_initial_schema.sql
+backend/migrations/002_user_roles_auth.sql
+backend/migrations/003_frameworks.sql
+backend/migrations/004_controls.sql
+backend/migrations/005_assessments.sql
+backend/migrations/006_evidence.sql
+backend/migrations/007_implementations.sql
+backend/migrations/008_audit_logs.sql
+backend/migrations/009_control_crosswalks.sql
+backend/migrations/010_assessment_procedures.sql
+backend/migrations/011_notifications.sql
+backend/migrations/012_control_health.sql
+backend/migrations/013_framework_adoption.sql
+backend/migrations/014_content_packs.sql
+backend/migrations/015_control_exceptions.sql
+backend/migrations/016_policies.sql
+backend/migrations/017_policy_engine.sql
+backend/migrations/018_poam.sql
+backend/migrations/019_owasp_llm_top10.sql
+backend/migrations/020_compliance_snapshot.sql
+backend/migrations/021_auditor_workspace.sql
+backend/migrations/022_auditor_engagements.sql
+backend/migrations/023_performance_monitoring.sql
+backend/migrations/024_framework_update_june2024.sql
+backend/migrations/025_dashboard_builder.sql
+backend/migrations/026_passkeys.sql
+backend/migrations/027_trial_tiering_and_billing.sql
+
+# Backend source (core application)
+backend/src/server.js
+backend/src/config/database.js
+backend/src/config/security.js
+backend/src/config/tierPolicy.js
+
+# Backend middleware (all free)
+backend/src/middleware/auth.js
+backend/src/middleware/rateLimit.js
+backend/src/middleware/performanceMonitoring.js
+backend/src/middleware/validate.js
+
+# Backend routes (core features)
+backend/src/routes/ai.js
+backend/src/routes/aiMonitoring.js
+backend/src/routes/assessments.js
+backend/src/routes/assets.js
+backend/src/routes/audit.js
+backend/src/routes/auditFields.js
+backend/src/routes/auditorWorkspace.js
+backend/src/routes/auth.js
+backend/src/routes/controlHealth.js
+backend/src/routes/controls.js
+backend/src/routes/dashboard.js
+backend/src/routes/dashboardBuilder.js
+backend/src/routes/dataGovernance.js
+backend/src/routes/dynamicConfig.js
+backend/src/routes/exceptions.js
+backend/src/routes/externalAiKeys.js
+backend/src/routes/frameworks.js
+backend/src/routes/implementations.js
+backend/src/routes/integrationsHub.js
+backend/src/routes/notifications.js
+backend/src/routes/ops.js
+backend/src/routes/orgSettings.js
+backend/src/routes/organizations.js
+backend/src/routes/passkeys.js
+backend/src/routes/performance.js
+backend/src/routes/phase6.js
+backend/src/routes/platformAdmin.js
+backend/src/routes/poam.js
+backend/src/routes/policies.js
+backend/src/routes/realtime.js
+backend/src/routes/roles.js
+backend/src/routes/sso.js
+backend/src/routes/users.js
+backend/src/routes/webhooks.js
+
+# Backend services
+backend/src/services/llmService.js
+backend/src/services/orgContextService.js
+backend/src/services/jobService.js
+backend/src/services/webhookService.js
+backend/src/services/reminderService.js
+
+# Backend utilities
+backend/src/utils/logger.js
+
+# Backend scripts
+backend/scripts/check-syntax.js
+backend/scripts/check-db.js
+backend/scripts/migrate-all.js
+backend/scripts/run-migration.js
+backend/scripts/ip-hygiene-check.js
+backend/scripts/seed-frameworks.js
+backend/scripts/seed-missing-controls.js
+backend/scripts/seed-assessment-procedures.js
+backend/scripts/seed-assessment-procedures-expansion.js
+backend/scripts/seed-assessment-procedures-summary.js
+
+# Frontend app
+frontend/package.json
+frontend/next.config.ts
+frontend/postcss.config.mjs
+frontend/next-env.d.ts
+frontend/tsconfig.json
+frontend/scripts/build-safe.js
+frontend/public/**
+
+# Frontend core source
+frontend/src/app/layout.tsx
+frontend/src/app/page.tsx
+frontend/src/app/login/**
+frontend/src/app/register/**
+
+# Frontend dashboard
+frontend/src/app/dashboard/layout.tsx
+frontend/src/app/dashboard/page.tsx
+frontend/src/app/dashboard/controls/**
+frontend/src/app/dashboard/assessments/**
+frontend/src/app/dashboard/frameworks/**
+frontend/src/app/dashboard/audit/**
+frontend/src/app/dashboard/auditor-workspace/**
+frontend/src/app/dashboard/operations/**
+frontend/src/app/dashboard/settings/**
+
+# Frontend components (shared)
+frontend/src/components/AICopilot.tsx
+frontend/src/components/DashboardLayout.tsx
+frontend/src/components/Sidebar.tsx
+
+# ControlWeave SDK
+controlweave-sdk/README.md
+controlweave-sdk/package.json
+controlweave-sdk/src/**

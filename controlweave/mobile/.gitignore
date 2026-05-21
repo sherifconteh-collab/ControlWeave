@@ -1,0 +1,18 @@
+# iOS build artifacts
+ios/ControlWeave/ControlWeave.xcodeproj/xcuserdata/
+ios/ControlWeave/ControlWeave.xcworkspace/
+ios/ControlWeave/DerivedData/
+ios/ControlWeave/.build/
+
+# Android build artifacts
+android/ControlWeave/.gradle/
+android/ControlWeave/app/build/
+android/ControlWeave/local.properties
+
+# Firebase config (contains sensitive keys — add via CI secrets)
+android/ControlWeave/app/google-services.json
+
+# Secrets
+*.env
+*.keystore
+*.jks

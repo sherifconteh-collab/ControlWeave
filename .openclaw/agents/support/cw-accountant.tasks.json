@@ -1,0 +1,23 @@
+{
+  "agentName": "ControlWeave Accountant",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "daily-billing-health",
+      "schedule": "0 9 * * 1,3,5",
+      "instruction": "Perform a daily billing and subscriber health check:\n1. Use ControlWeave MCP to pull organization tier distribution\n2. Identify any organizations with billing_status = \"past_due\" or \"canceled\"\n3. Check for trials expiring within the next 3 days\n4. Note any new paid subscriptions since yesterday\n5. Flag any anomalies (unexpected tier changes, billing failures)\n6. Post a brief billing summary to #cw-gtm-alerts if any action items found\n\nFocus on: past-due accounts, expiring trials, and new subscriber onboarding."
+    },
+    {
+      "taskType": "audit",
+      "taskName": "weekly-revenue-report",
+      "schedule": "0 15 * * 5",
+      "instruction": "Compile the weekly revenue and subscriber report:\n1. Use ControlWeave MCP to pull all organization billing data\n2. Count subscribers by tier: Free, Pro, Enterprise, GovCloud\n3. Identify new signups this week, churned accounts, and tier changes (upgrades/downgrades)\n4. Calculate trial conversion rate (trials that converted to paid this week)\n5. Flag any past-due accounts that need attention\n6. Post the report summary to #cw-gtm-alerts\n\nFormat the report with clear sections: Subscriber Snapshot, New This Week, Churn, Trials, Action Items."
+    }
+    ,{
+      "taskType": "monitoring",
+      "taskName": "billing-code-review",
+      "schedule": "0 9 * * 2,5",
+      "instruction": "Review recent Stripe billing code changes for integration issues:\n1. Check GitHub for recent commits (last 3 days) touching src/routes/billing.js or src/services/stripeService.js\n2. Scan for billing integration vulnerabilities:\n   - Webhook signature verification removed or weakened\n   - Raw body middleware missing on the webhook route\n   - Hardcoded Stripe price IDs instead of lookup keys\n   - Incorrect lookup key to tier mapping (pro_monthly/pro_annual → pro, enterprise_monthly/enterprise_annual → enterprise)\n3. Check GitHub for open issues labeled 'billing' or 'stripe' with no activity in 3+ days\n4. For each confirmed billing code issue without an existing open GitHub issue: call github_create_issue with title '[P{severity}] Billing: {issue}', labels (severity:p1 or severity:p2, billing), with the commit reference and specific concern\n5. Post a summary to #cw-gtm-alerts\n\nFocus on: webhook security, lookup key usage, tier mapping accuracy. GovCloud uses custom contracts — no Stripe lookup keys."
+    }
+  ]
+}

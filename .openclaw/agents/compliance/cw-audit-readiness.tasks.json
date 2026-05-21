@@ -1,0 +1,5 @@
+{
+  "agentName": "ControlWeave Audit Readiness Agent",
+  "_note": "Now runs as Step 2 of ADK compliance_pipeline.py. This file is kept for reference only.",
+  "tasks": []
+}

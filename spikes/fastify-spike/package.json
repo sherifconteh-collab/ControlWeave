@@ -1,0 +1,20 @@
+{
+  "name": "controlweave-fastify-spike",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Isolated benchmark spike comparing Express vs Fastify for a handful of representative ControlWeaver route shapes. Not part of the production build.",
+  "engines": {
+    "node": ">=20.16.0"
+  },
+  "scripts": {
+    "start:express": "node apps/express-app.js",
+    "start:fastify": "node apps/fastify-app.js",
+    "bench": "node bench.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "fastify": "5.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "autocannon": "^7.15.0"
+  }
+}

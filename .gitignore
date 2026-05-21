@@ -1,0 +1,31 @@
+
+# Temp/one-off scripts
+controlweave/backend/trigger-all-agents.js
+controlweave/backend/scripts/tmp-login.json
+
+# CI/CD Pipeline Generated Files
+aibom.json
+AIBOM-SUMMARY.md
+sbom-*.json
+*-audit.json
+trivy-*.json
+trivy-*.sarif
+vulnerability-review.json
+vulnerability-review.md
+security-report.html
+consolidated-security-report.html
+github-issues.json
+zap-*.html
+zap-*.json
+*-codeql-results.sarif
+gitleaks-report.json
+trufflehog-results.json
+qa-report.md
+# OpenClaw secrets
+.openclaw/.env
+.openclaw/*.secret
+
+# CI-generated reports (uploaded as artifacts, not committed)
+doc-sync-report.json
+doc-staleness-report.json
+

@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-10_x"]
+
+[phases.install]
+cmds = ["npm ci --production=false || npm install --production=false"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start:railway"

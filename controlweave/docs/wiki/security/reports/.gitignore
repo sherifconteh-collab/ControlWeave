@@ -1,0 +1,5 @@
+# STIG assessment reports are generated at runtime by:
+#   node scripts/assess-stig-compliance.js
+# Do not commit generated report files — they are point-in-time snapshots.
+*.cklb
+*.json

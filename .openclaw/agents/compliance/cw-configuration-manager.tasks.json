@@ -1,0 +1,11 @@
+{
+  "agentName": "ControlWeave Configuration Manager",
+  "tasks": [
+    {
+      "taskType": "audit",
+      "taskName": "weekly-cm-baseline-audit",
+      "schedule": "0 14 * * 2",
+      "instruction": "Perform a weekly configuration management audit:\n1. Use ControlWeave MCP to check configuration baseline status across organizations\n2. Verify that released baselines have not been modified without change control requests\n3. Check for configuration items in draft status that need review\n4. Identify change control requests that are pending or overdue\n5. Verify the deployment configuration matches the approved baseline (no drift)\n6. Post findings to #cw-gtm-alerts if any unauthorized changes or overdue items found\n\nFocus on: baseline integrity, unauthorized changes, overdue CCRs, and configuration drift."
+    }
+  ]
+}

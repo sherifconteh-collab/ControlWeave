@@ -1,0 +1,22 @@
+title = "ControlWeave Gitleaks Configuration"
+
+[allowlist]
+  description = "Allowlist for documentation example tokens and placeholder values"
+  # Suppress findings where the detected secret is clearly a placeholder
+  stopwords = [
+    "YOUR_TOKEN",
+    "YOUR_JWT_TOKEN",
+    "YOUR_JWT",
+    "ADMIN_TOKEN",
+    "COMPLIANCE_MANAGER_TOKEN",
+    "your-jwt-token",
+    "your_token",
+    "your-token",
+    "placeholder",
+  ]
+  # Suppress findings in documentation and example files
+  paths = [
+    '''(?i)\.md$''',
+    '''(?i)\.example$''',
+    '''(?i)\.env\.example$''',
+  ]

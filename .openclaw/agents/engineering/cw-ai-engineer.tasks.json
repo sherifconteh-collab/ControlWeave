@@ -1,0 +1,11 @@
+{
+  "agentName": "ControlWeave AI Engineer",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "ai-integration-health",
+      "schedule": "0 8 * * 2,4",
+      "instruction": "Monitor the ControlWeave AI integration layer:\n1. Use ControlWeave MCP to verify AI-powered endpoints are returning valid responses (gap analysis, compliance forecasting, copilot)\n2. Check GitHub for any open issues labeled 'ai' or 'llm' — note unresolved ones older than 3 days\n3. Review recent commits touching src/services/llm/ or AI-related routes for: missing provider fallback logic, unhandled rate limit errors, prompt injection risks, BYOK key handling mistakes\n4. Check that tier-based AI rate limits are enforced in recent changes (Free: 10/month, Starter: 50/month)\n5. For each confirmed AI integration failure or security issue without an existing open GitHub issue: call github_create_issue with title '[P{severity}] AI: {finding}', labels (severity:p1 or severity:p2, ai-integration), and details\n6. Post a summary to #cw-gtm-alerts\n\nFocus on: provider failures, prompt injection risks, BYOK key exposure, rate limit bypass, missing org context in AI calls."
+    }
+  ]
+}

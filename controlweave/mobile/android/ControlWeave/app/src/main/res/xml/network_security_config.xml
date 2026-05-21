@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android Network Security Configuration
+    https://developer.android.com/training/articles/security-config
+
+    Enforces HTTPS-only traffic for all domains. Cleartext (HTTP) traffic is
+    disabled globally via android:usesCleartextTraffic="false" in the manifest,
+    and this file provides an explicit, auditable record of the same policy.
+
+    Before release:
+      1. Replace the placeholder trust-anchor comment below with your server's
+         certificate pinning configuration if required by your security policy.
+      2. Remove the <debug-overrides> block (or move it behind a Gradle build
+         type check) so debug configuration does not ship in release APKs.
+-->
+<network-security-config>
+
+    <!-- Apply HTTPS-only globally; trust the system CA store for all domains -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+        Debug overrides: allow debug builds to trust user-installed CAs
+        (e.g., a local Charles Proxy certificate for testing).
+        This block is INACTIVE in release builds (android:debuggable="false")
+        but the XML element remains in the APK. The trust anchors inside are
+        only applied when the build is debuggable.
+    -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
+</network-security-config>

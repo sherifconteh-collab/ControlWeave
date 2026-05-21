@@ -1,0 +1,11 @@
+{
+  "agentName": "ControlWeave Frontend Developer",
+  "tasks": [
+    {
+      "taskType": "monitoring",
+      "taskName": "frontend-pattern-review",
+      "schedule": "0 8 * * 3",
+      "instruction": "Review recent frontend code changes for pattern violations and quality issues:\n1. Check GitHub for recent commits (last 3 days) touching the frontend/src/ directory\n2. Scan for violations of ControlWeave frontend patterns:\n   - Non-TypeScript files (.js) added where .ts/.tsx is expected\n   - Class components instead of functional components with hooks\n   - Direct fetch() calls instead of Axios with the NEXT_PUBLIC_API_URL base\n   - Missing tier checks before rendering premium features\n   - AuthContext bypassed or tokens accessed from localStorage directly\n3. Check GitHub for open issues labeled 'frontend' or 'ui' older than 5 days with no activity\n4. For each confirmed pattern violation without an existing open GitHub issue: call github_create_issue with title '[P{severity}] Frontend: {violation}', labels (severity:p2 or severity:p3, frontend), file path and description\n5. Post a summary to #cw-gtm-alerts\n\nFocus on: TypeScript strict mode, AuthContext patterns, tier-aware rendering, Axios usage."
+    }
+  ]
+}

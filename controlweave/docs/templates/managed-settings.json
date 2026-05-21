@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "mcp__controlweave__grc_health",
+      "mcp__controlweave__grc_whoami",
+      "mcp__controlweave__grc_list_frameworks",
+      "mcp__controlweave__grc_get_dashboard_stats",
+      "mcp__controlweave__grc_list_controls",
+      "mcp__controlweave__grc_update_control_implementation",
+      "mcp__controlweave__grc_list_evidence",
+      "mcp__controlweave__grc_get_evidence",
+      "mcp__controlweave__grc_link_evidence",
+      "mcp__controlweave__grc_unlink_evidence",
+      "mcp__controlweave__grc_update_evidence",
+      "mcp__controlweave__grc_get_crosswalk_mappings",
+      "mcp__controlweave__grc_list_assessment_procedures",
+      "mcp__controlweave__grc_list_assets",
+      "mcp__controlweave__grc_create_asset"
+    ],
+    "deny": [
+      "Bash(curl *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "disableBypassPermissionsMode": "disable",
+  "mcpServers": {
+    "controlweave": {
+      "command": "node",
+      "args": ["C:\\Program Files\\ControlWeave\\backend\\scripts\\mcp-server-secure.js"],
+      "env": {
+        "GRC_API_BASE_URL": "https://your-controlweave-backend.example.com/api/v1",
+        "GRC_API_TOKEN": "${CONTROLWEAVE_TOKEN}",
+        "NODE_ENV": "production",
+        "MCP_RATE_LIMIT": "30",
+        "MCP_ENABLE_AUDIT_LOG": "true"
+      }
+    }
+  },
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "cleanupPeriodDays": 7
+}
