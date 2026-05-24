@@ -1,5 +1,116 @@
 # Release Notes
 
+## v4.2.0 -- May 24, 2026
+
+> **Release Date**: 2026-05-24
+> **Version**: 4.2.0
+> **Migrations**: 107, 108, 109
+> **Frameworks**: 44 total (860+ controls, 360+ crosswalk mappings)
+
+### Overview
+
+**Phase 3 — Enterprise & Scale.** This release adds six major capability areas: a custom compliance framework builder, advanced executive analytics and scheduled report delivery, MSP multi-tenant org hierarchy with delegated admin, three new continuous monitoring connectors (AWS Security Hub, Qualys VMDR, ITSM/Change), four new compliance frameworks (CIS Controls v8, FedRAMP High Baseline, plus 200+ additional crosswalk pairs across existing frameworks), and a comprehensive FedRAMP-ready deployment guide. The release also resolves IP hygiene violations, eliminates two N+1 query patterns, and hardens the CI pipeline against branch naming and frontend API coverage regressions.
+
+---
+
+### Added
+
+#### Custom Framework Builder (migration 107)
+
+- New `custom_frameworks` and `custom_framework_controls` tables with Row-Level Security applied at the organization scope.
+- Full CRUD API at `GET/POST /api/v1/frameworks/custom`, `GET/PUT/DELETE /api/v1/frameworks/custom/:id`.
+- Control management: `POST /api/v1/frameworks/custom/:id/controls`, `PUT/DELETE /api/v1/frameworks/custom/:id/controls/:controlId`.
+- Publish workflow: `POST /api/v1/frameworks/custom/:id/publish` — makes the framework selectable org-wide.
+- Clone workflow: `POST /api/v1/frameworks/custom/clone/:sourceCode` — copies all controls from any seeded framework as a starting point.
+- Frontend builder at `/dashboard/frameworks/custom`: framework list, drag-to-reorder controls, inline edit, publish toggle, and "Clone from existing" modal.
+- Route registered in `server.js` as `/api/v1/frameworks/custom`.
+
+#### Advanced Analytics & Reporting (migration 108)
+
+- `compliance_snapshots` table tracks daily per-organization, per-framework compliance percentages (unique on `organization_id, framework_id, snapshot_date`).
+- `scheduled_reports` table supports configured report delivery jobs with `report_type` (compliance_summary, framework_gap, evidence_status, audit_trail, executive), `schedule` (daily, weekly, monthly, quarterly), and `recipients` JSONB.
+- New `GET /api/v1/reports/executive` endpoint — cross-framework executive summary aggregated from compliance_snapshots.
+- New `GET /api/v1/reports/trend/framework/:frameworkId` — per-framework historical trend data from snapshots.
+- New scheduled reports CRUD API at `/api/v1/reports/scheduled` with `POST /api/v1/reports/scheduled/:id/run` for manual trigger.
+- `jobService.js` extended with `compliance_snapshot` job type (set-based single-query upsert across all org/framework pairs) and `scheduled_report_run` job type.
+- New script `controlweave/backend/scripts/snapshot-compliance.js` — writes daily compliance snapshots for all active framework/org pairs via the platform_jobs queue.
+- Executive analytics dashboard at `/dashboard/reports/executive`: compliance trend line chart (90-day / 1-year), cross-framework score table, scheduled report management.
+
+#### MSP Multi-Tenant Org Hierarchy (migration 109)
+
+- `organizations.parent_org_id` UUID column (FK to `organizations`, `ON DELETE SET NULL`) with index.
+- `org_delegated_admins` table: parent to child user grant records with `granted_by`, `granted_at`, `expires_at`, and unique constraint on `(parent_org_id, child_org_id, user_id)`.
+- New org hierarchy endpoints: `GET /api/v1/organizations/children`, `POST /api/v1/organizations/children`, `GET /api/v1/organizations/children/:childId/summary`, `POST /api/v1/organizations/children/:childId/delegate`, `DELETE /api/v1/organizations/children/:childId/delegate/:userId`.
+- MSP management page at `/dashboard/platform/managed-orgs`: org tree panel, per-child compliance score cards, delegate admin grant/revoke UI.
+
+#### Continuous Monitoring Connector Templates
+
+- Three new connector templates added to the existing `DEFAULT_CONNECTOR_TEMPLATES` array in `integrationsHub.js`:
+  - **AWS Security Hub** — polls findings via AWS SDK; maps severity to control status; supports `region`, `roleArn`, `accessKeyId`, and `secretAccessKey` config fields.
+  - **Qualys VMDR** — REST API connector that maps QID detections to CIS/NIST control IDs; supports tag-based filtering.
+  - **ITSM / Change Management** — links closed incidents and change records to control implementation evidence.
+- Corresponding thin adapter services: `awsSecurityHubService.js`, `qualysService.js`, `serviceNowService.js`.
+- New connectors appear automatically in the existing integrations UI at `/dashboard/integrations`.
+
+#### New Compliance Frameworks
+
+- **CIS Controls v8** (`cis_controls_v8`) — 18 top-level controls (CIS-1 through CIS-18) with IG-level priority and control type metadata. Crosswalk pairs to NIST 800-53 Rev 5 (15 pairs) and NIST CSF 2.0 (8 pairs).
+- **FedRAMP High Baseline** (`fedramp_high`) — 25 High-only additions beyond the existing `fedramp_moderate` framework (FRH-* prefix). Covers AC, AU, IA, SC, SI, SA, CP, IR, PE, PS, RA, PL control families. Crosswalk pairs to NIST 800-53 Rev 5 (18 pairs).
+- **203 additional crosswalk mappings** added across CMMC 2.0, NIST 800-171, PCI DSS v4, HIPAA, HITECH, GDPR, CCPA/CPRA, ISO 27701, 27017, 27018, 27005, 31000, 42005, NERC CIP, and NIST Privacy frameworks.
+- Framework library now: **44 frameworks, 860+ controls, 360+ crosswalk pairs**.
+
+#### FedRAMP Deployment Guide
+
+- New `controlweave/docs/FEDRAMP_DEPLOYMENT_GUIDE.md` covering:
+  - FedRAMP Moderate vs. High impact levels and which framework codes to use.
+  - Architecture requirements for High baseline (GovCloud topology, PostgreSQL AES-256 at rest, TLS 1.2+, FIPS cipher suites).
+  - Required and recommended environment variables (DB_SSL_MODE, ENCRYPTION_KEY, AUDIT_LOG_RETENTION_DAYS, MFA_REQUIRED, SESSION_TIMEOUT_MINUTES).
+  - Pre-flight security checklist referencing critical migrations (013, 091, 104, 106-109).
+  - Audit log mapping: which `audit_logs.event_type` values satisfy NIST AU-2 through AU-12.
+  - Backup and recovery targets: RTO 4 hours, RPO 1 hour via continuous WAL archiving.
+  - Network controls: inbound 443 only, WAF with OWASP CRS 3.3+.
+  - Incident response: 1-hour notification requirement for FedRAMP High (IR-6, FRH-IR-4(4)).
+  - ConMon deliverables checklist: vulnerability scans, POA&M, monthly snapshots, annual pen test.
+
+---
+
+### Changed
+
+- **PostgreSQL minimum version** raised from 15+ to **17+** (required minimum; latest stable recommended). Updated in `CLAUDE.md`, `FEDRAMP_DEPLOYMENT_GUIDE.md`, and `README.md`.
+- **`runComplianceSnapshot` in `jobService.js`** refactored from an O(N x M) nested loop with per-row queries to a single set-based `INSERT ... SELECT ... GROUP BY ... ON CONFLICT DO UPDATE` covering all org/framework pairs in one round trip.
+- **Clone route in `customFrameworks.js`** refactored from a per-control INSERT loop to a single `INSERT INTO custom_framework_controls ... SELECT ... ROW_NUMBER() OVER (ORDER BY control_id)`.
+- **`customFrameworks.js` PUT handler** — field update params changed from `field || null` (which coerced empty string to null) to `field !== undefined ? field : null`, preserving empty strings and preventing spurious NOT NULL constraint violations.
+- **`qualysService.js`** — JSON parse error handling now preserves the raw response body (first 200 bytes) in `{ _parseError, _rawBody }` rather than swallowing the original body context.
+- **ITSM connector template** label and description changed from a vendor brand name to the vendor-neutral "ITSM / Change Management" across `integrationsHub.js`, `serviceNowService.js`, and `FEDRAMP_DEPLOYMENT_GUIDE.md` to comply with IP hygiene policy (connector `type` field retains `servicenow` for backward compatibility, annotated with `// ip-hygiene:ignore`).
+- **migration 109_org_hierarchy.sql** — `parent_org_id` FK now includes `ON DELETE SET NULL` to allow parent org deletion without blocking.
+
+---
+
+### Fixed (CI & Review)
+
+- **IP hygiene**: 6 competitor brand references resolved — all product-facing text now uses vendor-neutral terms; `// ip-hygiene:ignore` annotations added only where the internal API key string must be preserved. Confirmed 0 violations.
+- **Branch naming CI** (`cm-branch-naming.yml`): added `claude/` prefix exemption (mirrors existing `copilot/` exemption) so agent-created branches are not rejected by the CM naming policy.
+- **TEVV-API-11** (frontend API client coverage): added `customFrameworksAPI` and `scheduledReportsAPI` export objects to `controlweave/frontend/src/lib/api.ts`, covering all 10 custom-framework and 5 scheduled-report backend endpoints. Confirmed TEVV check passes at 0 failures.
+
+---
+
+### Database Migrations
+
+| Migration | Description |
+|-----------|-------------|
+| `107_custom_frameworks.sql` | `custom_frameworks` + `custom_framework_controls` tables with RLS |
+| `108_compliance_snapshots.sql` | `compliance_snapshots` + `scheduled_reports` tables |
+| `109_org_hierarchy.sql` | `parent_org_id` column + `org_delegated_admins` table |
+
+### Upgrade Notes
+
+1. Run `npm run migrate` from `controlweave/backend/` to apply migrations 107, 108, 109.
+2. Run `node scripts/seed-frameworks.js` to seed CIS Controls v8, FedRAMP High, and new crosswalk pairs.
+3. No environment variable changes are required. The new features are available immediately after migration.
+4. For FedRAMP deployments, see `controlweave/docs/FEDRAMP_DEPLOYMENT_GUIDE.md` for the full hardening checklist.
+
+---
+
 ## v4.0.0 -- May 21, 2026
 
 > **Release Date**: 2026-05-21

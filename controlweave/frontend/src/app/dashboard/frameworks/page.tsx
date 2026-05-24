@@ -1,7 +1,7 @@
 // @tier: community
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,6 +76,10 @@ export default function FrameworksPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [importingId, setImportingId] = useState<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const importTargetRef = useRef<{ frameworkId: string; frameworkCode: string } | null>(null);
 
   const loadFrameworks = useCallback(async () => {
     try {
@@ -223,6 +227,50 @@ export default function FrameworksPage() {
     }
   };
 
+  const handleExport = useCallback(async (frameworkId: string, frameworkCode: string, format: 'csv' | 'xlsx' = 'csv') => {
+    if (!user?.organizationId) return;
+    setExportingId(frameworkId);
+    try {
+      const response = await organizationAPI.exportControlAnswers(user.organizationId, { frameworkId, format });
+      const url = URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${frameworkCode}-controls-export.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setMessage({ type: 'error', text: 'Export failed. Please try again.' });
+    } finally {
+      setExportingId(null);
+    }
+  }, [user?.organizationId]);
+
+  const handleImportClick = useCallback((frameworkId: string, frameworkCode: string) => {
+    importTargetRef.current = { frameworkId, frameworkCode };
+    importFileRef.current?.click();
+  }, []);
+
+  const handleImportFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const target = importTargetRef.current;
+    if (!file || !target || !user?.organizationId) return;
+    setImportingId(target.frameworkId);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await organizationAPI.importControlAnswers(user.organizationId, formData, { mode: 'merge' });
+      const summary = response.data?.data?.summary;
+      const updated = summary?.updated ?? summary?.rows_processed ?? '?';
+      const skipped = summary?.skipped ?? summary?.rows_skipped ?? 0;
+      setMessage({ type: 'success', text: `Import complete: ${updated} controls updated, ${skipped} skipped.` });
+    } catch {
+      setMessage({ type: 'error', text: 'Import failed. Check your file format and try again.' });
+    } finally {
+      setImportingId(null);
+      if (importFileRef.current) importFileRef.current.value = '';
+    }
+  }, [user?.organizationId]);
+
   const totalControls = frameworks
     .filter((f) => selectedFrameworks.includes(f.id))
     .reduce((sum, f) => sum + f.controlCount, 0);
@@ -257,6 +305,13 @@ export default function FrameworksPage() {
 
   return (
     <DashboardLayout>
+      <input
+        ref={importFileRef}
+        type="file"
+        accept=".csv,.xlsx"
+        className="hidden"
+        onChange={handleImportFile}
+      />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -691,6 +746,24 @@ export default function FrameworksPage() {
                     </span>
                     <span className="text-xs text-gray-500">{framework.code}</span>
                   </div>
+                  {isSelected && (
+                    <div className="mt-3 pt-3 border-t border-purple-200 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleExport(framework.id, framework.code)}
+                        disabled={exportingId === framework.id}
+                        className="flex-1 text-xs px-3 py-1.5 rounded border border-purple-300 text-purple-700 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      >
+                        {exportingId === framework.id ? 'Exporting...' : 'Export CSV'}
+                      </button>
+                      <button
+                        onClick={() => handleImportClick(framework.id, framework.code)}
+                        disabled={importingId === framework.id}
+                        className="flex-1 text-xs px-3 py-1.5 rounded border border-purple-300 text-purple-700 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      >
+                        {importingId === framework.id ? 'Importing...' : 'Import CSV'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -606,8 +606,110 @@ router.get('/types', requirePermission('reports.read'), async (req, res) => {
       { id: 'compliance-excel', name: 'Compliance Report (Excel)', format: 'xlsx', description: 'Spreadsheet with summary, frameworks, and all controls with status' },
       { id: 'ssp-pdf', name: 'System Security Plan (SSP) PDF', format: 'pdf', description: 'Narrative SSP including organization profile, control posture, assets, vulnerabilities, evidence, and POA&M' },
       { id: 'ssp-json', name: 'System Security Plan (SSP) JSON', format: 'json', description: 'Machine-readable SSP snapshot for integrations and versioning' },
+      { id: 'executive', name: 'Executive Summary', format: 'json', description: 'Cross-framework compliance summary with trend data for executive reporting' },
     ]
   });
+});
+
+// GET /reports/executive — cross-framework executive summary from compliance snapshots
+router.get('/executive', requirePermission('reports.read'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const days = Math.min(365, Math.max(7, parseInt(req.query.days, 10) || 90));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const latestResult = await pool.query(
+      `SELECT DISTINCT ON (cs.framework_id)
+              f.code AS framework_code, f.name AS framework_name,
+              cs.snapshot_date, cs.total_controls, cs.implemented,
+              cs.partial, cs.not_implemented, cs.compliance_pct
+         FROM compliance_snapshots cs
+         JOIN frameworks f ON f.id = cs.framework_id
+        WHERE cs.organization_id = $1
+        ORDER BY cs.framework_id, cs.snapshot_date DESC`,
+      [orgId]
+    );
+
+    const trendResult = await pool.query(
+      `SELECT f.code AS framework_code, cs.snapshot_date, cs.compliance_pct
+         FROM compliance_snapshots cs
+         JOIN frameworks f ON f.id = cs.framework_id
+        WHERE cs.organization_id = $1 AND cs.snapshot_date >= $2
+        ORDER BY f.code, cs.snapshot_date ASC`,
+      [orgId, since]
+    );
+
+    const trendByFramework = {};
+    for (const row of trendResult.rows) {
+      if (!trendByFramework[row.framework_code]) trendByFramework[row.framework_code] = [];
+      trendByFramework[row.framework_code].push({
+        date: row.snapshot_date,
+        compliance_pct: parseFloat(row.compliance_pct)
+      });
+    }
+
+    const frameworks = latestResult.rows.map((row) => ({
+      ...row,
+      compliance_pct: parseFloat(row.compliance_pct),
+      trend: trendByFramework[row.framework_code] || []
+    }));
+
+    const overallPct = frameworks.length > 0
+      ? Math.round(frameworks.reduce((sum, f) => sum + f.compliance_pct, 0) / frameworks.length * 100) / 100
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        generated_at: new Date().toISOString(),
+        period_days: days,
+        overall_compliance_pct: overallPct,
+        framework_count: frameworks.length,
+        frameworks
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /reports/trend/framework/:frameworkId — per-framework compliance trend from snapshots
+router.get('/trend/framework/:frameworkId', requirePermission('reports.read'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const days = Math.min(365, Math.max(7, parseInt(req.query.days, 10) || 90));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const fwCheck = await pool.query(
+      `SELECT f.id, f.code, f.name FROM frameworks f WHERE f.id = $1`,
+      [req.params.frameworkId]
+    );
+    if (fwCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Framework not found' });
+    }
+
+    const trendResult = await pool.query(
+      `SELECT snapshot_date, total_controls, implemented, partial, not_implemented, compliance_pct
+         FROM compliance_snapshots
+        WHERE organization_id = $1 AND framework_id = $2 AND snapshot_date >= $3
+        ORDER BY snapshot_date ASC`,
+      [orgId, req.params.frameworkId, since]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        framework: fwCheck.rows[0],
+        period_days: days,
+        snapshots: trendResult.rows.map((r) => ({
+          ...r,
+          compliance_pct: parseFloat(r.compliance_pct)
+        }))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router;

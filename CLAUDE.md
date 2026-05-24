@@ -4,7 +4,7 @@
 
 **ControlWeaver** is an AI-powered Governance, Risk, and Compliance (GRC) platform. Multi-framework compliance with crosswalk intelligence, evidence automation, and AI-assisted operations.
 
-**Stack:** Express.js (Node.js 20+) backend, Next.js 16+ (TypeScript) frontend, PostgreSQL 14+ (15+ recommended; 17+ supported, raw SQL, no ORM), Railway deployment.
+**Stack:** Express.js (Node.js 20+) backend, Next.js 16+ (TypeScript) frontend, PostgreSQL 17+ (required minimum; latest stable recommended), Railway deployment.
 
 ## Critical Rules
 

@@ -26,13 +26,92 @@
 > | Field | Value |
 > |-------|-------|
 > | **Status** | Unreleased — changes staged for next release |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
 > Changes staged but not yet released to production.
 
+---
+
+
+### 📊 Tier Availability Summary
+
+| Tier | New/Changed Sections |
+|------|---------------------|
+| 🟢 Community | 0 |
+| 🟡 Pro | 0 |
+| 🔵 Enterprise | 0 |
+| ⚙️ Gov Cloud | 0 |
+| ⚙️ Internal/Infra | 0 |
+
+
+---
+
+## v3.5.0 — 2026-05-18
+
+> | Field | Value |
+> |-------|-------|
+> | **Version** | `3.5.0` |
+> | **Release date** | 2026-05-18 |
+> | **Tag** | `v3.5.0` |
+> | **Release branch** | `release/3.5.0` |
+> | **Built from** | `7bc7f84c` |
+> | **Ref** | `refs/heads/main` |
+
+
 ### Added
+- **Expanded LLM model catalog** — Added Claude 4.x models (`claude-opus-4-7`, `claude-sonnet-4-6`), GPT-4.1 family (`gpt-4.1`, `gpt-4.1-mini`, `o3`, `o4-mini`), Gemini 2.0 (`gemini-2.0-flash`, `gemini-2.0-flash-lite`), and additional Groq models (`mixtral-8x7b-32768`, `gemma2-9b-it`, `deepseek-r1-distill-llama-70b`) across all provider dropdowns in the frontend and backend `providerConfig.js`.
+- **BYOK-required AI access** — Platform no longer shares API keys with customer organizations. Each org must configure its own provider key. The `checkAIUsage` middleware now returns `422 NO_PROVIDER_CONFIGURED` before any LLM call is attempted when no key is found, replacing the previous silent 400 error from the LLM service.
+- **AI Provider Setup modal** — Global `AiProviderSetupModal` component rendered from `DashboardLayout` covers all dashboard pages. When any AI feature is invoked without a configured key, the modal appears and highlights free providers (Google Gemini, Groq, Ollama) with direct links to obtain API keys, plus a CTA to Settings → LLM Configuration.
+- **Global AI event interceptors** — Axios response interceptor in `api.ts` dispatches `ai:quota-exceeded` (429 + `upgradeRequired`) and `ai:no-provider` (422 + `NO_PROVIDER_CONFIGURED`) browser custom events; `DashboardLayout` listens and opens the appropriate modal without prop-drilling.
+- **AiQuotaModal component** — Reusable modal for future quota-enforcement scenarios with "Add your own API key" and "Upgrade plan" CTAs.
+
+### Changed
+- **TASK_PROFILES defaults updated** — `reasoning`, `chat`, and `ideation` profiles now default to `claude-sonnet-4-6` (was `claude-sonnet-4-5-20250929`) and `gpt-4.1` (was `gpt-4o`); `extraction` profile defaults to `gpt-4.1-mini` (was `gpt-4o-mini`). Existing org-level saved defaults are unaffected.
+- **Community tier AI quota** — Removed the platform-key-sharing monthly cap; `aiRequestsPerMonth` restored to `-1` (unlimited) for all tiers since each org now supplies its own key.
+- **Assets page upgrade modal removed** — The inline "Upgrade Required" modal in `assets/page.tsx` is replaced by the global `AiProviderSetupModal`; quota-exceeded errors on the assets page are now handled by the shared modal.
+
+---
+
+
+### 📊 Tier Availability Summary
+
+| Tier | New/Changed Sections |
+|------|---------------------|
+| 🟢 Community | 0 |
+| 🟡 Pro | 0 |
+| 🔵 Enterprise | 0 |
+| ⚙️ Gov Cloud | 0 |
+| ⚙️ Internal/Infra | 0 |
+
+
+---
+
+## v3.4.0 — 2026-05-16
+
+> | Field | Value |
+> |-------|-------|
+> | **Version** | `3.4.0` |
+> | **Release date** | 2026-05-16 |
+> | **Tag** | `v3.4.0` |
+> | **Release branch** | `release/3.4.0` |
+> | **Built from** | `7bc7f84c` |
+> | **Ref** | `refs/heads/main` |
+
+
+### Added
+- Redis-backed distributed rate limiting replaces per-instance in-memory Map; falls back to in-memory when Redis is absent so single-instance deployments are unaffected.
+- PostgreSQL Row-Level Security (migration 104) on `controls`, `control_implementations`, `evidence`, `audit_engagements`, `audit_logs`, and `users`; `withOrgContext(orgId, fn)` in `database.js` activates the second enforcement layer per-request without touching existing routes.  <!-- `📦 DB migration required` -->
+- Sentry error tracking: `@sentry/node` wired to Express via `setupExpressErrorHandler`; `logger.setSentryClient()` forwards error-level log events; `@sentry/nextjs` added to the frontend with `sentry.client.config.ts` and `sentry.server.config.ts`.
+- Automated database backups via `node-cron` (`backupScheduler.js`); optional S3 upload in `db-backup.js`; activated with `BACKUP_ENABLED=true`.
+- PM2 cluster mode: `ecosystem.config.js` with `instances: max`; `start:cluster` script and updated `start:railway` for Railway deployments.
+- Redis response caching for dashboard: `redisCache.js` utility (`getCached`, `invalidateCached`, `invalidateCachedPattern`) with org-scoped keys; replaces single-instance in-memory cache Map in `dashboard.js`.
+- CDN-friendly cache headers in `next.config.ts`: static assets (`/_next/static/*`) served with `Cache-Control: public, max-age=31536000, immutable`; HTML pages served with `no-cache`.
+- Refresh token rotation on `POST /refresh`: every refresh issues a new refresh token and invalidates the previous one.
+- Concurrent session limits at login: configurable via `MAX_CONCURRENT_SESSIONS` (default 10); oldest session evicted when limit is reached.
+- Optional HMAC signature layer on TPRM public endpoints: vendors send `X-TPRM-Signature: sha256=<hex>` when `TPRM_HMAC_SECRET` is configured; backward compatible with token-only auth.
+- `verifyIncomingWebhook(secret, signature, body)` in `webhookService.js` for verifying incoming webhook callbacks from external systems.  <!-- `🔔 Webhook event` -->
 - Local DB-backed integration harness at `controlweave/backend/scripts/qa-local-integration.js` for exact postcondition checks across framework adoption, control implementation, notifications, audit writes, org LLM settings, and cross-org isolation.
 
 ### Changed
@@ -67,7 +146,7 @@
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -100,7 +179,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -133,7 +212,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -166,7 +245,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -199,7 +278,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -232,7 +311,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -265,7 +344,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -298,7 +377,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -331,7 +410,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -364,7 +443,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -397,7 +476,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -437,7 +516,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -468,7 +547,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -501,7 +580,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -544,7 +623,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -582,7 +661,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -618,7 +697,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -664,7 +743,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -703,7 +782,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -734,7 +813,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -965,7 +1044,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Community tier.
+> Not available on the Free tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
@@ -1100,7 +1179,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1144,7 +1223,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1177,7 +1256,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1228,7 +1307,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `c1ae22d5` |
+> | **Built from** | `7bc7f84c` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1256,5 +1335,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-05-02T13:34:42.796Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-05-21T17:22:55.566Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->

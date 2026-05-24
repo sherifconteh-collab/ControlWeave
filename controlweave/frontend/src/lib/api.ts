@@ -1753,4 +1753,34 @@ export const pushTokensAPI = {
   unregister: (token: string) => api.delete(`/push-tokens/${encodeURIComponent(token)}`),
 };
 
+// Custom Frameworks API — org-scoped framework builder
+export const customFrameworksAPI = {
+  list: () => api.get('/frameworks/custom'),
+  create: (data: { code: string; name: string; version?: string; category?: string; description?: string }) =>
+    api.post('/frameworks/custom', data),
+  get: (id: string) => api.get(`/frameworks/custom/${id}`),
+  update: (id: string, data: { name?: string; version?: string; category?: string; description?: string }) =>
+    api.put(`/frameworks/custom/${id}`, data),
+  remove: (id: string) => api.delete(`/frameworks/custom/${id}`),
+  addControl: (id: string, data: { control_id: string; title: string; description?: string; priority?: string; control_type?: string; sort_order?: number }) =>
+    api.post(`/frameworks/custom/${id}/controls`, data),
+  updateControl: (id: string, controlId: string, data: Record<string, unknown>) =>
+    api.put(`/frameworks/custom/${id}/controls/${controlId}`, data),
+  removeControl: (id: string, controlId: string) =>
+    api.delete(`/frameworks/custom/${id}/controls/${controlId}`),
+  publish: (id: string) => api.post(`/frameworks/custom/${id}/publish`),
+  clone: (sourceCode: string, data: { code: string; name: string }) =>
+    api.post(`/frameworks/custom/clone/${sourceCode}`, data),
+};
+
+// Scheduled Reports API — automated report delivery configuration
+export const scheduledReportsAPI = {
+  list: () => api.get('/reports/scheduled'),
+  create: (data: { name: string; report_type: string; schedule: string; format?: string; recipients?: unknown[]; filters?: Record<string, unknown> }) =>
+    api.post('/reports/scheduled', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/reports/scheduled/${id}`, data),
+  remove: (id: string) => api.delete(`/reports/scheduled/${id}`),
+  run: (id: string) => api.post(`/reports/scheduled/${id}/run`),
+};
+
 export default api;

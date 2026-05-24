@@ -49,7 +49,6 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
-.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -321,6 +320,9 @@ controlweave/backend/migrations/103_findings_controls_junction.sql
 controlweave/backend/migrations/104_row_level_security.sql
 controlweave/backend/migrations/105_backup_logs.sql
 controlweave/backend/migrations/106_open_source_remove_tier_restrictions.sql
+controlweave/backend/migrations/107_custom_frameworks.sql
+controlweave/backend/migrations/108_compliance_snapshots.sql
+controlweave/backend/migrations/109_org_hierarchy.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -409,6 +411,7 @@ controlweave/backend/scripts/seed-missing-controls.js
 controlweave/backend/scripts/seed-owasp-frameworks.js
 controlweave/backend/scripts/seed-pro-test-data.js
 controlweave/backend/scripts/setup-platform-admin.js
+controlweave/backend/scripts/snapshot-compliance.js
 controlweave/backend/scripts/sync-mirror-allowlist.js
 controlweave/backend/scripts/test-au2-audit-logging.js
 controlweave/backend/scripts/test-ce-mcp-security.js
@@ -460,6 +463,7 @@ controlweave/backend/src/routes/cmdb.js
 controlweave/backend/src/routes/contacts.js
 controlweave/backend/src/routes/controlHealth.js
 controlweave/backend/src/routes/controls.js
+controlweave/backend/src/routes/customFrameworks.js
 controlweave/backend/src/routes/dashboard.js
 controlweave/backend/src/routes/dashboardBuilder.js
 controlweave/backend/src/routes/dataGovernance.js
@@ -499,6 +503,7 @@ controlweave/backend/src/routes/reports.js
 controlweave/backend/src/routes/rmf.js
 controlweave/backend/src/routes/roles.js
 controlweave/backend/src/routes/sbom.js
+controlweave/backend/src/routes/scheduledReports.js
 controlweave/backend/src/routes/serviceAccounts.js
 controlweave/backend/src/routes/siem.js
 controlweave/backend/src/routes/splunk.js
@@ -525,6 +530,7 @@ controlweave/backend/src/services/alienVaultService.js
 controlweave/backend/src/services/approvalService.js
 controlweave/backend/src/services/auditService.js
 controlweave/backend/src/services/auditorRoleTemplates.js
+controlweave/backend/src/services/awsSecurityHubService.js
 controlweave/backend/src/services/backupScheduler.js
 controlweave/backend/src/services/ce-mcp/audit-logger.js
 controlweave/backend/src/services/ce-mcp/coordinator.js
@@ -555,6 +561,7 @@ controlweave/backend/src/services/passkeyService.js
 controlweave/backend/src/services/policyGapService.js
 controlweave/backend/src/services/policyService.js
 controlweave/backend/src/services/pushService.js
+controlweave/backend/src/services/qualysService.js
 controlweave/backend/src/services/realtimeEventService.js
 controlweave/backend/src/services/reasoningMemory.js
 controlweave/backend/src/services/regulatoryImpactService.js
@@ -562,6 +569,7 @@ controlweave/backend/src/services/regulatoryNewsService.js
 controlweave/backend/src/services/reminderService.js
 controlweave/backend/src/services/riskScoringService.js
 controlweave/backend/src/services/sbomService.js
+controlweave/backend/src/services/serviceNowService.js
 controlweave/backend/src/services/siemService.js
 controlweave/backend/src/services/smartRemediationService.js
 controlweave/backend/src/services/splunkService.js
@@ -594,6 +602,7 @@ controlweave/docs/CE_MCP_SECURITY_GUIDE.md
 controlweave/docs/CE_MCP_SECURITY_QUICKREF.md
 controlweave/docs/CONTENT_PACKS.md
 controlweave/docs/DOCUMENTATION_SYSTEM.md
+controlweave/docs/FEDRAMP_DEPLOYMENT_GUIDE.md
 controlweave/docs/KNOWN_ISSUES.md
 controlweave/docs/MAESTRO_CEMCP_GUIDANCE.md
 controlweave/docs/MCP_AUTH_MIGRATION.md
@@ -840,6 +849,7 @@ controlweave/frontend/src/app/dashboard/error.tsx
 controlweave/frontend/src/app/dashboard/evidence/auto/page.tsx
 controlweave/frontend/src/app/dashboard/evidence/page.tsx
 controlweave/frontend/src/app/dashboard/evidence/pending/page.tsx
+controlweave/frontend/src/app/dashboard/frameworks/custom/page.tsx
 controlweave/frontend/src/app/dashboard/frameworks/mappings/page.tsx
 controlweave/frontend/src/app/dashboard/frameworks/nist-publications/[id]/page.tsx
 controlweave/frontend/src/app/dashboard/frameworks/page.tsx
@@ -856,6 +866,7 @@ controlweave/frontend/src/app/dashboard/platform/backups/page.tsx
 controlweave/frontend/src/app/dashboard/platform/layout.tsx
 controlweave/frontend/src/app/dashboard/platform/license/page.tsx
 controlweave/frontend/src/app/dashboard/platform/llm-status/page.tsx
+controlweave/frontend/src/app/dashboard/platform/managed-orgs/page.tsx
 controlweave/frontend/src/app/dashboard/platform/organizations/[id]/page.tsx
 controlweave/frontend/src/app/dashboard/platform/organizations/page.tsx
 controlweave/frontend/src/app/dashboard/platform/page.tsx
@@ -864,6 +875,7 @@ controlweave/frontend/src/app/dashboard/platform/settings/page.tsx
 controlweave/frontend/src/app/dashboard/plot4ai/page.tsx
 controlweave/frontend/src/app/dashboard/regulatory-news/page.tsx
 controlweave/frontend/src/app/dashboard/report-issue/page.tsx
+controlweave/frontend/src/app/dashboard/reports/executive/page.tsx
 controlweave/frontend/src/app/dashboard/reports/page.tsx
 controlweave/frontend/src/app/dashboard/rmf/page.tsx
 controlweave/frontend/src/app/dashboard/sbom/page.tsx

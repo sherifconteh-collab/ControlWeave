@@ -6,11 +6,11 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.0.0-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.2.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
-[![Frameworks](https://img.shields.io/badge/Frameworks-40-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
-[![Controls](https://img.shields.io/badge/Controls-675%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
-[![Crosswalks](https://img.shields.io/badge/Crosswalks-97-blue.svg)](./docs/CROSSWALK_GUIDE.md)
+[![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
+[![Controls](https://img.shields.io/badge/Controls-860%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
+[![Crosswalks](https://img.shields.io/badge/Crosswalks-360%2B-blue.svg)](./docs/CROSSWALK_GUIDE.md)
 
 ---
 
@@ -22,7 +22,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 
 **Core differentiators:**
 
-- **40 Frameworks, 675+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, FINRA, SEC, SR 11-7, and 29 more
+- **44 Frameworks, 860+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
 - **Auto-Crosswalk Engine** — Implement one control, automatically satisfy equivalent controls across other frameworks (40–60% effort reduction)
 - **Optional AI Insights (BYOK)** — Gap analysis, compliance forecast, audit readiness, and inline assists on controls/evidence using your own Anthropic, OpenAI, Gemini, Grok, Groq, or Ollama key. The platform works without any AI key configured.
 - **RMF Lifecycle** — Full NIST SP 800-37 Rev 2 seven-step workflow with ATO tracking
@@ -35,8 +35,14 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 
 - ✅ JWT + OAuth 2.0 authentication with TOTP 2FA and account lockout
 - ✅ RBAC with Admin, ISSE, Auditor, Read-Only, and custom roles
-- ✅ 40 compliance frameworks, 675+ controls, 97 crosswalk mappings
+- ✅ 44 compliance frameworks, 860+ controls, 360+ crosswalk mappings
 - ✅ Auto-crosswalk engine (≥90% similarity auto-satisfies controls across frameworks)
+- ✅ Custom Framework Builder — create, publish, and clone org-scoped frameworks with full control editor
+- ✅ Executive Analytics Dashboard — cross-framework compliance trends with period selector and SVG sparklines
+- ✅ Scheduled report delivery — configure daily/weekly/monthly/quarterly PDF/CSV report jobs with email recipients
+- ✅ MSP parent-child org hierarchy with delegated admin — manage child orgs and per-child compliance summaries
+- ✅ Continuous monitoring integrations — AWS Security Hub, Qualys VMDR, and ITSM/Change Management connectors
+- ✅ FedRAMP High Baseline (25 High-only controls) + FedRAMP deployment guide
 - ✅ Optional AI insights (BYOK) — gap analysis, compliance forecast, audit readiness, remediation playbooks, policy generation, and inline assists on controls and evidence
 - ✅ RMF Lifecycle module (NIST SP 800-37 Rev 2: Prepare → Authorize → Monitor)
 - ✅ Auditor Workspace with engagements, PBC requests, workpapers, findings, sign-offs
@@ -59,10 +65,11 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 ## Features
 
 ### Core Compliance Management
-- **4 Frameworks, 25 Standards & Regulations, 2 OWASP AI Standards, 1 Reference Model, 8 ISO/IEC AI Standards** (40 total) — Frameworks: NIST CSF 2.0, NIST Privacy Framework, NIST AI RMF, FISCAM; Standards & Regulations: NIST 800-53, ISO 27001, SOC 2, NIST 800-171, CMMC 2.0, GDPR, HIPAA, HITECH, FFIEC, NERC CIP, FINRA Supervisory Controls for AI, SEC AI Risk Management, SR 11-7 Model Risk Management, EU AI Act, ISO 42001, ISO 42005, ISO 27002, ISO 27005, ISO 27017, ISO 27018, ISO 27701, ISO 31000, CCPA/CPRA, State AI Governance, International AI Governance; OWASP: LLM Top 10, Agentic AI Top 10; Reference Model: NIST SP 800-207 Zero Trust Architecture; ISO/IEC AI: 23894, 38507, 22989, 23053, 5259, TR 24027, TR 24028, TR 24368
+- **44 Frameworks** across federal, security, privacy, AI governance, and enterprise categories — NIST CSF 2.0, NIST Privacy Framework, NIST AI RMF, FISCAM, NIST 800-53, ISO 27001, SOC 2, NIST 800-171, CMMC 2.0, GDPR, HIPAA, HITECH, FFIEC, NERC CIP, PCI DSS v4.0, CIS Controls v8, COBIT 2019, FedRAMP High, FedRAMP Moderate, FINRA Supervisory Controls for AI, SEC AI Risk Management, SR 11-7 Model Risk Management, EU AI Act, ISO 42001, ISO 42005, ISO 27002, ISO 27005, ISO 27017, ISO 27018, ISO 27701, ISO 31000, CCPA/CPRA, State AI Governance, International AI Governance, OWASP LLM Top 10, OWASP Agentic AI Top 10, NIST SP 800-207 Zero Trust, and 7 ISO/IEC AI standards (23894, 38507, 22989, 23053, 5259, TR 24027, TR 24028)
 - **NIST Publications Library (62 seeded references)** — Searchable NIST publication catalog with direct mappings to in-app controls and assessment tasks, available as optional best-practice guidance or mandatory baseline by organization profile
-- **675+ Controls** with broad multi-framework coverage and crosswalk mappings
-- **97 Crosswalk Mappings** — Implement one control and automatically satisfy equivalent controls across frameworks
+- **860+ Controls** with broad multi-framework coverage and crosswalk mappings
+- **360+ Crosswalk Mappings** — Implement one control and automatically satisfy equivalent controls across frameworks
+- **Custom Framework Builder** — create org-scoped frameworks with custom controls, clone from any seeded framework, and publish for org-wide use
 - **Control Implementation Tracking** — Status workflow from Not Started to Implemented with assignment and due dates
 - **Control Health Monitoring** — Real-time control health scores based on evidence age, assessment results, and implementation status
 - **Control Exceptions** — Track and manage approved exceptions with expiry dates and risk acceptance rationale
@@ -217,6 +224,9 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 - **Priority Actions** — Critical controls requiring immediate attention
 - **Recent Activity** — Live feed of compliance actions
 - **Compliance Trend** — Historical compliance trajectory
+- **Executive Summary Dashboard** — Cross-framework compliance scores, period-selectable trend sparklines (30/90/180/365 days), and per-framework compliance bars at `/dashboard/reports/executive`
+- **Compliance Snapshots** — Daily background job writes per-org per-framework compliance percentages for historical trending (run `node scripts/snapshot-compliance.js`)
+- **Scheduled Report Delivery** — Configure daily/weekly/monthly/quarterly PDF, CSV, or JSON report jobs with email recipients; manual trigger available
 - **Custom Dashboard Builder** — Drag-and-drop widget layout per user
 - **PDF/Excel Reports** — Generate audit-ready reports for stakeholders
 - **AI Insights Page** — Optional, on-demand AI analysis (gap analysis, compliance forecast, audit readiness, risk heatmap) on a dedicated page
@@ -228,6 +238,7 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 - **Password Recovery** — Forgot/reset password flow with expiring one-time reset links
 - **OAuth + SSO** — Social OAuth (Google, Microsoft, Apple, GitHub) and organization SSO (OIDC)
 - **Organization Multi-Tenancy** — Isolated data per organization
+- **MSP Parent-Child Org Hierarchy** — Parent organizations manage multiple child orgs; per-child compliance summaries; delegated admin grants with optional expiry (`/dashboard/platform/managed-orgs`)
 
 ### Notifications & Reminders
 - **Event-driven notifications** — Control verified, POA&M created, control due, assessment needed, crosswalk updates
@@ -248,7 +259,10 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 - **Outbound webhooks** — Trigger HTTP callbacks on platform events (control updates, assessment completions, evidence uploads)
 - **Webhook delivery queue** — Async delivery with retry logic and delivery history
 - **Splunk connector** — Pull SIEM search results as integrity-tracked evidence artifacts
-- **Integrations Hub** — Central page for managing all active connectors and API tokens
+- **AWS Security Hub** — Poll findings and map AWS severity labels to ControlWeaver control status
+- **Qualys VMDR** — Pull vulnerability detections and map QID severity (1–5) to control findings
+- **ITSM / Change Management** — Sync incident and change records and link closed changes to control implementation evidence
+- **Integrations Hub** — Central page for managing all active connectors and API tokens (15 connector types)
 
 ### Operations & Platform Management
 - **Job queue** — Background async job runner for long-running tasks (reports, AI analysis caching, retention)
@@ -300,7 +314,7 @@ ControlWeaver-Pro/
 │   │   │   ├── server.js           # Entry point (port 3001)
 │   │   │   ├── config/             # Database (PostgreSQL 17+), security
 │   │   │   ├── middleware/         # JWT auth, RBAC, rate limiting, validation
-│   │   │   ├── routes/             # 30+ route modules (AI, controls, CMDB, billing…)
+│   │   │   ├── routes/             # 70+ route modules (AI, controls, CMDB, custom frameworks, reports…)
 │   │   │   └── services/           # LLM abstraction, SBOM, Stripe, jobs, webhooks
 │   │   ├── migrations/             # SQL migrations up to 101 (applied in lexicographic order)
 │   │   └── scripts/                # Seeding, QA, MCP server, AIBOM generator
@@ -310,14 +324,18 @@ ControlWeaver-Pro/
 │   │       │   ├── dashboard/
 │   │       │   │   ├── controls/       # Controls list + detail
 │   │       │   │   ├── assessments/    # Assessment management + AI panel
-│   │       │   │   ├── frameworks/     # Frameworks, mappings, NIST publications
+│   │       │   │   ├── frameworks/     # Frameworks, mappings, custom builder
+│   │       │   │   │   └── custom/     # Custom framework builder
 │   │       │   │   ├── evidence/       # Evidence management
 │   │       │   │   ├── assets/         # CMDB asset views
 │   │       │   │   ├── vulnerabilities/# Vulnerability tracking + AI remediation
 │   │       │   │   ├── sbom/           # SBOM / AIBOM management
 │   │       │   │   ├── audit/          # Audit log viewer
 │   │       │   │   ├── auditor-workspace/ # External auditor portal
-│   │       │   │   ├── reports/        # Report generation
+│   │       │   │   ├── reports/        # Report generation, executive analytics
+│   │       │   │   │   └── executive/  # Cross-framework executive dashboard
+│   │       │   │   ├── platform/
+│   │       │   │   │   └── managed-orgs/ # MSP org hierarchy management
 │   │       │   │   ├── operations/     # Platform ops & job queue
 │   │       │   │   └── settings/       # LLM config, content packs, webhooks
 │   │       │   ├── login/
