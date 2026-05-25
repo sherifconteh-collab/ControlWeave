@@ -13,7 +13,7 @@
     "postinstall": "node scripts/postinstall-ajv-compat.js && node scripts/patch-eslint-ajv.js"
   },
   "dependencies": {
-    "@sentry/nextjs": "^8.55.0",
+    "@sentry/nextjs": "^10.53.1",
     "@simplewebauthn/browser": "^13.3.0",
     "axios": "^1.15.0",
     "date-fns": "^4.1.0",
