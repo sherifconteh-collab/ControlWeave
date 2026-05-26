@@ -19,7 +19,7 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^1.16.0",
     "next": "^16.2.4",
-    "react": "^19.0.0",
+    "react": "^19.2.6",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0",
     "socket.io-client": "^4.8.1"
@@ -28,7 +28,7 @@
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^25.9.1",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.2.15",
     "@types/react-dom": "^19.0.0",
     "eslint": "^10.4.0",
     "eslint-config-next": "^16.1.6",
