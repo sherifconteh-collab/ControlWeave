@@ -16,7 +16,7 @@
     "@sentry/nextjs": "^8.55.0",
     "@simplewebauthn/browser": "^13.3.0",
     "axios": "^1.15.0",
-    "date-fns": "^4.1.0",
+    "date-fns": "^4.3.0",
     "lucide-react": "^1.16.0",
     "next": "^16.2.4",
     "react": "^19.0.0",
