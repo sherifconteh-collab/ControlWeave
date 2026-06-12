@@ -185,30 +185,28 @@ describe('requirePermission', () => {
 });
 
 // ---------------------------------------------------------------------------
-// requireTier middleware — actual tiers: community(0) < pro(1) < enterprise(2) < govcloud(3)
+// requireTier middleware — the tier system is removed (open source edition);
+// requireTier() is a documented no-op that always passes through. This test
+// locks in that contract so tier gating is not silently reintroduced.
 // ---------------------------------------------------------------------------
 describe('requireTier', () => {
   const tierTests = [
-    { tier: 'enterprise', required: 'enterprise', shouldPass: true },
-    { tier: 'pro',        required: 'enterprise', shouldPass: false },
-    { tier: 'pro',        required: 'pro',        shouldPass: true },
-    { tier: 'community',  required: 'pro',        shouldPass: false },
-    { tier: 'govcloud',   required: 'enterprise', shouldPass: true },
-    { tier: 'enterprise', required: 'community',  shouldPass: true },
+    { tier: 'enterprise', required: 'enterprise' },
+    { tier: 'pro',        required: 'enterprise' },
+    { tier: 'pro',        required: 'pro' },
+    { tier: 'community',  required: 'pro' },
+    { tier: 'govcloud',   required: 'enterprise' },
+    { tier: 'enterprise', required: 'community' },
   ];
 
-  tierTests.forEach(({ tier, required, shouldPass }) => {
-    test(`${tier} user ${shouldPass ? 'can' : 'cannot'} access ${required}-tier feature`, () => {
+  tierTests.forEach(({ tier, required }) => {
+    test(`${tier} user passes ${required}-tier gate (no-op middleware)`, () => {
       const req = { user: { organization_tier: tier } };
       const res = makeRes();
       const next = jest.fn();
       requireTier(required)(req, res, next);
-      if (shouldPass) {
-        expect(next).toHaveBeenCalledTimes(1);
-      } else {
-        expect(res.statusCode).toBe(403);
-        expect(next).not.toHaveBeenCalled();
-      }
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(res.statusCode).not.toBe(403);
     });
   });
 });

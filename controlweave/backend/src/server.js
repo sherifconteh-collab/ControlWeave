@@ -18,7 +18,21 @@ const compression = require('compression');
 const pool = require('./config/database');
 const { attachRequestContext } = require('./middleware/requestContext');
 const { createRateLimiter } = require('./middleware/rateLimit');
-const { log, requestLogger, serializeError } = require('./utils/logger');
+const { log, requestLogger, serializeError, installConsoleBridge } = require('./utils/logger');
+
+// Route legacy console.error/console.warn call sites through the structured
+// logger so every error line is JSON and reaches Sentry.
+installConsoleBridge();
+
+// Surface async failures outside route try-catch blocks (background jobs,
+// schedulers, fire-and-forget promises) instead of crashing silently.
+process.on('unhandledRejection', (reason) => {
+  log('error', 'process.unhandled_rejection', { error: serializeError(reason) });
+});
+process.on('uncaughtException', (error) => {
+  log('error', 'process.uncaught_exception', { error: serializeError(error) });
+  process.exit(1);
+});
 const { performanceTracker } = require('./middleware/performanceMonitoring');
 const { DEMO_ADMIN_ACCOUNTS } = require('../scripts/lib/demo-account-config');
 // safeRequire is defined here (before any conditional imports) so it can be used
@@ -130,6 +144,13 @@ app.use((req, res, next) => {
 app.use(attachRequestContext);
 
 app.use('/api/v1/billing/webhook', express.raw({ type: 'application/json' }));
+
+// TPRM public endpoints verify an optional HMAC signature over the exact
+// request bytes, so capture the raw body before JSON parsing consumes it.
+app.use('/api/v1/tprm-public', express.json({
+  limit: '2mb',
+  verify: (req, _res, buf) => { req.rawBody = buf; }
+}));
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
@@ -594,7 +615,7 @@ async function ensurePlatformAdmin() {
       password = `CW-${randomBytes(9).toString('base64url')}!1`;
     }
 
-    const hash = shouldUpdatePassword ? await bcrypt.hash(password, 12) : null;
+    const hash = shouldUpdatePassword ? await bcrypt.hash(password, 14) : null;
     const result = await client.query(
       `INSERT INTO users
          (organization_id, email, password_hash, first_name, last_name, role, is_active, is_platform_admin)

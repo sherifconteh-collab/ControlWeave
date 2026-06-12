@@ -8,6 +8,7 @@ const { createHash } = require('crypto');
 const pool = require('../config/database');
 const { authenticate, requireTier, requirePermission } = require('../middleware/auth');
 const { createRateLimiter } = require('../middleware/rateLimit');
+const { decodeCursor, nextCursorFrom } = require('../utils/keysetPagination');
 const { evidenceUploaded } = require('../services/realtimeEventService');
 const ragService = require('../services/orgRagService');
 const aiSecurity = require('../utils/aiSecurity');
@@ -223,16 +224,33 @@ function normalizeRetentionDate(input) {
   return parsed.toISOString().split('T')[0];
 }
 
+// Validity expiration (when the evidence stops demonstrating compliance) is
+// optional and has no default — unlike retention, most evidence never expires.
+function normalizeExpirationDate(input) {
+  if (!input) return null;
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().split('T')[0];
+}
+
 // GET /evidence
 router.get('/', requirePermission('evidence.read'), async (req, res) => {
   try {
     const orgId = req.user.organization_id;
-    const { search, tags, limit, offset } = req.query;
+    const { search, tags, limit, offset, cursor } = req.query;
     const evidenceColumns = await getEvidenceColumns();
+    // Keyset pagination: cursor=<next_cursor from a previous response> gives
+    // O(1) page turns on large evidence stores. limit/offset still work.
+    const keyset = cursor ? decodeCursor(cursor) : null;
+    if (cursor && !keyset) {
+      return res.status(400).json({ success: false, error: 'Invalid cursor' });
+    }
+    const normalizedLimit = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
 
     const optionalSelect = [
       evidenceColumns.has('evidence_version') ? 'e.evidence_version' : '1 AS evidence_version',
       evidenceColumns.has('retention_until') ? 'e.retention_until' : 'NULL::date AS retention_until',
+      evidenceColumns.has('expires_at') ? 'e.expires_at' : 'NULL::date AS expires_at',
       evidenceColumns.has('integrity_verified_at') ? 'e.integrity_verified_at' : 'NULL::timestamp AS integrity_verified_at',
       evidenceColumns.has('pii_classification') ? 'e.pii_classification' : "'none'::text AS pii_classification",
       evidenceColumns.has('pii_types') ? 'e.pii_types' : 'NULL::text[] AS pii_types',
@@ -264,21 +282,34 @@ router.get('/', requirePermission('evidence.read'), async (req, res) => {
       idx++;
     }
 
-    query += ' ORDER BY e.created_at DESC';
-
-    if (limit) {
-      query += ` LIMIT $${idx}`;
-      params.push(parseInt(limit));
-      idx++;
-    }
-    if (offset) {
-      query += ` OFFSET $${idx}`;
-      params.push(parseInt(offset));
-      idx++;
+    if (keyset) {
+      query += ` AND (e.created_at, e.id) < ($${idx}, $${idx + 1})`;
+      params.push(keyset.createdAt, keyset.id);
+      idx += 2;
+      query += ` ORDER BY e.created_at DESC, e.id DESC LIMIT $${idx}`;
+      params.push(normalizedLimit);
+    } else {
+      query += ' ORDER BY e.created_at DESC, e.id DESC';
+      if (limit) {
+        query += ` LIMIT $${idx}`;
+        params.push(normalizedLimit);
+        idx++;
+      }
+      if (offset) {
+        query += ` OFFSET $${idx}`;
+        params.push(parseInt(offset));
+        idx++;
+      }
     }
 
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows });
+    res.json({
+      success: true,
+      data: result.rows,
+      pagination: (keyset || limit)
+        ? { limit: normalizedLimit, next_cursor: nextCursorFrom(result.rows, normalizedLimit) }
+        : undefined
+    });
   } catch (error) {
     console.error('Evidence list error:', error);
     res.status(500).json({ success: false, error: 'Failed to load evidence' });
@@ -298,6 +329,7 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
     const tagsArray = tags ? (typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : tags) : [];
     const integrityHash = await computeFileSha256(req.file.path);
     const retentionUntil = normalizeRetentionDate(req.body.retention_until || req.body.retentionUntil);
+    const expiresAt = normalizeExpirationDate(req.body.expires_at || req.body.expiresAt);
     const safeOriginalName = path.basename(String(req.file.originalname || 'evidence'));
 
     const rawPiiClassification = req.body.pii_classification || 'none';
@@ -353,6 +385,10 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
     if (evidenceColumns.has('retention_until')) {
       insertColumns.push('retention_until');
       insertValues.push(retentionUntil);
+    }
+    if (evidenceColumns.has('expires_at')) {
+      insertColumns.push('expires_at');
+      insertValues.push(expiresAt);
     }
     if (evidenceColumns.has('integrity_verified_at')) {
       insertColumns.push('integrity_verified_at');
@@ -479,6 +515,7 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
   const { description, tags } = req.body;
   const tagsArray = tags ? (typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : tags) : [];
   const retentionUntil = normalizeRetentionDate(req.body.retention_until || req.body.retentionUntil);
+  const expiresAt = normalizeExpirationDate(req.body.expires_at || req.body.expiresAt);
 
   const rawPiiClassification = req.body.pii_classification || 'none';
   const piiClassification = ALLOWED_PII_CLASSIFICATIONS.includes(rawPiiClassification) ? rawPiiClassification : 'none';
@@ -536,6 +573,7 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
       if (evidenceColumns.has('integrity_hash_sha256')) { insertColumns.push('integrity_hash_sha256'); insertValues.push(integrityHash); }
       if (evidenceColumns.has('evidence_version'))      { insertColumns.push('evidence_version');      insertValues.push(1); }
       if (evidenceColumns.has('retention_until'))        { insertColumns.push('retention_until');        insertValues.push(retentionUntil); }
+      if (evidenceColumns.has('expires_at'))             { insertColumns.push('expires_at');             insertValues.push(expiresAt); }
       if (evidenceColumns.has('integrity_verified_at'))  { insertColumns.push('integrity_verified_at');  insertValues.push(new Date()); }
       if (evidenceColumns.has('pii_classification'))     { insertColumns.push('pii_classification');     insertValues.push(filePiiClass); }
       if (evidenceColumns.has('pii_types'))              { insertColumns.push('pii_types');              insertValues.push(filePiiTypes); }
@@ -723,7 +761,7 @@ router.get('/:id/download', requirePermission('evidence.read'), async (req, res)
 // PUT /evidence/:id
 router.put('/:id', requirePermission('evidence.write'), async (req, res) => {
   try {
-    const { description, tags, retention_until, pii_classification, pii_types, data_sensitivity } = req.body;
+    const { description, tags, retention_until, expires_at, pii_classification, pii_types, data_sensitivity } = req.body;
     const evidenceColumns = await getEvidenceColumns();
 
     if (pii_classification !== undefined && evidenceColumns.has('pii_classification') && !ALLOWED_PII_CLASSIFICATIONS.includes(pii_classification)) {
@@ -747,6 +785,11 @@ router.put('/:id', requirePermission('evidence.write'), async (req, res) => {
     if (evidenceColumns.has('retention_until')) {
       setClauses.push(`retention_until = COALESCE($${idx}, retention_until)`);
       params.push(retention_until || null);
+      idx++;
+    }
+    if (evidenceColumns.has('expires_at') && 'expires_at' in req.body) {
+      setClauses.push(`expires_at = $${idx}`);
+      params.push(normalizeExpirationDate(expires_at));
       idx++;
     }
     if (evidenceColumns.has('pii_classification')) {

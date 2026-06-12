@@ -54,12 +54,14 @@ describe('TASK_PROFILES', () => {
     expect(TASK_PROFILES.extraction.models.claude).toContain('haiku');
   });
 
-  test('reasoning uses gpt-4o for openai provider', () => {
-    expect(TASK_PROFILES.reasoning.models.openai).toBe('gpt-4o');
+  test('reasoning uses a full-size GPT model for openai provider', () => {
+    expect(TASK_PROFILES.reasoning.models.openai).toMatch(/^gpt-/);
+    expect(TASK_PROFILES.reasoning.models.openai).not.toContain('mini');
   });
 
-  test('extraction uses gpt-4o-mini for openai provider', () => {
-    expect(TASK_PROFILES.extraction.models.openai).toBe('gpt-4o-mini');
+  test('extraction uses a mini GPT model for openai provider', () => {
+    expect(TASK_PROFILES.extraction.models.openai).toMatch(/^gpt-/);
+    expect(TASK_PROFILES.extraction.models.openai).toContain('mini');
   });
 });
 

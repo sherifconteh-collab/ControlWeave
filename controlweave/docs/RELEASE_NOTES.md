@@ -1,6 +1,6 @@
 # 📋 Release Notes
 
-## Version 4.1.0 — May 21, 2026
+## Version 4.2.0 — May 21, 2026
 
 
 > Changes staged but not yet released to production.

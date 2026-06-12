@@ -189,18 +189,104 @@ describe('monolith-split: routes/organizations/_helpers', () => {
 });
 
 describe('monolith-split: router modules still load and preserve stack size', () => {
-  test('routes/assessments exports an Express router with middleware + handlers', () => {
+  // routes/assessments.js is now a thin aggregator mounting sub-routers.
+  // Pin each sub-router's route count so accidental route loss is caught.
+  // The original monolith registered exactly 43 routes
+  // (router.get/post/put/patch/delete occurrences) before the split.
+  const ASSESSMENT_SUBROUTER_ROUTE_COUNTS = {
+    procedures: 8, // procedures x3, results, stats, frameworks, plans x2
+    templates: 5,
+    engagements: 6,
+    pbc: 5,
+    workpapers: 4,
+    findings: 4,
+    signoffs: 5,
+    links: 6,
+  };
+  const ORIGINAL_MONOLITH_ROUTE_COUNT = 43;
+
+  function countRoutes(router) {
+    return router.stack.filter((layer) => layer.route).length;
+  }
+
+  test('routes/assessments exports an Express router (aggregator)', () => {
     const router = require('../../src/routes/assessments');
     expect(typeof router).toBe('function');
     expect(Array.isArray(router.stack)).toBe(true);
-    // Pin the current count so accidental route removal is caught.
-    expect(router.stack.length).toBeGreaterThanOrEqual(40);
+    // authenticate + 8 mounted sub-routers + multer error handler = 10 layers.
+    expect(router.stack.length).toBe(10);
   });
 
-  test('routes/organizations exports an Express router with middleware + handlers', () => {
+  test.each(Object.entries(ASSESSMENT_SUBROUTER_ROUTE_COUNTS))(
+    'routes/assessments/%s exposes the pinned number of routes',
+    (name, expectedCount) => {
+      const subRouter = require(`../../src/routes/assessments/${name}`);
+      expect(typeof subRouter).toBe('function');
+      expect(countRoutes(subRouter)).toBe(expectedCount);
+    }
+  );
+
+  test('sub-router route totals equal the original monolith route count', () => {
+    const total = Object.keys(ASSESSMENT_SUBROUTER_ROUTE_COUNTS)
+      .map((name) => require(`../../src/routes/assessments/${name}`))
+      .reduce((sum, subRouter) => sum + countRoutes(subRouter), 0);
+    expect(total).toBe(ORIGINAL_MONOLITH_ROUTE_COUNT);
+  });
+
+  test('every route in the assessments tree still has at least one auth/permission middleware plus handler', () => {
+    for (const name of Object.keys(ASSESSMENT_SUBROUTER_ROUTE_COUNTS)) {
+      const subRouter = require(`../../src/routes/assessments/${name}`);
+      for (const layer of subRouter.stack) {
+        if (!layer.route) continue;
+        // Each route was registered with requirePermission(...) + handler
+        // (some also carry extra middleware such as multer or ai.use).
+        expect(layer.route.stack.length).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  // routes/organizations.js is now a thin aggregator mounting sub-routers.
+  // Pin each sub-router's route count so accidental route loss is caught.
+  // The original monolith registered exactly 27 routes
+  // (router.get/post/put/patch/delete occurrences) before the split.
+  const ORGANIZATION_SUBROUTER_ROUTE_COUNTS = {
+    profile: 2, // me/profile GET + PUT
+    systems: 4,
+    cotsProducts: 4,
+    contracts: 4,
+    frameworks: 3,
+    controls: 3, // list, export, import
+    multiOrg: 2, // me/new, me/clone
+    children: 5,
+  };
+  const ORIGINAL_ORGANIZATIONS_ROUTE_COUNT = 27;
+
+  test('routes/organizations exports an Express router (aggregator)', () => {
+    // exceljs ships ESM internals Jest's CommonJS runtime cannot parse; the
+    // router only needs it at request time, so stub it for the load test.
+    jest.mock('exceljs', () => ({}));
     const router = require('../../src/routes/organizations');
     expect(typeof router).toBe('function');
     expect(Array.isArray(router.stack)).toBe(true);
-    expect(router.stack.length).toBeGreaterThanOrEqual(20);
+    // authenticate + 8 mounted sub-routers = 9 layers.
+    expect(router.stack.length).toBe(9);
+  });
+
+  test.each(Object.entries(ORGANIZATION_SUBROUTER_ROUTE_COUNTS))(
+    'routes/organizations/%s exposes the pinned number of routes',
+    (name, expectedCount) => {
+      jest.mock('exceljs', () => ({}));
+      const subRouter = require(`../../src/routes/organizations/${name}`);
+      expect(typeof subRouter).toBe('function');
+      expect(countRoutes(subRouter)).toBe(expectedCount);
+    }
+  );
+
+  test('organizations sub-router route totals equal the original monolith route count', () => {
+    jest.mock('exceljs', () => ({}));
+    const total = Object.keys(ORGANIZATION_SUBROUTER_ROUTE_COUNTS)
+      .map((name) => require(`../../src/routes/organizations/${name}`))
+      .reduce((sum, subRouter) => sum + countRoutes(subRouter), 0);
+    expect(total).toBe(ORIGINAL_ORGANIZATIONS_ROUTE_COUNT);
   });
 });

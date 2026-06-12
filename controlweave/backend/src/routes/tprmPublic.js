@@ -26,8 +26,8 @@ router.use(publicRateLimiter);
 
 // Optional HMAC signature verification (zero-trust layer on top of the token).
 // If a vendor integration has TPRM_HMAC_SECRET configured, every request must
-// include X-TPRM-Signature: sha256=<hex>. Falls back to token-only when the
-// secret is not configured — fully backward compatible.
+// include X-TPRM-Signature: sha384=<hex> (legacy sha256 accepted). Falls back
+// to token-only when the secret is not configured — fully backward compatible.
 async function verifyTprmSignature(req, res, next) {
   const secret = process.env.TPRM_HMAC_SECRET;
   if (!secret) return next();
@@ -37,14 +37,27 @@ async function verifyTprmSignature(req, res, next) {
     return res.status(401).json({ success: false, error: 'Missing HMAC signature' });
   }
 
-  const body = req.rawBody || JSON.stringify(req.body || '');
-  const expected = `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`;
-
+  // Sign the exact raw request bytes (captured in server.js); bodyless
+  // requests (GET) sign the empty string. For body-bearing methods without
+  // rawBody the signature would be computed over '' — allowing any multipart
+  // or non-JSON payload through — so reject instead.
+  if (!req.rawBody && !['GET', 'HEAD', 'DELETE'].includes(req.method)) {
+    return res.status(400).json({
+      success: false,
+      error: 'HMAC verification requires a JSON body; multipart or non-JSON payloads are not supported when TPRM_HMAC_SECRET is configured'
+    });
+  }
+  const body = req.rawBody || '';
+  // Prefer HMAC-SHA-384 (CNSA 1.0); accept legacy SHA-256 signers transitionally.
   let valid = false;
-  try {
-    valid = timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch (_err) {
-    valid = false;
+  for (const alg of ['sha384', 'sha256']) {
+    const expected = `${alg}=${createHmac(alg, secret).update(body).digest('hex')}`;
+    try {
+      if (timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+        valid = true;
+        break;
+      }
+    } catch (_err) { /* length mismatch — try next algorithm */ }
   }
 
   if (!valid) {
