@@ -1,6 +1,6 @@
 {
   "name": "controlweave-backend",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "engines": {
     "node": ">=20.16.0"
   },
@@ -79,7 +79,7 @@
     "@anthropic-ai/sdk": "^0.73.0",
     "@aws-sdk/client-s3": "^3.712.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "@sentry/node": "^8.55.0",
+    "@sentry/node": "^10.65.0",
     "@simplewebauthn/server": "^13.2.2",
     "@socket.io/redis-adapter": "^8.3.0",
     "axios": "^1.13.5",
@@ -98,7 +98,7 @@
     "mammoth": "^1.11.0",
     "multer": "^2.1.1",
     "node-cron": "^3.0.3",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^9.0.3",
     "openai": "^6.18.0",
     "openid-client": "^5.7.1",
     "pdf-parse": "^2.4.5",
@@ -117,7 +117,7 @@
     "eslint-plugin-security": "^4.0.0",
     "jest": "^30.4.2",
     "nodemon": "^3.0.1",
-    "pm2": "^6.0.14"
+    "pm2": "^7.0.3"
   },
   "overrides": {
     "express-rate-limit": "8.5.2",

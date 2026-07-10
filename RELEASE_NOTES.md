@@ -1,5 +1,17 @@
 # Release Notes
 
+## v4.2.1 -- June 12, 2026
+
+> **Release Date**: 2026-06-12  
+> **Version**: 4.2.1
+
+
+> Changes staged but not yet released to production.
+
+---
+
+---
+
 ## v4.2.0 -- May 24, 2026
 
 > **Release Date**: 2026-05-24

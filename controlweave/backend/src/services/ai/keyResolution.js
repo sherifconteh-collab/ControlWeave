@@ -36,10 +36,10 @@ const PLATFORM_API_KEYS_CACHE_KEY = 'platform:all';
 
 function getDefaultModelForProvider(provider) {
   if (provider === 'claude') return 'claude-haiku-4-5-20251001';
-  if (provider === 'openai') return 'gpt-4o-mini';
-  if (provider === 'grok') return 'grok-3-latest';
-  if (provider === 'gemini') return 'gemini-2.5-flash';
-  if (provider === 'groq') return 'llama-3.3-70b-versatile';
+  if (provider === 'openai') return 'gpt-5.4-mini';
+  if (provider === 'grok') return 'grok-4.1-fast';
+  if (provider === 'gemini') return 'gemini-3.5-flash';
+  if (provider === 'groq') return 'openai/gpt-oss-20b';
   if (provider === 'ollama') return 'llama3.2';
   return null;
 }

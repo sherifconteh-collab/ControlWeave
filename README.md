@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.2.0-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.2.1-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-860%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -33,6 +33,12 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 
 ## Current Status
 
+- ✅ RMF Leveraged Authorizations — RMF packages inherit controls and authorization posture from COTS/SaaS products (FedRAMP-style leveraged authorization), with at-risk flagging and CRM/OSCAL SSP export
+- ✅ Trust Center — opt-in, token-gated public page showing aggregate compliance posture and active-authorization counts
+- ✅ Classroom mode — guided training scenarios with built-in templates and an instructor progress view
+- ✅ Anonymized industry benchmarking — k-anonymity-guarded peer compliance comparison with an org-level opt-out
+- ✅ Compliance-as-code CI gate — `GET /compliance/gate` returns 200/412 against a compliance threshold, for direct use in CI pipelines
+- ✅ Cyber Resilience module — BC/DR, incident-response, and ransomware-playbook plan tracking with tabletop/functional/full-scale exercise logging, RTO/RPO attainment, and a computed Cyber Resilience Score
 - ✅ JWT + OAuth 2.0 authentication with TOTP 2FA and account lockout
 - ✅ RBAC with Admin, ISSE, Auditor, Read-Only, and custom roles
 - ✅ 44 compliance frameworks, 860+ controls, 360+ crosswalk mappings
@@ -140,11 +146,11 @@ See [PHASE_6_AI_POWERED_ANALYSIS.md](./PHASE_6_AI_POWERED_ANALYSIS.md) for compl
 
 | Provider | Key Required | Notes |
 |----------|-------------|-------|
-| Anthropic Claude | Yes (BYOK) | claude-opus-4-7, claude-sonnet-4-6, claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001 |
-| OpenAI | Yes (BYOK) | gpt-4.1, gpt-4.1-mini, gpt-4o, gpt-4o-mini, o3, o4-mini |
-| Google Gemini | Yes (BYOK) | gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash, gemini-2.0-flash-lite — free tier at aistudio.google.com |
-| xAI Grok | Yes (BYOK) | grok-4-latest, grok-3-latest |
-| Groq | Yes (BYOK) | llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768, gemma2-9b-it, deepseek-r1-distill-llama-70b — free tier at console.groq.com |
+| Anthropic Claude | Yes (BYOK) | claude-opus-4-8, claude-sonnet-5, claude-haiku-4-5-20251001, claude-fable-5 |
+| OpenAI | Yes (BYOK) | gpt-5.5, gpt-5.4-mini, gpt-5.4-nano, gpt-5.3-codex |
+| Google Gemini | Yes (BYOK) | gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.1-flash-lite — free tier at aistudio.google.com |
+| xAI Grok | Yes (BYOK) | grok-4.5, grok-4.3, grok-4.1-fast |
+| Groq | Yes (BYOK) | openai/gpt-oss-120b, openai/gpt-oss-20b, groq/compound, groq/compound-mini, meta-llama/llama-4-scout-17b-16e-instruct — free tier at console.groq.com |
 | Ollama | No key needed | Self-hosted local LLMs (llama3.2, llama3.1:8b, mistral, qwen2.5, phi3, gemma2, etc.) |
 
 Configure providers in **Settings → LLM Configuration**. Each organization can set its own BYOK key per provider and choose the active model.

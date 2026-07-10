@@ -346,6 +346,9 @@ export const organizationAPI = {
     lifecycle_status?: 'planned' | 'active' | 'deprecated' | 'retired' | null;
     criticality?: 'low' | 'medium' | 'high' | 'critical' | null;
     support_end_date?: string | null;
+    authorization_status?: 'none' | 'fedramp_ready' | 'fedramp_in_process' | 'fedramp_authorized' | 'agency_ato' | 'dod_il_authorized' | 'other' | null;
+    authorization_impact_level?: 'li_saas' | 'low' | 'moderate' | 'high' | null;
+    external_authorization_id?: string | null;
     notes?: string | null;
   }) => api.post('/organizations/me/cots-products', data),
 
@@ -360,6 +363,9 @@ export const organizationAPI = {
     lifecycle_status?: 'planned' | 'active' | 'deprecated' | 'retired' | null;
     criticality?: 'low' | 'medium' | 'high' | 'critical' | null;
     support_end_date?: string | null;
+    authorization_status?: 'none' | 'fedramp_ready' | 'fedramp_in_process' | 'fedramp_authorized' | 'agency_ato' | 'dod_il_authorized' | 'other' | null;
+    authorization_impact_level?: 'li_saas' | 'low' | 'moderate' | 'high' | null;
+    external_authorization_id?: string | null;
     notes?: string | null;
   }) => api.put(`/organizations/me/cots-products/${productId}`, data),
 
@@ -1569,18 +1575,6 @@ export const threatIntelAPI = {
   getStats: () => api.get('/threat-intel/stats'),
 };
 
-// Vendor Security Scores API (Enterprise tier — SecurityScorecard/BitSight)
-export const vendorSecurityAPI = {
-  getScores: (params?: { vendor_name?: string; score_provider?: string; score_trend?: string; limit?: number }) =>
-    api.get('/vendor-security/scores', { params }),
-  getScore: (id: string) => api.get(`/vendor-security/scores/${id}`),
-  createScore: (data: Record<string, unknown>) => api.post('/vendor-security/scores', data),
-  refreshScore: (id: string) => api.post(`/vendor-security/scores/${id}/refresh`),
-  deleteScore: (id: string) => api.delete(`/vendor-security/scores/${id}`),
-  getTrends: (domain: string) => api.get(`/vendor-security/trends/${domain}`),
-  setupMonitoring: (data: Record<string, unknown>) => api.post('/vendor-security/monitor', data),
-};
-
 // Regulatory News API (Community tier)
 export const regulatoryNewsAPI = {
   getItems: (params?: { source?: string; is_read?: boolean; is_archived?: boolean; impact_level?: string; limit?: number }) =>
@@ -1594,40 +1588,6 @@ export const regulatoryNewsAPI = {
   getSources: () => api.get('/regulatory-news/sources/list'),
 };
 
-// Control Exceptions / Risk Acceptance API
-export const exceptionsAPI = {
-  getList: (params?: { control_id?: string; status?: string; exception_type?: string }) =>
-    api.get('/exceptions', { params }),
-  create: (data: Record<string, unknown>) => api.post('/exceptions', data),
-  update: (id: string, data: Record<string, unknown>) => api.patch(`/exceptions/${id}`, data),
-  approve: (id: string, data?: { notes?: string }) => api.post(`/exceptions/${id}/approve`, data || {}),
-  revoke: (id: string, data?: { notes?: string }) => api.post(`/exceptions/${id}/revoke`, data || {}),
-};
-
-// Data Sovereignty API
-export const dataSovereigntyAPI = {
-  getConfig: () => api.get('/data-sovereignty/config'),
-  updateConfig: (data: Record<string, unknown>) => api.put('/data-sovereignty/config', data),
-  getJurisdictions: () => api.get('/data-sovereignty/jurisdictions'),
-  getJurisdictionFrameworks: (code: string) => api.get(`/data-sovereignty/jurisdictions/${code}/recommended-frameworks`),
-  getOrgJurisdictions: () => api.get('/data-sovereignty/organization-jurisdictions'),
-  addOrgJurisdiction: (data: Record<string, unknown>) => api.post('/data-sovereignty/organization-jurisdictions', data),
-  updateOrgJurisdiction: (id: string, data: Record<string, unknown>) => api.put(`/data-sovereignty/organization-jurisdictions/${id}`, data),
-  removeOrgJurisdiction: (id: string) => api.delete(`/data-sovereignty/organization-jurisdictions/${id}`),
-  getRegulatoryChanges: () => api.get('/data-sovereignty/regulatory-changes'),
-  createRegulatoryChange: (data: Record<string, unknown>) => api.post('/data-sovereignty/regulatory-changes', data),
-  updateRegulatoryChangeStatus: (id: string, data: Record<string, unknown>) => api.put(`/data-sovereignty/regulatory-changes/${id}/status`, data),
-  getAIProviderRegions: () => api.get('/data-sovereignty/ai-provider-regions'),
-  getComplianceGapAnalysis: () => api.get('/data-sovereignty/compliance-gap-analysis'),
-};
-
-// Control Health API
-export const controlHealthAPI = {
-  getAll: (params?: { framework_id?: string; status?: string; control_id?: string }) =>
-    api.get('/control-health', { params }),
-  getByControl: (controlId: string) => api.get(`/control-health/${controlId}`),
-};
-
 // Integrations Hub API
 export const integrationsHubAPI = {
   getTemplates: () => api.get('/integrations-hub/templates'),
@@ -1637,45 +1597,6 @@ export const integrationsHubAPI = {
   deleteConnector: (id: string) => api.delete(`/integrations-hub/connectors/${id}`),
   runConnector: (id: string) => api.post(`/integrations-hub/connectors/${id}/run`),
   getConnectorRuns: (id: string) => api.get(`/integrations-hub/connectors/${id}/runs`),
-};
-
-// Dashboard Builder API
-export const dashboardBuilderAPI = {
-  getViews: () => api.get('/dashboard-builder/views'),
-  createView: (data: Record<string, unknown>) => api.post('/dashboard-builder/views', data),
-  updateView: (id: string, data: Record<string, unknown>) => api.patch(`/dashboard-builder/views/${id}`, data),
-  deleteView: (id: string) => api.delete(`/dashboard-builder/views/${id}`),
-  addWidget: (viewId: string, data: Record<string, unknown>) => api.post(`/dashboard-builder/views/${viewId}/widgets`, data),
-  updateWidget: (widgetId: string, data: Record<string, unknown>) => api.patch(`/dashboard-builder/widgets/${widgetId}`, data),
-  deleteWidget: (widgetId: string) => api.delete(`/dashboard-builder/widgets/${widgetId}`),
-};
-
-// Organization Contacts API
-export const contactsAPI = {
-  getList: () => api.get('/contacts'),
-  create: (data: Record<string, unknown>) => api.post('/contacts', data),
-  update: (id: string, data: Record<string, unknown>) => api.patch(`/contacts/${id}`, data),
-  remove: (id: string) => api.delete(`/contacts/${id}`),
-};
-
-// Phase 6 — Predictive Risk Scoring, Regulatory Impact Analysis, Smart Remediation
-export const phase6API = {
-  // Risk Scoring
-  calculateRiskScore: () => api.post('/phase6/risk-score/calculate'),
-  getLatestRiskScore: () => api.get('/phase6/risk-score/latest'),
-  getRiskScoreHistory: () => api.get('/phase6/risk-score/history'),
-  // Regulatory Impact
-  analyzeRegulatoryImpact: (data: Record<string, unknown>) => api.post('/phase6/regulatory-impact/analyze', data),
-  getRegulatoryImpactAssessments: () => api.get('/phase6/regulatory-impact/assessments'),
-  reviewRegulatoryImpactAssessment: (id: string, data: Record<string, unknown>) =>
-    api.put(`/phase6/regulatory-impact/assessments/${id}/review`, data),
-  // Smart Remediation
-  generateRemediationPlan: (data: Record<string, unknown>) => api.post('/phase6/remediation/generate', data),
-  getRemediationPlans: () => api.get('/phase6/remediation/plans'),
-  updateRemediationPlanStatus: (id: string, data: { status: string; notes?: string }) =>
-    api.put(`/phase6/remediation/plans/${id}/status`, data),
-  // Comprehensive Analysis
-  runComprehensiveAnalysis: (data?: Record<string, unknown>) => api.post('/phase6/analyze/comprehensive', data || {}),
 };
 
 // AI Continuous Monitoring API (rules engine, anomaly events, baselines)
@@ -1728,6 +1649,119 @@ export const rmfAPI = {
     api.post(`/rmf/packages/${id}/authorization`, data),
 };
 
+export interface LeveragedAuthorizationInput {
+  cots_product_id: string;
+  inheritance_type?: 'full' | 'partial' | 'hybrid';
+  status?: 'active' | 'pending' | 'expired' | 'revoked';
+  authorization_reference?: string | null;
+  inherited_controls?: string[];
+  provider_responsibilities?: string | null;
+  customer_responsibilities?: string | null;
+  review_date?: string | null;
+  expiration_date?: string | null;
+  notes?: string | null;
+}
+
+// RMF Leveraged Authorizations — package inheritance from COTS products (routes/rmfInheritance.js)
+export const rmfInheritanceAPI = {
+  getLeveragedAuthorizations: (packageId: string) =>
+    api.get(`/rmf/packages/${packageId}/leveraged-authorizations`),
+  getEligibleCotsProducts: (packageId: string) =>
+    api.get(`/rmf/packages/${packageId}/eligible-cots-products`),
+  createLeveragedAuthorization: (packageId: string, data: LeveragedAuthorizationInput) =>
+    api.post(`/rmf/packages/${packageId}/leveraged-authorizations`, data),
+  updateLeveragedAuthorization: (packageId: string, linkId: string, data: Partial<LeveragedAuthorizationInput>) =>
+    api.put(`/rmf/packages/${packageId}/leveraged-authorizations/${linkId}`, data),
+  deleteLeveragedAuthorization: (packageId: string, linkId: string) =>
+    api.delete(`/rmf/packages/${packageId}/leveraged-authorizations/${linkId}`),
+  getCrmReport: (packageId: string) => api.get(`/rmf/packages/${packageId}/crm-report`),
+  downloadCrmReportCsv: (packageId: string) =>
+    api.get(`/rmf/packages/${packageId}/crm-report`, { params: { format: 'csv' }, responseType: 'blob' }),
+  downloadCrmReportPdf: (packageId: string) =>
+    api.get(`/rmf/packages/${packageId}/crm-report/pdf`, { responseType: 'blob' }),
+  downloadOscalSsp: (packageId: string) =>
+    api.get(`/rmf/packages/${packageId}/oscal`, { responseType: 'blob' }),
+};
+
+// Trust Center — public compliance-posture page (routes/trustCenter.js)
+export const trustCenterAPI = {
+  getConfig: () => api.get('/trust-center/config'),
+  updateConfig: (data: {
+    enabled?: boolean;
+    display_name?: string | null;
+    description?: string | null;
+    contact_email?: string | null;
+    show_frameworks?: boolean;
+    show_compliance_scores?: boolean;
+    show_authorizations?: boolean;
+  }) => api.put('/trust-center/config', data),
+  regenerateToken: () => api.post('/trust-center/config/regenerate-token'),
+  getPublicPage: (token: string) =>
+    fetch(`${API_BASE_URL}/trust-center/public/${token}`).then(res => res.json()),
+};
+
+// Classroom mode — guided training scenarios (routes/training.js)
+export const trainingAPI = {
+  getScenarios: () => api.get('/training/scenarios'),
+  createScenario: (data: {
+    title: string;
+    description?: string | null;
+    difficulty?: 'beginner' | 'intermediate' | 'advanced';
+    steps?: Array<{ title: string; description?: string | null; hint?: string | null; target_page?: string | null }>;
+  }) => api.post('/training/scenarios', data),
+  updateScenario: (id: string, data: Record<string, unknown>) => api.put(`/training/scenarios/${id}`, data),
+  deleteScenario: (id: string) => api.delete(`/training/scenarios/${id}`),
+  updateProgress: (id: string, completedSteps: number[]) =>
+    api.post(`/training/scenarios/${id}/progress`, { completed_steps: completedSteps }),
+  getProgress: (id: string) => api.get(`/training/scenarios/${id}/progress`),
+};
+
+// Anonymized industry benchmarking (routes/benchmarks.js)
+export const benchmarksAPI = {
+  getFrameworkBenchmarks: () => api.get('/benchmarks/frameworks'),
+};
+
+// Compliance-as-code CI gate (routes/complianceGate.js)
+export const complianceGateAPI = {
+  checkGate: (params?: { framework_id?: string; min_pct?: number }) =>
+    api.get('/compliance/gate', { params }),
+  exportSnippet: (params?: { framework_id?: string; min_pct?: number; format?: 'github_actions' | 'gitlab_ci' | 'curl' }) =>
+    api.get('/compliance/gate/export', { params }),
+};
+
+// Cyber Resilience — BC/DR plans, tabletop/DR testing, resilience score (routes/cyberResilience.js)
+export const cyberResilienceAPI = {
+  getPlans: () => api.get('/resilience/plans'),
+  createPlan: (data: {
+    plan_type: 'incident_response' | 'business_continuity' | 'disaster_recovery' | 'ransomware_playbook';
+    title: string;
+    description?: string | null;
+    status?: 'draft' | 'active' | 'under_review' | 'retired';
+    system_id?: string | null;
+    rto_target_hours?: number | null;
+    rpo_target_hours?: number | null;
+    owner_id?: string | null;
+    last_tested_date?: string | null;
+    next_test_due?: string | null;
+    document_url?: string | null;
+  }) => api.post('/resilience/plans', data),
+  updatePlan: (id: string, data: Record<string, unknown>) => api.put(`/resilience/plans/${id}`, data),
+  deletePlan: (id: string) => api.delete(`/resilience/plans/${id}`),
+  getTests: (planId: string) => api.get(`/resilience/plans/${planId}/tests`),
+  createTest: (planId: string, data: {
+    test_type: 'tabletop' | 'functional' | 'full_scale';
+    scenario: string;
+    test_date?: string;
+    participants?: string[];
+    outcome: 'passed' | 'partial' | 'failed';
+    actual_rto_hours?: number | null;
+    actual_rpo_hours?: number | null;
+    findings?: string | null;
+    remediation_poam_id?: string | null;
+  }) => api.post(`/resilience/plans/${planId}/tests`, data),
+  getScore: () => api.get('/resilience/score'),
+};
+
 // PLOT4ai Threat Library API (Community tier — AI Threat Modeling)
 export const plot4aiAPI = {
   getThreats: (params?: { category?: number; aitype?: string; role?: string; phase?: string; search?: string }) =>
@@ -1737,50 +1771,11 @@ export const plot4aiAPI = {
   getStats: () => api.get('/plot4ai/stats'),
 };
 
-// State AI Laws API — Colorado, Illinois, NYC, and other state AI regulations
-export const stateAiLawsAPI = {
-  getJurisdictions: () => api.get('/state-ai-laws/jurisdictions'),
-  getControls: (params?: { jurisdiction?: string; control_type?: string; priority?: string; search?: string }) =>
-    api.get('/state-ai-laws/controls', { params }),
-  getControl: (controlId: string) => api.get(`/state-ai-laws/controls/${controlId}`),
-  getSummary: () => api.get('/state-ai-laws/summary'),
-};
-
 // Push Tokens API — device push token registration for mobile apps (iOS APNs / Android FCM)
 export const pushTokensAPI = {
   register: (data: { token: string; platform: 'ios' | 'android' }) =>
     api.post('/push-tokens', data),
   unregister: (token: string) => api.delete(`/push-tokens/${encodeURIComponent(token)}`),
-};
-
-// Custom Frameworks API — org-scoped framework builder
-export const customFrameworksAPI = {
-  list: () => api.get('/frameworks/custom'),
-  create: (data: { code: string; name: string; version?: string; category?: string; description?: string }) =>
-    api.post('/frameworks/custom', data),
-  get: (id: string) => api.get(`/frameworks/custom/${id}`),
-  update: (id: string, data: { name?: string; version?: string; category?: string; description?: string }) =>
-    api.put(`/frameworks/custom/${id}`, data),
-  remove: (id: string) => api.delete(`/frameworks/custom/${id}`),
-  addControl: (id: string, data: { control_id: string; title: string; description?: string; priority?: string; control_type?: string; sort_order?: number }) =>
-    api.post(`/frameworks/custom/${id}/controls`, data),
-  updateControl: (id: string, controlId: string, data: Record<string, unknown>) =>
-    api.put(`/frameworks/custom/${id}/controls/${controlId}`, data),
-  removeControl: (id: string, controlId: string) =>
-    api.delete(`/frameworks/custom/${id}/controls/${controlId}`),
-  publish: (id: string) => api.post(`/frameworks/custom/${id}/publish`),
-  clone: (sourceCode: string, data: { code: string; name: string }) =>
-    api.post(`/frameworks/custom/clone/${sourceCode}`, data),
-};
-
-// Scheduled Reports API — automated report delivery configuration
-export const scheduledReportsAPI = {
-  list: () => api.get('/reports/scheduled'),
-  create: (data: { name: string; report_type: string; schedule: string; format?: string; recipients?: unknown[]; filters?: Record<string, unknown> }) =>
-    api.post('/reports/scheduled', data),
-  update: (id: string, data: Record<string, unknown>) => api.put(`/reports/scheduled/${id}`, data),
-  remove: (id: string) => api.delete(`/reports/scheduled/${id}`),
-  run: (id: string) => api.post(`/reports/scheduled/${id}/run`),
 };
 
 export default api;

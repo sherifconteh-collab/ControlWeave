@@ -411,6 +411,12 @@ const aiGovernanceRoutes = safeRequire('./routes/aiGovernance');
 const publicContactRoutes = safeRequire('./routes/publicContact');
 const ragRoutes = safeRequire('./routes/rag');
 const rmfRoutes = safeRequire('./routes/rmf');
+const rmfInheritanceRoutes = safeRequire('./routes/rmfInheritance');
+const trustCenterRoutes = safeRequire('./routes/trustCenter');
+const trainingRoutes = safeRequire('./routes/training');
+const benchmarksRoutes = safeRequire('./routes/benchmarks');
+const complianceGateRoutes = safeRequire('./routes/complianceGate');
+const cyberResilienceRoutes = safeRequire('./routes/cyberResilience');
 const stateAiLawsRoutes = safeRequire('./routes/stateAiLaws');
 const totpRoutes = require('./routes/totp');
 
@@ -529,6 +535,12 @@ if (aiGovernanceRoutes) app.use('/api/v1/ai-governance', aiGovernanceRoutes);
 if (publicContactRoutes) app.use('/api/v1/public', publicContactRoutes);
 if (ragRoutes) app.use('/api/v1/rag', ragRoutes);
 if (rmfRoutes) app.use('/api/v1/rmf', rmfRoutes);
+if (rmfInheritanceRoutes) app.use('/api/v1/rmf', rmfInheritanceRoutes);
+if (trustCenterRoutes) app.use('/api/v1/trust-center', trustCenterRoutes);
+if (trainingRoutes) app.use('/api/v1/training', trainingRoutes);
+if (benchmarksRoutes) app.use('/api/v1/benchmarks', benchmarksRoutes);
+if (complianceGateRoutes) app.use('/api/v1/compliance', complianceGateRoutes);
+if (cyberResilienceRoutes) app.use('/api/v1/resilience', cyberResilienceRoutes);
 if (stateAiLawsRoutes) app.use('/api/v1/state-ai-laws', stateAiLawsRoutes);
 
 // Sentry error handler (must precede all other error handlers)

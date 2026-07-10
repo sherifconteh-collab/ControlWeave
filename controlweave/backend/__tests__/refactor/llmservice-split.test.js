@@ -172,7 +172,7 @@ describe('llmservice-split: ai/keyResolution identity', () => {
 
   test('getDefaultModelForProvider behavior is preserved', () => {
     expect(keyResolution.getDefaultModelForProvider('claude')).toBe('claude-haiku-4-5-20251001');
-    expect(keyResolution.getDefaultModelForProvider('openai')).toBe('gpt-4o-mini');
+    expect(keyResolution.getDefaultModelForProvider('openai')).toBe('gpt-5.4-mini');
     expect(keyResolution.getDefaultModelForProvider('nope')).toBeNull();
   });
 });

@@ -105,6 +105,7 @@ CLOSED_PRS_MERGED.md
 CLOSED_PR_GATHERING_SUMMARY.md
 CODE_SCAN_AUTOMATION.md
 COMMUNITY_EDITION.md
+COMPLIANCE_AS_CODE.md
 CONTRIBUTING.md
 ControlWeave_GTM_Strategy.docx
 ControlWeave_Launch_Checklist.xlsx
@@ -200,6 +201,14 @@ controlweave/backend/__tests__/ai/orgRagService.test.js
 controlweave/backend/__tests__/middleware/auth.test.js
 controlweave/backend/__tests__/refactor/llmservice-split.test.js
 controlweave/backend/__tests__/refactor/monolith-split.test.js
+controlweave/backend/__tests__/routes/_testUtils.js
+controlweave/backend/__tests__/routes/benchmarks.test.js
+controlweave/backend/__tests__/routes/complianceGate.test.js
+controlweave/backend/__tests__/routes/cyberResilience.test.js
+controlweave/backend/__tests__/routes/rmfInheritance.test.js
+controlweave/backend/__tests__/routes/training.test.js
+controlweave/backend/__tests__/routes/trustCenter.test.js
+controlweave/backend/__tests__/services/oscalService.test.js
 controlweave/backend/__tests__/utils/consoleBridge.test.js
 controlweave/backend/__tests__/utils/keysetPagination.test.js
 controlweave/backend/apply-migration.mjs
@@ -329,6 +338,10 @@ controlweave/backend/migrations/107_custom_frameworks.sql
 controlweave/backend/migrations/108_compliance_snapshots.sql
 controlweave/backend/migrations/109_org_hierarchy.sql
 controlweave/backend/migrations/110_evidence_expiration.sql
+controlweave/backend/migrations/111_rmf_leveraged_authorizations.sql
+controlweave/backend/migrations/112_trust_center.sql
+controlweave/backend/migrations/113_classroom_mode.sql
+controlweave/backend/migrations/114_cyber_resilience.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -471,13 +484,15 @@ controlweave/backend/src/routes/auditFields.js
 controlweave/backend/src/routes/auditorWorkspace.js
 controlweave/backend/src/routes/auth.js
 controlweave/backend/src/routes/autoEvidenceCollection.js
-controlweave/backend/src/routes/billing-routes.js
+controlweave/backend/src/routes/benchmarks.js
 controlweave/backend/src/routes/billing.js
 controlweave/backend/src/routes/cmdb.js
+controlweave/backend/src/routes/complianceGate.js
 controlweave/backend/src/routes/contacts.js
 controlweave/backend/src/routes/controlHealth.js
 controlweave/backend/src/routes/controls.js
 controlweave/backend/src/routes/customFrameworks.js
+controlweave/backend/src/routes/cyberResilience.js
 controlweave/backend/src/routes/dashboard.js
 controlweave/backend/src/routes/dashboardBuilder.js
 controlweave/backend/src/routes/dataGovernance.js
@@ -524,6 +539,7 @@ controlweave/backend/src/routes/realtime.js
 controlweave/backend/src/routes/regulatoryNews.js
 controlweave/backend/src/routes/reports.js
 controlweave/backend/src/routes/rmf.js
+controlweave/backend/src/routes/rmfInheritance.js
 controlweave/backend/src/routes/roles.js
 controlweave/backend/src/routes/sbom.js
 controlweave/backend/src/routes/scheduledReports.js
@@ -536,6 +552,8 @@ controlweave/backend/src/routes/threatIntel.js
 controlweave/backend/src/routes/totp.js
 controlweave/backend/src/routes/tprm.js
 controlweave/backend/src/routes/tprmPublic.js
+controlweave/backend/src/routes/training.js
+controlweave/backend/src/routes/trustCenter.js
 controlweave/backend/src/routes/users.js
 controlweave/backend/src/routes/vendorSecurity.js
 controlweave/backend/src/routes/vulnerabilities.js
@@ -591,6 +609,7 @@ controlweave/backend/src/services/notificationService.js
 controlweave/backend/src/services/nvdService.js
 controlweave/backend/src/services/orgContextService.js
 controlweave/backend/src/services/orgRagService.js
+controlweave/backend/src/services/oscalService.js
 controlweave/backend/src/services/passkeyService.js
 controlweave/backend/src/services/policyGapService.js
 controlweave/backend/src/services/policyService.js
@@ -913,6 +932,7 @@ controlweave/frontend/src/app/dashboard/regulatory-news/page.tsx
 controlweave/frontend/src/app/dashboard/report-issue/page.tsx
 controlweave/frontend/src/app/dashboard/reports/executive/page.tsx
 controlweave/frontend/src/app/dashboard/reports/page.tsx
+controlweave/frontend/src/app/dashboard/resilience/page.tsx
 controlweave/frontend/src/app/dashboard/rmf/page.tsx
 controlweave/frontend/src/app/dashboard/sbom/page.tsx
 controlweave/frontend/src/app/dashboard/security-posture/page.tsx
@@ -921,6 +941,7 @@ controlweave/frontend/src/app/dashboard/settings/ai-keys/page.tsx
 controlweave/frontend/src/app/dashboard/settings/page.tsx
 controlweave/frontend/src/app/dashboard/threat-intel/page.tsx
 controlweave/frontend/src/app/dashboard/tprm/page.tsx
+controlweave/frontend/src/app/dashboard/training/page.tsx
 controlweave/frontend/src/app/dashboard/vendor-risk/page.tsx
 controlweave/frontend/src/app/dashboard/vulnerabilities/page.tsx
 controlweave/frontend/src/app/favicon.ico
@@ -943,6 +964,7 @@ controlweave/frontend/src/app/page.tsx
 controlweave/frontend/src/app/privacy/page.tsx
 controlweave/frontend/src/app/register/page.tsx
 controlweave/frontend/src/app/reset-password/page.tsx
+controlweave/frontend/src/app/trust/[token]/page.tsx
 controlweave/frontend/src/components/AIMonitoringCharts.tsx
 controlweave/frontend/src/components/AiProviderSetupModal.tsx
 controlweave/frontend/src/components/AiQuotaModal.tsx
@@ -966,6 +988,7 @@ controlweave/frontend/src/components/VulnerabilityCharts.tsx
 controlweave/frontend/src/components/WebSocketStatusIndicator.tsx
 controlweave/frontend/src/components/ai/MarkdownContent.tsx
 controlweave/frontend/src/components/ai/StructuredOutput.tsx
+controlweave/frontend/src/components/rmf/LeveragedAuthorizations.tsx
 controlweave/frontend/src/components/skeletons/index.tsx
 controlweave/frontend/src/contexts/AuthContext.tsx
 controlweave/frontend/src/contexts/WebSocketContext.tsx
