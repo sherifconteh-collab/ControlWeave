@@ -1,7 +1,5 @@
 # AI-Powered Features
 
-> 📦 **Tier**: Varies by feature
-
 ## Overview
 
 ControlWeave includes advanced AI-powered features for predictive analytics, risk scoring, and automated compliance analysis. These features leverage machine learning to help you stay ahead of compliance risks.
@@ -9,7 +7,6 @@ ControlWeave includes advanced AI-powered features for predictive analytics, ris
 ## Available Features
 
 ### Predictive Risk Scoring (Phase 6)
-> 📦 **Tier**: ❌ Free | ❌ Starter | ✅ Professional | ✅ Enterprise
 
 Automated risk assessment with 0-100 scoring algorithm using multi-factor weighted analysis.
 
@@ -31,7 +28,6 @@ POST /api/v1/phase6/risk-forecast/:organizationId
 [View Full Documentation](../../../PHASE_6_AI_POWERED_ANALYSIS.md)
 
 ### Regulatory Impact Analysis (Phase 6)
-> 📦 **Tier**: ❌ Free | ❌ Starter | ✅ Professional | ✅ Enterprise
 
 AI-powered analysis of regulatory changes with impact scoring and recommendations.
 
@@ -49,7 +45,6 @@ GET /api/v1/phase6/regulatory-impact/:analysisId
 ```
 
 ### Smart Remediation Plans (Phase 6)
-> 📦 **Tier**: ❌ Free | ❌ Starter | ✅ Professional | ✅ Enterprise
 
 Enhanced AI-generated remediation plans with priority scoring and cost-benefit analysis.
 
@@ -68,7 +63,6 @@ PUT /api/v1/phase6/remediation/:planId/status
 ```
 
 ## Real-Time Features (Phase 5)
-> 📦 **Tier**: ❌ Free | ✅ Starter | ✅ Professional | ✅ Enterprise
 
 WebSocket-based real-time updates for instant notification of compliance events.
 
@@ -91,7 +85,7 @@ WebSocket: ws://server/socket.io
 ## Getting Started
 
 ### Prerequisites
-- ControlWeave account (Professional+ tier for Phase 6 features)
+- ControlWeave account
 - API key configured (for programmatic access)
 - LLM provider configured (for AI analysis features)
 
@@ -101,20 +95,9 @@ WebSocket: ws://server/socket.io
 3. Set usage limits and safety thresholds
 4. Start using AI features from dashboards or API
 
-## Tier Comparison
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| AI Copilot | 10/mo | 50/mo | Unlimited | Unlimited |
-| Predictive Risk Scoring | ❌ | ❌ | ✅ | ✅ |
-| Regulatory Impact Analysis | ❌ | ❌ | ✅ | ✅ |
-| Smart Remediation | ❌ | ❌ | ✅ | ✅ |
-| Real-Time Updates | ❌ | ✅ | ✅ | ✅ |
-| AI Reasoning Memory | ❌ | ❌ | ✅ | ✅ |
-| Organization RAG | ❌ | ❌ | ✅ | ✅ |
+ControlWeaver has no tier gating — AI Copilot, Predictive Risk Scoring, Regulatory Impact Analysis, Smart Remediation, Real-Time Updates, AI Reasoning Memory, and Organization RAG are all available to every authenticated user.
 
 ### AI Reasoning Memory (NEW)
-> 📦 **Tier**: ❌ Free | ❌ Starter | ✅ Professional | ✅ Enterprise
 
 Persistent semantic memory that stores key findings from every AI analysis. Subsequent analyses automatically receive relevant historical context, making compliance guidance progressively smarter.
 
@@ -134,7 +117,6 @@ Persistent semantic memory that stores key findings from every AI analysis. Subs
 **Database Table:** `ai_reasoning_memory` (Migration 083)
 
 ### Organization RAG — Document Retrieval (NEW)
-> 📦 **Tier**: ❌ Free | ❌ Starter | ✅ Professional | ✅ Enterprise
 
 Vector-based Retrieval-Augmented Generation that indexes your organization's documents (policies, evidence, procedures) and injects semantically relevant excerpts into every AI analysis.
 
@@ -213,5 +195,4 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 ---
 **Category**: AI Features  
-**Tier**: Professional+ (most features)  
 **Last Updated**: February 18, 2026

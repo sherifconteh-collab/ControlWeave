@@ -251,7 +251,8 @@ Provide:
 6. **Evidence Required** – What scan or patch evidence to collect for audit closure
 
 If no assets appear to be affected, explicitly state that and explain why.`
-    }]
+    }],
+    feature: 'iavm_asset_alert'
   });
 }
 
@@ -286,7 +287,8 @@ Generate a complete IR plan with:
 7. Communication plan (internal stakeholders, regulators, affected parties)
 8. Evidence preservation requirements
 9. Regulatory notification requirements (GDPR 72hr, HIPAA, etc.)
-10. Roles and responsibilities matrix` }]
+10. Roles and responsibilities matrix` }],
+    feature: 'incident_response'
   });
 }
 
@@ -323,7 +325,8 @@ For each asset, identify:
 3. Any gaps where assets lack required controls
 4. Recommended control implementations per asset category
 5. Return structured mapping data:
-   { "mappings": [{ "asset": "name", "controls": [{ "id": "XX-1", "framework": "code", "priority": "high", "reason": "..." }] }] }` }]
+   { "mappings": [{ "asset": "name", "controls": [{ "id": "XX-1", "framework": "code", "priority": "high", "reason": "..." }] }] }` }],
+    feature: 'asset_control_mapping'
   });
 }
 
@@ -365,7 +368,8 @@ Analyze and provide:
 4. Questions to ask department heads about undocumented systems
 5. Automated discovery recommendations (tools and techniques)
 6. Risk exposure from potential unregistered assets
-7. Compliance impact of Shadow IT on adopted frameworks` }]
+7. Compliance impact of Shadow IT on adopted frameworks` }],
+    feature: 'shadow_it'
   });
 }
 
@@ -413,7 +417,8 @@ Assess:
 8. Model documentation completeness
 9. Transparency and explainability gaps
 10. AIUC-1 agentic AI certification readiness (Data & Privacy, Security, Safety, Reliability, Accountability, Societal Impact)
-11. Recommended governance actions prioritized by risk level` }]
+11. Recommended governance actions prioritized by risk level` }],
+    feature: 'ai_governance'
   });
 }
 
@@ -474,7 +479,8 @@ Provide:
 3. Technical vs procedural requirements
 4. Estimated implementation effort
 5. Key evidence artifacts needed
-6. Related controls and dependencies` }]
+6. Related controls and dependencies` }],
+    feature: 'control_analysis'
   });
 }
 
@@ -533,7 +539,8 @@ Provide:
 3. Vulnerability assessment areas
 4. Compliance requirements (which frameworks apply)
 5. Recommended security controls
-6. Monitoring recommendations` }]
+6. Monitoring recommendations` }],
+    feature: 'asset_risk'
   });
 }
 
@@ -562,7 +569,8 @@ Generate a complete, professional policy including:
 6. Compliance and enforcement
 7. Related policies and references
 8. Revision history template
-Map requirements to the organization's adopted frameworks where applicable.` }]
+Map requirements to the organization's adopted frameworks where applicable.` }],
+    feature: 'policy_generator'
   });
 }
 

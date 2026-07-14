@@ -4,7 +4,7 @@ Generate compliance reports in PDF and Excel format — from detailed control st
 
 ## Overview
 
-ControlWeave's reporting module produces audit-ready compliance reports with real-time data from your controls, assessments, evidence, assets, vulnerabilities, and POA&M items. Reports require **Pro tier or above**.
+ControlWeave's reporting module produces audit-ready compliance reports with real-time data from your controls, assessments, evidence, assets, vulnerabilities, and POA&M items.
 
 ---
 
@@ -152,15 +152,7 @@ When a control is satisfied through a crosswalk mapping (implementing one contro
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| Report generation | ❌ | ✅ | ✅ | ✅ |
-| PDF export | ❌ | ✅ | ✅ | ✅ |
-| Excel export | ❌ | ✅ | ✅ | ✅ |
-| System Security Plan (SSP) | ❌ | ✅ | ✅ | ✅ |
-| Framework-filtered reports | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — report generation, PDF/Excel export, System Security Plan (SSP) generation, and framework-filtered reports are all available to every authenticated user.
 
 ---
 

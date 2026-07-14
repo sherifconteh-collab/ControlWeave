@@ -325,7 +325,7 @@ AI features available:
 - Verify API key is saved in Settings > LLM Configuration
 - Click the Test button to validate the key
 - Check backend logs for API errors
-- Community tier is limited to 3 AI calls per month
+- ControlWeaver has no tier-based AI call limit — any error is from the configured LLM provider itself
 
 ## Architecture Overview
 

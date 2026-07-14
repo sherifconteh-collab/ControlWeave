@@ -156,15 +156,7 @@ After completing an assessment:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| Basic assessment depth | ✅ | ✅ | ✅ | ✅ |
-| Focused assessment depth | ❌ | ✅ | ✅ | ✅ |
-| Comprehensive assessment depth | ❌ | ✅ | ✅ | ✅ |
-| Assessment PDF export | ❌ | ✅ | ✅ | ✅ |
-| External auditor workspace | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — Basic, Focused, and Comprehensive assessment depths, PDF export, and the external auditor workspace are all available to every authenticated user.
 
 ---
 

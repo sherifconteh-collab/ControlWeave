@@ -191,17 +191,12 @@ When you implement **NIST 800-53 AC-2** (Account Management):
 
 ---
 
-## Tier Limits
+## Choosing Frameworks
 
-### Community Tier
-- **Limit**: 2 frameworks maximum
-- **Strategy**: Choose most critical frameworks only
-- **Recommendation**: Start with 1-2 core frameworks
+ControlWeaver has no tier gating and no limit on the number of active frameworks — activate as many as your compliance program requires.
 
-### Pro Tier
-- **Limit**: Unlimited frameworks
-- **Strategy**: Add all relevant core and industry-specific frameworks
-- **Recommendation**: Use crosswalks to manage overlap as you scale beyond a few frameworks
+- **Starting out**: Choose your most critical framework(s) first to keep implementation focused
+- **Scaling up**: Add relevant core and industry-specific frameworks as needed; use crosswalks to manage overlap as your framework count grows
 
 ### Enterprise
 - **Limit**: Unlimited frameworks
@@ -446,7 +441,6 @@ High-level framework compliance:
 - [ ] Reviewed industry standards
 - [ ] Checked customer requirements
 - [ ] Considered contractual obligations
-- [ ] Reviewed tier limits
 - [ ] Activated relevant frameworks
 - [ ] Reviewed control counts
 - [ ] Checked crosswalk opportunities

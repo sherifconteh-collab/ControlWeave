@@ -4,6 +4,9 @@ import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import StructuredOutput from '@/components/ai/StructuredOutput';
 import { aiAPI } from '@/lib/api';
+import RiskScoreWidget from '@/components/aiInsights/RiskScoreWidget';
+import RegulatoryImpactWidget from '@/components/aiInsights/RegulatoryImpactWidget';
+import RemediationPlansWidget from '@/components/aiInsights/RemediationPlansWidget';
 
 type WidgetKey = 'gap' | 'forecast' | 'audit' | 'risk';
 
@@ -141,6 +144,18 @@ export default function AIInsightsPage() {
               </section>
             );
           })}
+        </div>
+
+        <div className="mt-10">
+          <h2 className="text-lg font-bold text-gray-900">Phase 6 Analysis</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Predictive risk scoring, regulatory impact analysis, and AI-generated remediation plans.
+          </p>
+        </div>
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RiskScoreWidget />
+          <RegulatoryImpactWidget />
+          <RemediationPlansWidget />
         </div>
       </div>
     </DashboardLayout>

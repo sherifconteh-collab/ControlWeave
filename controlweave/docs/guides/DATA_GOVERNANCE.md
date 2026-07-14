@@ -4,7 +4,7 @@ Define data retention policies, configure data sovereignty settings, and manage 
 
 ## Overview
 
-The Data Governance module helps organizations comply with data protection regulations (GDPR, CCPA, HIPAA) by managing how long data is retained, where data is stored, and what cross-border transfer restrictions apply. This feature requires **Pro tier**.
+The Data Governance module helps organizations comply with data protection regulations (GDPR, CCPA, HIPAA) by managing how long data is retained, where data is stored, and what cross-border transfer restrictions apply.
 
 ---
 
@@ -128,14 +128,6 @@ Data governance policies support these compliance frameworks:
 > **💡 Tip**: Link your retention policies to controls in the Controls module by adding implementation notes referencing the specific policy name and retention period.
 
 ---
-
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| Data Retention Policies | ❌ | ❌ | ✅ | ✅ |
-| Data Sovereignty Config | ❌ | ❌ | ✅ | ✅ |
-| Jurisdiction Browser | ❌ | ❌ | ✅ | ✅ |
 
 *Requires `settings.manage` permission for retention policies and `organizations.write` for sovereignty configuration.*
 

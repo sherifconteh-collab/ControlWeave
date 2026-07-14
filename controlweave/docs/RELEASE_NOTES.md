@@ -1,5 +1,84 @@
 # 📋 Release Notes
 
+## Version 4.4.1 — July 14, 2026
+
+### Changed
+
+- **Documentation consolidation and accuracy pass**: merged ~85 redundant root-level historical/summary docs (phase summaries, security-audit snapshots, CI/CD guides, MCP guides, tracking docs, etc.) into single up-to-date topic files, deleting the originals. Removed the orphaned, never-synced `controlweave/docs/wiki-v2/` directory (the real GitHub Wiki source is `controlweave/docs/wiki/`).
+- **Removed stale tier/billing language across `controlweave/docs/`**: dozens of guides, the real wiki source tree, `SELF_HOSTED_INSTALL.md`, and the Settings page itself still described a removed Community/Pro/Enterprise/Gov Cloud pricing model — "Pro tier required", "Enterprise tier and above", "Available Plans", Stripe Checkout/Customer Portal flows, per-tier AI request caps, and per-tier framework limits. All of it contradicted `.claude/rules/tier-system.md` (tier gating was fully removed in v4.0). Rewrote the affected sections to describe the actual behavior: every feature is available to every authenticated user, with no tier-based limits anywhere.
+- **`SELF_HOSTED_INSTALL.md` rewritten**: previously described a defunct "community mirror vs. commercial Docker image" distribution split with paid license-key feature unlocks. This repository is the only build; rewrote the guide to describe the real single-build, dual-license (AGPL v3 / commercial) model.
+- **Settings → Account → Cancel Account corrected** (docs and UI copy): previously claimed cancellation "downgrades to the Community tier" with fabricated consequences (framework limit, reduced AI quota). The real `/account/cancel` endpoint cancels an active Stripe subscription if one exists and writes a legacy `tier`/`billing_status` bookkeeping field, but has no effect on feature access.
+- **`.claude/commands/route-scaffold.md` fixed**: the route-scaffolding playbook still instructed future routes to call `requireTier()`, directly contradicting `tier-system.md`'s "do not add tier gating to new routes" rule. Updated to scaffold `requirePermission()`-based access control instead.
+
+---
+
+## Version 4.4.0 — July 14, 2026
+
+### Added
+
+- **Claude-triggered PR documentation review** (`claude-doc-review.yml`), added alongside the existing Copilot code-review bot — later superseded in this same release cycle by live in-session doc review (see below) once it became clear the session already had everything needed to do real reviews without a separate GitHub Action.
+- Live, in-session PR doc-review process (`.claude/rules/doc-review.md`): whenever a subscribed session notices a meaningfully-sized doc-relevant diff, it reviews the affected `docs/guides/*.md`/`docs/*.md` pages against the real code change, fixes genuine discrepancies directly, and records the review in `controlweave/docs/doc-review-log/PR-<number>.md` plus a PR comment.
+
+### Fixed
+
+- **Auth — timing-safe login**: the "user not found" branch on login returned immediately with no dummy `bcrypt.compare`, while a wrong-password attempt against a real account cost a full cost-14 compare — a classic email-enumeration timing oracle. Both paths now cost the same.
+- **Password complexity now enforced on registration and reset**, not just invite-acceptance.
+- **Failed logins and account lockouts are now audit-logged** (previously only successful logins were).
+- **`bcrypt.getRounds()` crash guard**: a malformed password hash could throw and 500 a correct-password login; now guarded with a fallback, matching the sibling `ai-grc-platform` repo.
+- **JWT signing aligned to HS384** (from HS256) with a transitional `['HS384','HS256']` verify allow-list so existing sessions keep working until they expire naturally; token hashing moved to SHA-384 with legacy SHA-256 acceptance, matching `ai-grc-platform`'s CNSA Suite 1.0 posture.
+- **Redis rate-limiter no longer permanently downgrades to memory-only** after a single transient Redis error — added cooldown/re-probe logic.
+- **`passkeys.js` now signs JWTs with an explicit algorithm** instead of relying on the library default.
+- **Registration race on duplicate email now returns 409** instead of a generic 500; `organization_name` is now sanitized like `email`/`full_name`.
+- **RBAC — closed two privilege-escalation paths**: `POST/PUT /roles` and `POST /roles/assign` previously let any `roles.manage` holder create or assign a role (including the built-in `admin` role) granting permissions they didn't already hold; `PATCH /users/:userId` let any `users.manage` holder promote any user — including themselves — to `admin`. Both now require the acting user's own permissions to be a superset of what's being granted, and self-promotion to `admin` is blocked outright. Role/permission changes are now audit-logged.
+- **`ROLE_FALLBACK_PERMISSIONS` fail-open bug fixed**: the legacy `admin`/`auditor`/`user` permission floor was unconditionally unioned onto real custom-role permissions, silently defeating the shipped `auditor_observer` role's `assessments.write` restriction. Now a true fallback, applied only when a user has zero rows in `role_permissions`.
+- **Seeded previously-unseeded-but-referenced permissions** (`ai.read`, `ai.write`, `organizations.write`) — every non-admin user was silently 403'd on AI-governance/monitoring endpoints and most of the Organizations write surface.
+- **Auditor Workspace public share page**: `/auditor-workspace/shared/[token]` didn't render the engagement's `name`; the public `GET /auditor-workspace/public/:token` query leaked unwhitelisted internal columns (`organization_id`, `created_by`, `lead_auditor_id`) to an anonymous token holder — fixed to an explicit column whitelist. The share-URL token is now `encodeURIComponent`-escaped before being interpolated into the API request (closed a CodeQL-flagged "uncontrolled data in network request" finding on the companion `ai-grc-platform` PR).
+- **AI feature task-profile wiring**: 14+ `chat()`/LLM call sites across `services/ai/features/*.js` never passed a `feature` parameter, silently making their `FEATURE_TASK_PROFILE` model/temperature tuning dead code; `generateAuditFindingDraft` additionally skipped forced-JSON mode. All fixed.
+- **`evidence_suggest`/`audit_finding_draft` structured AI output** now renders through dedicated `StructuredOutput` cards instead of falling through to a raw JSON dump.
+- **AI routes without a configured provider now return the structured `NO_PROVIDER_CONFIGURED` envelope** instead of a generic 500, so the frontend can show a "configure a provider" prompt instead of an unhelpful error.
+
+---
+
+## Version 4.3.0 — July 10, 2026
+
+
+### Added
+
+- **RMF Leveraged Authorizations**: RMF packages can now inherit controls and authorization posture from COTS/SaaS products, following the FedRAMP-style leveraged-authorization model. New table `rmf_leveraged_authorizations` (migration 111) links `rmf_packages` to `cots_products` with inheritance type (full/partial/hybrid), an inherited-control list, shared-responsibility notes, and expiration tracking. New route module `routes/rmfInheritance.js` provides CRUD, an eligible-products lookup, and at-risk flagging when the underlying COTS product is deprecated/retired or its authorization has lapsed.
+- **Customer Responsibility Matrix (CRM) export**: generate a CRM as JSON, CSV, or PDF directly from a package's leveraged authorizations.
+- **OSCAL SSP export**: export an RMF package as a NIST OSCAL 1.1.2 System Security Plan, including leveraged authorizations and per-control shared-responsibility annotations (`services/oscalService.js`).
+- **Trust Center**: organizations can publish an opt-in, token-gated public page showing aggregate framework compliance and active-authorization counts (migration 112, `routes/trustCenter.js`, public page at `/trust/[token]`).
+- **Classroom mode**: guided, step-by-step training scenarios (migration 113, `routes/training.js`, `dashboard/training`) with three built-in templates plus an instructor progress view.
+- **Anonymized industry benchmarking**: compare framework compliance against a k-anonymity-guarded peer aggregate (minimum 5 participating organizations), with an org-level opt-out (`routes/benchmarks.js`, `dashboard/reports`).
+- **Compliance-as-code CI gate**: `GET /compliance/gate` returns HTTP 200/412 based on whether framework compliance meets a threshold, for direct use in CI pipelines with a service-account token.
+- **Cyber Resilience module**: BC/DR, incident-response, and ransomware-playbook plan tracking with tabletop/functional/full-scale exercise logging and RTO/RPO attainment (migration 114, `routes/cyberResilience.js`, `dashboard/resilience`). A computed Cyber Resilience Score blends plan coverage, test cadence, RTO/RPO attainment, and existing backup-log health.
+- COTS products gained `authorization_status`, `authorization_impact_level`, and `external_authorization_id` fields.
+
+### Changed
+
+- `GET /rmf/packages`, `/rmf/packages/:id`, and `/rmf/summary` now include leveraged-authorization counts and at-risk entries.
+- **LLM provider/model catalog refreshed**: `providerConfig.js`'s `PROVIDERS` and `TASK_PROFILES`, plus every other place in the codebase that independently hardcoded a copy of the same model list (routing/fallback logic in `modelRouter.js` and `keyResolution.js`, quota-downgrade paths in `multiAgentOrchestrator.js`, API-key connectivity-check pings in `orgSettings.js`/`platformAdmin.js`, and the BYOK provider-picker UI in three frontend settings pages/components), now reference current model IDs across all six providers. Groq's entire prior lineup (`llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `mixtral-8x7b-32768`, `gemma2-9b-it`, `deepseek-r1-distill-llama-70b`) had been fully deprecated/decommissioned upstream and is replaced with `openai/gpt-oss-120b`/`20b`, `groq/compound`, `groq/compound-mini`, and `meta-llama/llama-4-scout-17b-16e-instruct`.
+- **TEVV-DB-6/7 checks made real**: the `tevv-db` job's "syntactically valid SQL" and "unclosed DO block" checks previously never failed the build regardless of what they found, due to an uninitialized `FAILED` flag; TEVV-DB-6 also only scanned `migrations/07*.sql`/`08*.sql`, missing migration 104 (the RLS bug below) entirely. Both fixed, and TEVV-DB-6's detection logic replaced: its `DO \$\$`/`END \$\$` regex relied on a POSIX-basic-regex quirk that meant it almost never matched a real dollar-quoted block, so it now counts literal `$$` token pairs instead.
+- **`tevv-db` job now runs real migrations**: added a `postgres:17` service container and an actual `npm run migrate` step to the job branded "Database & Migration Integrity," which previously never touched a database — pure grep over `.sql` text.
+- **`security-pipeline.yml`'s migration step un-neutered**: `run: npm run migrate || echo "Migrations skipped for CI"` swallowed any real failure unconditionally; now a migration failure actually fails the build.
+
+### Fixed
+
+- **Row-Level Security was silently broken**: migration `104_row_level_security.sql` used invalid `ROW SECURITY` syntax (should be `ROW LEVEL SECURITY`) and had a dollar-quoting bug that broke policy creation for `evidence`/`audit_engagements`/`controls` — found and fixed by actually executing the full migration chain against a real Postgres instance for the first time.
+- **AIBOM now genuinely derived from code**: `scripts/generate-aibom.js` previously hardcoded 4 of its 6 AI providers as fabricated "service" entries with made-up model lists (e.g. `gemini-1.5-pro`, which never matched the real `providerConfig.js` models); rewritten to derive the provider/model inventory from the live `PROVIDERS` object so it can no longer drift from the actual integration.
+- **CodeQL `js/missing-rate-limiting`**: added an explicit per-router rate limiter to each of the six new route files (matching the existing `trustCenter.js` pattern), for parity with the companion `ai-grc-platform` fix — every flagged route was already covered by the app-wide `apiRateLimiter` mounted on `/api/v1`, which CodeQL's cross-file analysis can't trace; this closes the detection gap and adds a real second layer of defense.
+- **Per-router rate limiter ran before `authenticate`**: the six new route files applied their org-scoped rate limiter ahead of `authenticate`, so `req.user` was always unset when the limiter's key was built and every request silently fell back to a shared IP-based bucket instead of an org-scoped one. Fixed with a 3-way order — a cheap IP-based limiter first (bounds unauthenticated request volume before `authenticate`'s own DB/JWT work runs, and is what CodeQL's static analysis traces as covering the router), then `authenticate`, then the org-scoped limiter last, since it needs `req.user` for its key.
+- **AIBOM listed unused-capability providers as bundled dependencies**: the AI Bill of Materials treated all six BYOK LLM providers as `components` regardless of whether they have any real, shipped code dependency. Only `claude`/`openai` have actual npm SDK dependencies; `gemini`/`grok`/`groq`/`ollama` are called over plain HTTP only if an operator configures a key, with zero shipped SDK. Moved the latter into CycloneDX's dedicated `services` array alongside the existing internal AI Copilot/Analysis service entries, and added metadata clarifying that every provider reflects supported integration surface, not per-deployment runtime usage.
+- **Controls list page mislabeled `verified` controls as "Not Started"**: `getStatusBadgeClass`/`getStatusLabel` only handled `implemented`/`satisfied_via_crosswalk`/`in_progress`, falling through to a gray "Not Started" badge for `verified`, `needs_review`, and `not_applicable` — so a control an auditor had verified rendered as if untouched. The control detail page already handled `verified` correctly; brought the list page in line with it and added the missing statuses to the status filter and both inline status-edit dropdowns.
+- **Compliance gate undercounted `verified` controls**: `GET /compliance/gate` only treated `implemented`/`satisfied_via_crosswalk` as compliant, omitting `verified`, which every other progress query (`frameworks.js`, `dashboard.js`, `controls.js`) already counts as compliant — could return a false 412 even when the dashboard showed the threshold met.
+- **Reverted migration idempotency edits on already-numbered files**: an earlier pass added `IF NOT EXISTS` guards to `001`, `005`, `057`, `105`, `107`, `108`, `109`, but editing an already-numbered (and likely already-deployed) migration changes its stored checksum, which makes `scripts/migrate-all.js` hard-fail with "Checksum mismatch" on any existing database — blocking the deploy of this PR's real new migrations, and contradicting this repo's own "never edit a deployed migration" rule. Reverted those seven files to their original content; the RLS syntax fix in `104_row_level_security.sql` is unaffected since it fixes a genuine bug rather than being purely defensive.
+- **Cyber Resilience test date silently defaulted on malformed input**: `POST /resilience/plans/:id/tests` treated an invalid `test_date` (e.g. `not-a-date`) the same as an omitted one, silently recording the test against today's date instead of rejecting the request with 400 like every other date field in this route.
+- **Dependency vulnerabilities**: resolved all 27 backend + 21 frontend `npm audit` findings. `form-data`, `multer`, `ws`, `js-yaml` (backend and frontend) fixed via non-breaking `npm audit fix`; `nodemailer` bumped to `9.0.3` (breaking, limited to stricter default TLS certificate validation, which this project's SMTP usage doesn't rely on bypassing); `@sentry/node`/`@sentry/nextjs` bumped to `10.65.0` and `pm2` bumped to `7.0.3` (both breaking-flagged, verified against this codebase's minimal usage of each — basic `Sentry.init()`/`setupExpressErrorHandler()` with only `dsn`/`environment`/sample-rate options, and `pm2`'s standard `apps`/`script`/`instances`/`exec_mode` config).
+
+---
+
+---
+
 ## Version 4.2.1 — June 12, 2026
 
 

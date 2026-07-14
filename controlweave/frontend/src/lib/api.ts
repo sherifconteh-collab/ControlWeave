@@ -200,6 +200,70 @@ export const frameworkAPI = {
   ) => api.put(`/frameworks/nist-publications/${publicationId}/mappings`, data),
 };
 
+// State AI Laws APIs (US state/local AI governance controls)
+export const stateAiLawsAPI = {
+  getJurisdictions: () => api.get('/state-ai-laws/jurisdictions'),
+  getControls: (params?: { jurisdiction?: string; control_type?: string; priority?: string; search?: string }) =>
+    api.get('/state-ai-laws/controls', { params }),
+  getControl: (controlId: string) => api.get(`/state-ai-laws/controls/${controlId}`),
+  getSummary: () => api.get('/state-ai-laws/summary'),
+};
+
+// International AI Laws APIs (EU, UK, Canada, Brazil, Singapore, Japan, South Korea, China, Australia, India)
+export const internationalAiLawsAPI = {
+  getJurisdictions: () => api.get('/international-ai-laws/jurisdictions'),
+  getControls: (params?: { jurisdiction?: string; region?: string; control_type?: string; priority?: string; search?: string }) =>
+    api.get('/international-ai-laws/controls', { params }),
+  getControl: (controlId: string) => api.get(`/international-ai-laws/controls/${controlId}`),
+  getSummary: () => api.get('/international-ai-laws/summary'),
+};
+
+interface CustomFrameworkInput {
+  code: string;
+  name: string;
+  version: string;
+  category: string;
+  description: string;
+}
+
+interface CustomControlInput {
+  control_id: string;
+  title: string;
+  description: string;
+  priority: string;
+  control_type: string;
+}
+
+interface CustomControlUpdate {
+  control_id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  control_type: string;
+  sort_order?: number;
+}
+
+interface CloneFrameworkInput {
+  name: string;
+  code: string;
+}
+
+export const customFrameworksAPI = {
+  list: () => api.get('/frameworks/custom'),
+  get: (id: string) => api.get(`/frameworks/custom/${id}`),
+  create: (data: CustomFrameworkInput) => api.post('/frameworks/custom', data),
+  remove: (id: string) => api.delete(`/frameworks/custom/${id}`),
+  publish: (id: string) => api.post(`/frameworks/custom/${id}/publish`),
+  addControl: (frameworkId: string, control: CustomControlInput) =>
+    api.post(`/frameworks/custom/${frameworkId}/controls`, control),
+  updateControl: (frameworkId: string, controlId: string, control: CustomControlUpdate) =>
+    api.put(`/frameworks/custom/${frameworkId}/controls/${controlId}`, control),
+  removeControl: (frameworkId: string, controlId: string) =>
+    api.delete(`/frameworks/custom/${frameworkId}/controls/${controlId}`),
+  clone: (sourceCode: string, data: CloneFrameworkInput) =>
+    api.post(`/frameworks/custom/clone/${sourceCode}`, data),
+};
+
 // Dashboard APIs
 export const dashboardAPI = {
   getOverview: (params?: { period?: string }) => api.get('/dashboard/overview', { params }),
@@ -227,6 +291,17 @@ export const dashboardAPI = {
   getCacheMetrics: () => api.get('/dashboard/cache-metrics'),
 };
 
+// Dashboard Builder APIs (custom dashboard views + widgets)
+export const dashboardBuilderAPI = {
+  getViews: () => api.get('/dashboard-builder/views'),
+  createView: (data: Record<string, unknown>) => api.post('/dashboard-builder/views', data),
+  updateView: (id: string, data: Record<string, unknown>) => api.patch(`/dashboard-builder/views/${id}`, data),
+  deleteView: (id: string) => api.delete(`/dashboard-builder/views/${id}`),
+  addWidget: (viewId: string, data: Record<string, unknown>) => api.post(`/dashboard-builder/views/${viewId}/widgets`, data),
+  updateWidget: (widgetId: string, data: Record<string, unknown>) => api.patch(`/dashboard-builder/widgets/${widgetId}`, data),
+  deleteWidget: (widgetId: string) => api.delete(`/dashboard-builder/widgets/${widgetId}`),
+};
+
 // Organization APIs
 export const organizationAPI = {
   getFrameworks: (orgId: string) => api.get(`/organizations/${orgId}/frameworks`),
@@ -243,7 +318,7 @@ export const organizationAPI = {
   removeFramework: (orgId: string, frameworkId: string) =>
     api.delete(`/organizations/${orgId}/frameworks/${frameworkId}`),
 
-  getControls: (orgId: string, params?: { frameworkId?: string; status?: string }) =>
+  getControls: (orgId: string, params?: { frameworkId?: string; status?: string; page?: number; limit?: number }) =>
     api.get(`/organizations/${orgId}/controls`, { params }),
 
   exportControlAnswers: (
@@ -415,6 +490,25 @@ export const organizationAPI = {
     api.delete(`/organizations/me/contracts/${contractId}`),
 };
 
+// Data Sovereignty APIs (data residency, cross-border transfer, regulatory-change tracking)
+export const dataSovereigntyAPI = {
+  getConfig: () => api.get('/data-sovereignty/config'),
+  updateConfig: (data: Record<string, unknown>) => api.put('/data-sovereignty/config', data),
+  getJurisdictions: (params?: { has_ai_regulations?: boolean; has_data_residency?: boolean }) =>
+    api.get('/data-sovereignty/jurisdictions', { params }),
+  getJurisdictionFrameworks: (code: string) => api.get(`/data-sovereignty/jurisdictions/${code}/recommended-frameworks`),
+  getOrgJurisdictions: () => api.get('/data-sovereignty/organization-jurisdictions'),
+  addOrgJurisdiction: (data: Record<string, unknown>) => api.post('/data-sovereignty/organization-jurisdictions', data),
+  updateOrgJurisdiction: (id: string, data: Record<string, unknown>) => api.put(`/data-sovereignty/organization-jurisdictions/${id}`, data),
+  removeOrgJurisdiction: (id: string) => api.delete(`/data-sovereignty/organization-jurisdictions/${id}`),
+  getRegulatoryChanges: (params?: { jurisdiction_id?: string; impact_level?: string; status?: string; requires_action?: boolean }) =>
+    api.get('/data-sovereignty/regulatory-changes', { params }),
+  createRegulatoryChange: (data: Record<string, unknown>) => api.post('/data-sovereignty/regulatory-changes', data),
+  updateRegulatoryChangeStatus: (id: string, data: Record<string, unknown>) => api.put(`/data-sovereignty/regulatory-changes/${id}/status`, data),
+  getAIProviderRegions: () => api.get('/data-sovereignty/ai-provider-regions'),
+  getComplianceGapAnalysis: () => api.get('/data-sovereignty/compliance-gap-analysis'),
+};
+
 // Controls APIs
 export const controlsAPI = {
   getControl: (controlId: string) => api.get(`/controls/${controlId}`),
@@ -438,6 +532,42 @@ export const controlsAPI = {
   // across other active frameworks (same logic as the auto-crosswalk on PUT /implementation)
   triggerInherit: (controlId: string, data?: { inheritedStatus?: string; minSimilarity?: number }) =>
     api.post(`/controls/${controlId}/inherit`, data || {}),
+};
+
+// Control Exceptions / Risk Acceptance API
+export const exceptionsAPI = {
+  getList: (params?: { status?: 'pending' | 'active' | 'expired' | 'revoked' }) =>
+    api.get('/exceptions', { params }),
+
+  create: (data: {
+    control_id: string;
+    title: string;
+    reason: string;
+    compensating_controls?: string;
+    business_impact?: string;
+    owner_id?: string;
+    expires_at?: string;
+  }) => api.post('/exceptions', data),
+
+  update: (id: string, data: {
+    title?: string;
+    reason?: string;
+    compensating_controls?: string;
+    business_impact?: string;
+    owner_id?: string;
+    status?: 'pending' | 'active' | 'expired' | 'revoked';
+    expires_at?: string;
+  }) => api.patch(`/exceptions/${id}`, data),
+
+  approve: (id: string) => api.post(`/exceptions/${id}/approve`),
+
+  revoke: (id: string, data?: { note?: string }) => api.post(`/exceptions/${id}/revoke`, data || {}),
+};
+
+// Control Health API (computed rating from evidence freshness, assessments, vulnerabilities, POA&M, exceptions)
+export const controlHealthAPI = {
+  getAll: () => api.get('/control-health'),
+  getByControl: (controlId: string) => api.get(`/control-health/${controlId}`),
 };
 
 // Dynamic org configuration API (key/value config store, e.g. crosswalk threshold)
@@ -548,7 +678,7 @@ export const sbomAPI = {
 
 // Implementations APIs
 export const implementationsAPI = {
-  getAll: (params?: { frameworkId?: string; status?: string; assignedTo?: string; priority?: string; controlId?: string }) =>
+  getAll: (params?: { frameworkId?: string; status?: string; assignedTo?: string; priority?: string; controlId?: string; page?: number; limit?: number }) =>
     api.get('/implementations', { params }),
 
   ensureForControl: (controlId: string) =>
@@ -691,6 +821,26 @@ export const usersAPI = {
   revokeInvite: (inviteId: string) => api.delete(`/users/invites/${inviteId}`),
 };
 
+// Organization Contacts API
+export const contactsAPI = {
+  getList: () => api.get('/contacts'),
+
+  create: (data: { full_name: string; email?: string; title?: string; team?: string; notes?: string }) =>
+    api.post('/contacts', data),
+
+  update: (id: string, data: {
+    full_name?: string;
+    email?: string | null;
+    title?: string | null;
+    team?: string | null;
+    notes?: string | null;
+    is_active?: boolean;
+  }) => api.patch(`/contacts/${id}`, data),
+
+  // Soft delete — sets is_active = false server-side
+  remove: (id: string) => api.delete(`/contacts/${id}`),
+};
+
 
 // ---------------------------------------------------------------------------
 // CMDB -- Configuration Management Database
@@ -818,6 +968,38 @@ export const aiAPI = {
   clearReasoningMemory: () => api.delete('/ai/reasoning-memory'),
   // Agent Booster
   getAgentBoosterStatus: () => api.get('/ai/agent-booster/status'),
+};
+
+// Phase 6 AI Analysis APIs (predictive risk scoring, regulatory impact, smart remediation)
+export const phase6API = {
+  calculateRiskScore: () => api.post('/phase6/risk-score/calculate', {}, { timeout: AI_REQUEST_TIMEOUT }),
+  getLatestRiskScore: () => api.get('/phase6/risk-score/latest'),
+  getRiskScoreHistory: (params?: { limit?: number }) => api.get('/phase6/risk-score/history', { params }),
+  analyzeRegulatoryImpact: (data: {
+    frameworkCode: string;
+    changeType: string;
+    changeDescription: string;
+    effectiveDate?: string;
+    provider?: string;
+    model?: string;
+  }) => api.post('/phase6/regulatory-impact/analyze', data, { timeout: AI_REQUEST_TIMEOUT }),
+  getRegulatoryImpactAssessments: (params?: { frameworkCode?: string; impactLevel?: string; limit?: number; offset?: number }) =>
+    api.get('/phase6/regulatory-impact/assessments', { params }),
+  reviewRegulatoryImpactAssessment: (id: string, data: { status: string; notes?: string }) =>
+    api.put(`/phase6/regulatory-impact/assessments/${id}/review`, data),
+  generateRemediationPlan: (data: {
+    controlId?: string;
+    vulnerabilityId?: string;
+    impactAssessmentId?: string;
+    provider?: string;
+    model?: string;
+  }) => api.post('/phase6/remediation/generate', data, { timeout: AI_REQUEST_TIMEOUT }),
+  getRemediationPlans: (params?: { status?: string; priorityLevel?: string; limit?: number; offset?: number }) =>
+    api.get('/phase6/remediation/plans', { params }),
+  updateRemediationPlanStatus: (id: string, data: { status: string; completionPercentage?: number }) =>
+    api.put(`/phase6/remediation/plans/${id}/status`, data),
+  runComprehensiveAnalysis: (data?: { provider?: string; model?: string }) =>
+    api.post('/phase6/analyze/comprehensive', data || {}, { timeout: AI_REQUEST_TIMEOUT }),
 };
 
 // Assessment Procedures APIs (NIST 800-53A, ISO 27001, SOC 2, etc.)
@@ -1254,6 +1436,33 @@ export const reportsAPI = {
     api.get('/reports/ssp/json', { responseType: 'blob' }),
 };
 
+// Scheduled Reports API
+export const scheduledReportsAPI = {
+  getAll: () => api.get('/reports/scheduled'),
+
+  create: (data: {
+    name: string;
+    report_type: 'compliance_summary' | 'framework_gap' | 'evidence_status' | 'audit_trail' | 'executive';
+    schedule: 'daily' | 'weekly' | 'monthly' | 'quarterly';
+    format?: 'pdf' | 'csv' | 'json';
+    recipients?: string[];
+    filters?: Record<string, unknown>;
+  }) => api.post('/reports/scheduled', data),
+
+  update: (id: string, data: {
+    name?: string;
+    schedule?: 'daily' | 'weekly' | 'monthly' | 'quarterly';
+    format?: 'pdf' | 'csv' | 'json';
+    recipients?: string[];
+    filters?: Record<string, unknown>;
+    is_active?: boolean;
+  }) => api.put(`/reports/scheduled/${id}`, data),
+
+  remove: (id: string) => api.delete(`/reports/scheduled/${id}`),
+
+  runNow: (id: string) => api.post(`/reports/scheduled/${id}/run`),
+};
+
 // Issue Reporting APIs
 export const issueReportAPI = {
   submit: (data: {
@@ -1488,6 +1697,43 @@ export const tprmAPI = {
   deleteDocument: (id: string) => api.delete(`/tprm/documents/${id}`),
 };
 
+// Vendor Security Ratings API (SecurityScorecard / BitSight)
+export const vendorSecurityAPI = {
+  getScores: (params?: {
+    vendor_name?: string;
+    score_provider?: 'securityscorecard' | 'bitsight';
+    score_trend?: 'improving' | 'declining' | 'stable' | 'new';
+    limit?: number;
+    offset?: number;
+  }) => api.get('/vendor-security/scores', { params }),
+
+  getScore: (id: string) => api.get(`/vendor-security/scores/${id}`),
+
+  // Manual entry — always available, no external API dependency
+  createScore: (data: {
+    vendor_name: string;
+    vendor_domain?: string;
+    score_provider: 'securityscorecard' | 'bitsight';
+    score_value?: number;
+    score_grade?: string;
+    score_date: string;
+    risk_factors?: Record<string, unknown>;
+    findings_summary?: Record<string, unknown>;
+    assessment_url?: string;
+  }) => api.post('/vendor-security/scores', data),
+
+  // Live refresh — requires the org's own API key, sent per-request (not stored)
+  refreshScore: (id: string, data: { api_key: string }) =>
+    api.post(`/vendor-security/scores/${id}/refresh`, data),
+
+  setupMonitoring: (data: { vendor_domain: string; score_provider: 'securityscorecard' | 'bitsight'; api_key: string }) =>
+    api.post('/vendor-security/monitor', data),
+
+  deleteScore: (id: string) => api.delete(`/vendor-security/scores/${id}`),
+
+  getTrends: (domain: string) => api.get(`/vendor-security/trends/${domain}`),
+};
+
 // TPRM Public (vendor-facing, token-based, no auth required)
 export const tprmPublicAPI = {
   getQuestionnaire: (token: string) => api.get(`/tprm-public/respond/${token}`),
@@ -1697,7 +1943,13 @@ export const trustCenterAPI = {
   }) => api.put('/trust-center/config', data),
   regenerateToken: () => api.post('/trust-center/config/regenerate-token'),
   getPublicPage: (token: string) =>
-    fetch(`${API_BASE_URL}/trust-center/public/${token}`).then(res => res.json()),
+    fetch(`${API_BASE_URL}/trust-center/public/${encodeURIComponent(token)}`).then(res => res.json()),
+};
+
+// Auditor workspace public share page (routes/auditorWorkspace.js) — unauthenticated raw fetch
+export const auditorWorkspacePublicAPI = {
+  getPublicWorkspace: (token: string) =>
+    fetch(`${API_BASE_URL}/auditor-workspace/public/${encodeURIComponent(token)}`).then((res) => res.json()),
 };
 
 // Classroom mode — guided training scenarios (routes/training.js)

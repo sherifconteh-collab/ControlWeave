@@ -426,7 +426,8 @@ For EACH adopted framework, provide:
 Also provide a cross-framework summary:
 - Regulatory changes that affect multiple adopted frameworks simultaneously
 - Priority actions across the entire compliance portfolio
-- Gaps between current compliance posture and upcoming requirements` }]
+- Gaps between current compliance posture and upcoming requirements` }],
+    feature: 'regulatory_monitor'
   });
 }
 
@@ -526,7 +527,8 @@ Provide:
 5. Trend analysis and emerging risks
 6. Risk acceptance recommendations vs mitigation priorities
 7. Return data in a structured JSON section for heatmap visualization:
-   { "heatmapData": [{ "item": "name", "likelihood": 1-5, "impact": 1-5, "category": "..." }] }` }]
+   { "heatmapData": [{ "item": "name", "likelihood": 1-5, "impact": 1-5, "category": "..." }] }` }],
+      feature: 'risk_heatmap'
     });
   });
 }
@@ -619,7 +621,8 @@ Organization Data:
 - Total Assets: ${assetCount.rows[0].count}
 - Total Evidence: ${evidenceCount.rows[0].count}
 
-Answer the question thoroughly based on this data.` }]
+Answer the question thoroughly based on this data.` }],
+    feature: 'compliance_query'
   });
 }
 
@@ -652,7 +655,8 @@ Provide:
 4. Suggested training providers/resources
 5. Training schedule recommendation
 6. How each training topic maps to specific control gaps
-7. KPIs to measure training effectiveness` }]
+7. KPIs to measure training effectiveness` }],
+    feature: 'training_recommendations'
   });
 }
 

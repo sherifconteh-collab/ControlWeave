@@ -213,15 +213,7 @@ To upload a template:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| Auditor Workspace | ❌ | ✅ | ✅ | ✅ |
-| Workspace Links | ❌ | ✅ | ✅ | ✅ |
-| Engagements | ❌ | ✅ | ✅ | ✅ |
-| Findings & PBC Requests | ❌ | ✅ | ✅ | ✅ |
-| Audit Templates | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — the Auditor Workspace, workspace links, engagements, findings & PBC requests, and audit templates are all available to every authenticated user.
 
 ---
 

@@ -4,7 +4,7 @@ Manage your organization's AI vendor ecosystem, assess risks, track incidents, a
 
 ## Overview
 
-The AI Governance module helps organizations manage the risks associated with AI vendors and components they use. It tracks vendor risk assessments, AI-related incidents, and AI supply chain components — giving you a structured approach to governing third-party AI use. This feature requires **Pro tier or above**.
+The AI Governance module helps organizations manage the risks associated with AI vendors and components they use. It tracks vendor risk assessments, AI-related incidents, and AI supply chain components — giving you a structured approach to governing third-party AI use.
 
 ---
 
@@ -145,14 +145,7 @@ Components not yet approved for use appear highlighted in the summary. Review an
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| AI Governance module | ❌ | ❌ | ✅ | ✅ |
-| Vendor assessments | ❌ | ❌ | ✅ | ✅ |
-| Incident tracking | ❌ | ❌ | ✅ | ✅ |
-| Supply chain components | ❌ | ❌ | ✅ | ✅ |
+ControlWeaver has no tier gating — the AI Governance module, vendor assessments, incident tracking, and supply chain components are all available to every authenticated user.
 
 ---
 

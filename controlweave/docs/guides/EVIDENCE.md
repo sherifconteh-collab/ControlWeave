@@ -24,15 +24,7 @@ ControlWeave's Evidence Management module helps you:
 - 📦 Version evidence to track document history
 - 📥 Import evidence from Splunk and other integrations
 
-### Tier Availability
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| **Evidence Uploads** | ✅ | ✅ | ✅ | ✅ |
-| **Control Linking** | ✅ | ✅ | ✅ | ✅ |
-| **Integrity Verification** | ✅ | ✅ | ✅ | ✅ |
-| **PII Classification** | ✅ | ✅ | ✅ | ✅ |
-| **Retention Management** | ✅ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — evidence uploads, control linking, integrity verification, PII classification, and retention management are all available to every authenticated user.
 | **Auto-Evidence Collection** | ❌ | ✅ | ✅ | ✅ |
 | **AI Evidence Suggestions** | ❌ | ✅ | ✅ | ✅ |
 | **Splunk Connector** | ❌ | ✅ | ✅ | ✅ |
@@ -292,9 +284,9 @@ Use the filter panel to narrow results by:
 
 ---
 
-## Step 10: Auto-Evidence Collection (Pro+)
+## Step 10: Auto-Evidence Collection
 
-Starting with the **Pro tier**, ControlWeave supports automated evidence collection through configurable **Collection Rules**. Rules run on a schedule and automatically import evidence from connected sources, linking it to the controls you specify.
+ControlWeave supports automated evidence collection through configurable **Collection Rules**. Rules run on a schedule and automatically import evidence from connected sources, linking it to the controls you specify.
 
 ### 10.1 Supported Source Types
 
@@ -351,7 +343,7 @@ Imported logs are stored as evidence records and can be linked to controls like 
 
 ---
 
-## Step 11: AI-Powered Evidence Suggestions (Pro+)
+## Step 11: AI-Powered Evidence Suggestions
 
 ControlWeave's AI can automatically scan your connected integrations, analyze incoming data against your selected compliance frameworks, and **suggest evidence items** mapped to the correct controls. Suggested evidence goes to a staging area — nothing is added to your official evidence library until you approve it.
 
@@ -452,7 +444,7 @@ Connected Integrations → AI Scan → Pending Evidence (staging)
 - [ ] Sensitivity levels classified accurately
 - [ ] Retention dates set for regulated data
 
-**Auto-Collection** (Pro+):
+**Auto-Collection**:
 - [ ] Supported integration sources configured as applicable in Settings → Integrations
 - [ ] Collection rules created for recurring evidence sources
 - [ ] Rule schedules reviewed (daily/weekly/monthly as appropriate)

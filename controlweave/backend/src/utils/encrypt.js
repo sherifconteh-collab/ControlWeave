@@ -248,4 +248,64 @@ function auditEncryptionStrength() {
   };
 }
 
-module.exports = { encrypt, decrypt, isEncrypted, hashForLookup, auditEncryptionStrength, clearKeyCache };
+/**
+ * SHA-384 hex digest of arbitrary content (Buffer or string).
+ * CNSA Suite 1.0 mandates SHA-384 or higher for hashing.
+ */
+function sha384(input) {
+  return crypto.createHash('sha384').update(input).digest('hex');
+}
+
+/**
+ * SHA-384 digest of a bearer token for non-reversible, DB-stored lookups
+ * (refresh tokens, password-reset tokens, etc.). CNSA Suite 1.0 compliant.
+ */
+function hashToken(token) {
+  return sha384(String(token));
+}
+
+function _safeEqualHex(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify a token against a stored hash. Matches the SHA-384 (CNSA 1.0) digest
+ * and, during the migration window, the legacy SHA-256 digest so tokens issued
+ * before the cutover keep resolving until they expire.
+ * TODO(cnsa-cleanup): drop the SHA-256 fallback once all pre-migration tokens
+ * have expired (>= max refresh-token TTL).
+ */
+function verifyTokenHash(token, storedHash) {
+  if (!storedHash) return false;
+  if (_safeEqualHex(hashToken(token), storedHash)) return true;
+  const legacy = crypto.createHash('sha256').update(String(token)).digest('hex');
+  return _safeEqualHex(legacy, storedHash);
+}
+
+/**
+ * Candidate hashes for a DB-stored token lookup: the SHA-384 (CNSA 1.0) digest
+ * first, then the legacy SHA-256 digest. Use with `column = ANY($n)` so tokens
+ * issued before the cutover still resolve until they expire.
+ * TODO(cnsa-cleanup): drop the SHA-256 candidate once legacy tokens have expired.
+ */
+function tokenHashCandidates(token) {
+  return [hashToken(token), crypto.createHash('sha256').update(String(token)).digest('hex')];
+}
+
+module.exports = {
+  encrypt,
+  decrypt,
+  isEncrypted,
+  hashForLookup,
+  sha384,
+  hashToken,
+  verifyTokenHash,
+  tokenHashCandidates,
+  auditEncryptionStrength,
+  clearKeyCache
+};

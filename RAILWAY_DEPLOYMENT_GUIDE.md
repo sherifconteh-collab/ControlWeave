@@ -1,393 +1,340 @@
-# Railway Deployment Configuration Guide
+# Railway Deployment Guide
 
-## ⚠️ CRITICAL: Serverless Mode is INCORRECT for This Application
+Operational reference for deploying ControlWeaver on Railway: service setup,
+environment variables, healthcheck configuration, and troubleshooting for
+issues that have come up in practice.
 
-### Summary
+## Service Architecture
 
-**YES, it matters that you marked serverless in Railway!** This application **MUST NOT** be deployed in serverless mode. It requires a traditional server (container) deployment.
+Railway should run **three services**:
 
-### Understanding Railway's Serverless Mode
+1. **PostgreSQL** — managed Railway PostgreSQL (17+)
+2. **Backend** — `controlweave/backend`, Dockerfile build
+3. **Frontend** — `controlweave/frontend`, Dockerfile build
 
-**How Railway's Serverless Works:**
-- Containers scale down to **zero** after periods of inactivity (saves costs)
-- Incoming HTTP requests are **queued** while the container is sleeping
-- Container wakes up to process queued requests (causes cold start latency)
-- Requests are then served normally
+Both backend and frontend ship a `Dockerfile`. Each has its own `railway.json`
+(`controlweave/backend/railway.json`, `controlweave/frontend/railway.json`
+if present) that takes effect once the service's Root Directory is set to
+that subfolder — that per-service file is what Railway actually reads, not
+the `railway.json` at the repo root.
 
-**This sounds good, but...**
+## Service Type: Web Service, NOT Serverless
 
-### Why Serverless Mode STILL WON'T WORK for This Application
+**This application must be deployed as a Web Service (container), never
+Serverless.** Railway's serverless mode scales the container to zero after
+inactivity and queues incoming HTTP requests until it wakes back up. That
+queuing only helps request-driven traffic — it does nothing for the
+in-process, time-based work this backend depends on:
 
-While Railway's request queuing handles **HTTP traffic** gracefully, this application is designed as a **long-running server** with critical features that are **fundamentally incompatible** with scale-to-zero serverless deployments:
+- **Reminder scheduler** (`src/services/reminderService.js`) — runs on a
+  `setInterval` (default every 60 minutes, see `REMINDER_INTERVAL_MINUTES`)
+  to send control-review reminders, assessment notifications, and expire
+  trials. If the container is asleep, nothing wakes it to run this —
+  there's no HTTP request involved, so the scheduler simply stops.
+- **Graceful shutdown handling** (SIGTERM/SIGINT close DB pool + scheduler
+  cleanly) assumes a long-running process, not frequent cold start/stop
+  cycles.
+- **Persistent DB connection pool** — pool warm-up/reuse benefits are lost
+  on every cold start, and cold starts add connection churn.
+- **LLM service cache cleanup** (`src/services/llmService.js`) — also runs
+  on a periodic `setInterval`; doesn't run while asleep.
 
-#### 1. **Background Scheduler (CRITICAL INCOMPATIBILITY)**
-- **File**: `src/services/reminderService.js`
-- **What it does**: Runs `setInterval()` every 60 minutes to:
-  - Check for control reviews that are due
-  - Send assessment plan reminders
-  - Expire trial subscriptions
-- **Problem with serverless**: When the container scales to zero, the scheduler **stops completely**. No requests come in to wake it up because these are **time-based tasks**, not request-driven. The scheduler only runs when the container is awake and serving requests.
-- **Reality**: If your app has no traffic for 10+ minutes, the scheduler stops. The 60-minute interval resets each time the container wakes, meaning tasks may **never run** if traffic is sporadic.
+None of this is fixable by "the request queue will wake it eventually" —
+these are timers, not request handlers. If cost is the reason serverless
+looked appealing, the cost delta for keeping this as an always-on Web
+Service is a few dollars/month; that's cheaper than re-architecting around
+an external cron trigger or a split API/worker deployment.
 
-```javascript
-// From server.js line 249
-const stopReminders = startReminderScheduler(); // Starts background scheduler
-const server = app.listen(PORT, () => { ... });
-```
+Railway's "Metal" (dedicated infrastructure) option is a separate, unrelated
+setting — standard containers are sufficient unless you're sustaining
+>1000 req/s or need guaranteed CPU/memory; start standard and upgrade only
+if you observe consistent >80% memory usage or CPU throttling.
 
-#### 2. **Graceful Shutdown Handlers**
-- **What it does**: Handles SIGTERM/SIGINT to cleanly close database connections and stop schedulers
-- **Problem with serverless**: These handlers expect a long-running process, not frequent cold starts/shutdowns
+## Deployment Steps
 
-```javascript
-// From server.js lines 258-272
-function shutdown(signal) {
-  log('warn', 'server.shutdown.requested', { signal });
-  stopReminders();
-  server.close(() => {
-    pool.end(() => { process.exit(0); });
-  });
-}
-```
-
-#### 3. **Persistent Database Connection Pool**
-- **What it does**: Maintains a pool of database connections for efficiency
-- **Problem with serverless**: Connection pool optimization is wasted with cold starts; may cause connection leaks
-
-#### 4. **Background Job Processing**
-- **Files**: `src/services/jobService.js`, `src/services/webhookService.js`
-- **What it does**: Processes webhook events and background jobs
-- **Problem with serverless**: Jobs may not be processed if container is asleep
-
-#### 5. **LLM Service Cleanup**
-- **File**: `src/services/llmService.js`
-- **What it does**: Runs periodic cleanup of AI cache with `setInterval()`
-- **Problem with serverless**: Cleanup won't run when container sleeps; cache memory management fails
-
-### The Core Issue: Time-Based vs. Request-Based
-
-**Railway's serverless request queuing helps with:**
-- ✅ HTTP requests from users (queued and processed on wake)
-- ✅ API calls from frontend (handled after cold start)
-- ✅ Webhook deliveries (if sender retries)
-
-**Railway's serverless CANNOT help with:**
-- ❌ Time-based schedulers (`setInterval`, cron jobs)
-- ❌ Background tasks that run on a schedule
-- ❌ Periodic cleanup/maintenance tasks
-- ❌ Any process that needs to run regardless of traffic
-
-**The fundamental problem**: Your application needs to do work **even when no one is making requests**. Serverless architectures require external triggers (HTTP requests, queue messages) to wake up and do work. Background schedulers running inside the container don't provide those triggers.
-
-### Impact of Using Serverless Mode
-
-| Feature | Expected Behavior | What Happens in Serverless |
-|---------|-------------------|----------------------------|
-| **HTTP Requests** | Processed immediately | ✅ Queued & processed (with cold start delay) |
-| **Control Review Reminders** | Sent every 60 minutes | ❌ NOT SENT when asleep (no trigger to wake) |
-| **Trial Expirations** | Checked every 60 minutes | ❌ Trials never expire (scheduler paused) |
-| **Assessment Notifications** | Sent on schedule | ❌ Delayed indefinitely or never sent |
-| **Background Job Queue** | Processed continuously | ❌ Only processed when awake (during traffic) |
-| **First Request Latency** | ~10-50ms | ⚠️ 2-5+ seconds (cold start on wake) |
-| **Database Connections** | Pooled efficiently | ⚠️ Reconnect overhead on every wake |
-| **Scheduled Tasks** | Run at specific times | ❌ Miss execution windows entirely |
-
----
-
-## 🔄 Alternative Solutions (If You Must Use Serverless)
-
-If cost optimization via serverless is critical and you're willing to re-architect, here are alternatives:
-
-### Option 1: Use Web Service Mode (RECOMMENDED) ⭐
-- Keep current architecture
-- Reliable background processing
-- Simplest solution
-- Minimal additional cost
-
-### Option 2: External Cron Service + Serverless API
-**Architecture**: Remove internal scheduler, trigger via external HTTP calls
-
-**Changes Required**:
-1. Remove `startReminderScheduler()` from `server.js`
-2. Create HTTP endpoints for each scheduled task:
-   ```javascript
-   // Add to server.js
-   router.post('/api/v1/internal/run-reminders', async (req, res) => {
-     // Verify secret token
-     if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
-       return res.status(401).json({ error: 'Unauthorized' });
-     }
-     await runReminderSweep();
-     res.json({ success: true });
-   });
+1. **Create the PostgreSQL service** in Railway (managed Postgres 17+).
+2. **Create the backend service**:
+   - Root Directory: `controlweave/backend`
+   - Builder: Dockerfile (auto-detected)
+   - Service Type: **Web Service** (not Serverless)
+   - Link `DATABASE_URL` from the PostgreSQL service (Settings → Service
+     Variables → Reference Variable → select the Postgres service →
+     `DATABASE_URL`)
+   - Set the remaining required env vars (see table below)
+3. **Create the frontend service**:
+   - Root Directory: `controlweave/frontend`
+   - Builder: Dockerfile (auto-detected)
+   - Set `NEXT_PUBLIC_API_URL` to the backend's public URL + `/api/v1`
+4. **Deploy** both services and confirm healthchecks pass (see below).
+5. **Run migrations.** The backend's `railway.json` already runs
+   `npm run migrate` as a `preDeployCommand`, so this happens automatically
+   on every deploy. To run manually instead:
+   ```bash
+   railway run npm run migrate
    ```
-3. Use external service (e.g., cron-job.org, EasyCron) to call endpoint every 60 minutes
+6. **Seed reference data** (frameworks/controls/CMDB) if this is a fresh
+   database:
+   ```bash
+   railway run node scripts/seed-frameworks.js
+   railway run node scripts/seed-missing-controls.js
+   railway run node scripts/seed-cmdb-data.js
+   ```
+7. **Create the first admin user** and test login end-to-end.
+8. **(Optional) Configure custom domains** and update `CORS_ORIGIN`,
+   `FRONTEND_URL`, and `NEXT_PUBLIC_API_URL` to match.
 
-**Pros**: Serverless compatible, external monitoring
-**Cons**: Additional service dependency, more complex architecture, security concerns
-
-### Option 3: Separate Always-On Worker Service
-**Architecture**: Split into API service (serverless) + Worker service (always-on)
-
-**Changes Required**:
-1. Create new `worker.js` with only the scheduler
-2. Deploy two services on Railway:
-   - Main API: Serverless mode
-   - Worker: Web Service mode (small instance)
-3. Share database between services
-
-**Pros**: API can scale to zero, worker stays alive
-**Cons**: More complex deployment, two services to manage
-
-### Option 4: Database-Driven Scheduling
-**Architecture**: Use PostgreSQL `pg_cron` extension
-
-**Changes Required**:
-1. Enable pg_cron on your database
-2. Define scheduled tasks in PostgreSQL
-3. Remove Node.js schedulers
-
-**Pros**: Database-native, reliable
-**Cons**: Requires pg_cron support, database vendor lock-in
-
-### Recommendation
-**Just use Web Service mode.** The cost difference is minimal (few dollars/month), and you avoid significant re-architecture work and potential bugs. The current codebase is designed for always-on operation.
-
----
-
-## ✅ CORRECT Configuration: Server Mode (Container)
-
-### Railway Settings
-
-**In your Railway project settings:**
-
-1. **Service Type**: `Web Service` (NOT Serverless)
-2. **Watch Paths**: Leave default or customize for your build
-3. **Health Check**: Configure `/health` endpoint (optional but recommended)
-4. **Restart Policy**: `On Failure` (recommended)
-
-### Environment Variables Required
+### Verify after deploying
 
 ```bash
-# Core Settings
-NODE_ENV=production
-PORT=3001  # Railway will override this automatically
+# Backend
+curl https://your-backend.up.railway.app/health
+# {"status":"healthy","database":{"status":"connected",...},...}
 
-# Database
-DATABASE_URL=postgresql://...
-
-# Security
-JWT_SECRET=your-secret-key
-CORS_ORIGINS=https://your-frontend.com
-
-# Demo account credential delivery (required if using public contact/demo emails)
-DEMO_ACCOUNT_PASSWORD=your-demo-password
-
-# Background Jobs
-REMINDER_INTERVAL_MINUTES=60  # Default: 60 minutes
-
-# Railway-specific (auto-populated by Railway)
-RAILWAY_ENVIRONMENT_NAME=production
-RAILWAY_SERVICE_ID=auto-populated
-RAILWAY_DEPLOYMENT_ID=auto-populated
+# Frontend
+curl https://your-frontend.up.railway.app/health
+# {"status":"ok"}
 ```
 
-### Railway.json (Optional but Recommended)
+Check backend logs for, in order:
+- `server.started`
+- `reminders.scheduler.started` with `intervalMinutes` — confirms the
+  background scheduler is running (this is the thing serverless mode would
+  break)
+- `reminders.sweep.completed` — appears every time the scheduler fires
+- `websocket.initialized`
 
-Create a `railway.json` in your backend directory:
+## Environment Variables
+
+### Backend — required
+
+| Variable | Notes |
+|---|---|
+| `DATABASE_URL` | `postgresql://user:pass@host:port/db?sslmode=require`. Use Railway's service-linking (Reference Variable) rather than pasting manually. Railway Postgres requires SSL. |
+| `JWT_SECRET` | ≥32 chars. Generate: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `NODE_ENV` | `production` |
+| `CORS_ORIGIN` | **Singular**, not `CORS_ORIGINS`. Comma-separated list of allowed origins (see `security.js`), e.g. `https://your-frontend.up.railway.app`. |
+| `FRONTEND_URL` | Used for emails/redirects, e.g. `https://your-frontend.up.railway.app` |
+
+`PORT` does not need to be set — Railway injects its own and the app reads
+`process.env.PORT`.
+
+### Backend — commonly needed
+
+| Variable | Default | Notes |
+|---|---|---|
+| `JWT_ACCESS_EXPIRY` | `15m` | |
+| `JWT_REFRESH_EXPIRY` | `7d` | |
+| `JWT_DEMO_SESSION_EXPIRY` | `8h` | |
+| `ENCRYPTION_KEY` | dev fallback only | BYOK API key encryption. Required in production. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `HOST` | `0.0.0.0` | Already defaults correctly in code (`server.js`); no action needed unless overriding. |
+| `DEMO_ACCOUNT_PASSWORD` | unset | Only needed if using the public contact/demo-account flow. If unset, that flow still works but credential-delivery emails are skipped and onboarding is marked required — this is not a hard failure. |
+| `ENABLE_REMINDERS` | `true` | Set to `false` to disable the background reminder scheduler. (There is no `DISABLE_REMINDER_SCHEDULER` var — that name does not exist in code.) |
+| `REMINDER_INTERVAL_MINUTES` | `60` | |
+| `WEBAUTHN_RP_NAME` / `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN` | — | Required for passkey sign-in. `WEBAUTHN_RP_ID` = bare hostname (no port/protocol); `WEBAUTHN_ORIGIN` = full origin. |
+| `EDITION` | `pro` | Informational only in this fork — see `.claude/rules/tier-system.md`; all features are available regardless of value. |
+| `REDIS_URL` | unset | Optional; needed only for multi-instance WebSocket scaling. Set `REDIS_REQUIRED=true` to fail fast if it's missing in production. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `FROM_EMAIL` / `FROM_NAME` | unset | Leave `SMTP_HOST` blank to disable email delivery; in-app notifications keep working. |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` / `XAI_API_KEY` / `GROQ_API_KEY` | unset | Optional platform-level LLM keys — BYOK per-org keys can override. |
+| `LOG_LEVEL` | — | Not currently read by the logger; safe to omit. |
+
+Full reference (SMTP, backups, Sentry, MCP, CE-MCP sandbox, license keys,
+etc.) lives in `controlweave/backend/.env.example` — treat that file as the
+source of truth for anything not listed here.
+
+Note: `STRIPE_*` variables still exist in `.env.example` but billing is
+stubbed out in this fork (`routes/billing.js` returns `410 Gone` for
+checkout/portal) — they don't need to be set for a working deployment.
+
+### Frontend — required
+
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend's public URL + `/api/v1`, e.g. `https://your-backend.up.railway.app/api/v1` |
+| `NODE_ENV` | `production` |
+
+`PORT` is injected by Railway automatically; `HOSTNAME=0.0.0.0` is already
+set in the frontend Dockerfile.
+
+### PostgreSQL (auto-provided by Railway)
+
+`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` are
+populated automatically. Link `DATABASE_URL` into the backend service via
+Reference Variable rather than copying it manually — it stays in sync if
+Railway rotates credentials.
+
+### Setting variables
+
+- **UI**: Service → Variables → New Variable (redeploys automatically)
+- **CLI**: `railway variables set KEY=value`, or from a file:
+  `railway variables set --file .env.production`
+- **Service linking** (for `DATABASE_URL`): Service → Settings → Service
+  Variables → Reference Variable → pick the Postgres service → `DATABASE_URL`
+
+## Healthcheck Configuration
+
+Both services expose `GET /health`:
+
+- **Backend** (`server.js`): checks DB connectivity, returns `status`,
+  `database`, `memory`, `uptime`. Degrades gracefully — if the DB isn't
+  configured/reachable it still responds (doesn't hang), so healthchecks
+  don't fail purely due to a transient DB blip.
+- **Frontend** (`src/app/health/route.ts`): static `{"status":"ok"}`.
+
+Backend Dockerfile also has a Docker-level `HEALTHCHECK` instruction hitting
+the same endpoint, independent of Railway's own healthcheck.
+
+Current `controlweave/backend/railway.json`:
 
 ```json
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd controlweave/backend && npm install"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "cd controlweave/backend && npm start",
+    "preDeployCommand": "npm run migrate",
+    "startCommand": "npm run start:prod",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 100,
+    "healthcheckTimeout": 600,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
 }
 ```
 
----
+Key points:
+- `healthcheckTimeout: 600` (10 minutes) — generous, to accommodate the
+  `preDeployCommand` migration step running before the app is even
+  listening.
+- `builder: DOCKERFILE` — do **not** switch this to `NIXPACKS`; the app
+  ships hand-written multi-stage Dockerfiles and Nixpacks will not produce
+  an equivalent build.
+- `restartPolicyType: ON_FAILURE` with 3 retries.
 
-## 🏗️ Metal Build Option
+For a from-scratch service without a `railway.json`, use `/health` as the
+path and 100–300s as the timeout; the checked-in `600` is intentionally
+higher to cover the migration step.
 
-### What is Metal Build?
+## Troubleshooting
 
-Railway's "metal" build option refers to **dedicated infrastructure** vs shared infrastructure. This is SEPARATE from the serverless vs. container decision.
+### Reminders / scheduled tasks not running
 
-### Should You Use Metal?
+**Symptom**: control-review reminders, trial expirations, or assessment
+notifications don't fire.
 
-**For most cases: NO, standard containers are sufficient.**
+**Causes, in order of likelihood**:
+1. Service is set to **Serverless** instead of Web Service — see the
+   section above; this is the #1 cause.
+2. `ENABLE_REMINDERS=false` is set (note: not `DISABLE_REMINDER_SCHEDULER`,
+   which isn't a real variable).
+3. `REMINDER_INTERVAL_MINUTES` set unexpectedly high.
 
-| Consideration | Standard Containers | Metal/Dedicated |
-|---------------|---------------------|-----------------|
-| **Cost** | Lower (shared resources) | Higher (dedicated resources) |
-| **Performance** | Sufficient for most apps | Guaranteed resources |
-| **Use Case** | Dev, staging, small-medium production | High-traffic production |
-| **Noisy Neighbor Risk** | Possible (shared infrastructure) | None (isolated) |
+**Fix**: confirm Service Type = Web Service, unset/remove
+`ENABLE_REMINDERS` (or set it to `true`), and check logs for
+`reminders.scheduler.started`.
 
-**Use Metal Build if:**
-- Your app consistently uses >2GB RAM
-- You need guaranteed CPU resources
-- You have extremely high traffic (>1000 req/s)
-- You need predictable, consistent performance
-- Cost is less important than performance guarantees
+### High cold-start latency on first request
 
-**Standard Containers are fine if:**
-- This is dev/staging environment
-- Production traffic is low-to-medium (<500 req/s)
-- Cost optimization is important
-- Acceptable to have some performance variance
+**Symptom**: first request after inactivity takes 5+ seconds.
 
-### Recommendation for ControlWeaver-Pro
+**Cause**: Serverless mode. **Fix**: switch to Web Service mode.
 
-**Start with Standard Containers**. Monitor performance and upgrade to Metal only if you observe:
-- Consistent high memory usage (>80% of allocated)
-- CPU throttling during peak hours
-- Performance degradation that impacts users
+### Health check fails: "service unavailable" / retries exhausted
 
----
+```
+Attempt #1 failed with service unavailable. Continuing to retry for 1m29s
+...
+1/1 replicas never became healthy!
+```
 
-## 🚀 Deployment Checklist
+Work through these in order:
 
-### Initial Deployment
+1. **Not binding to `0.0.0.0`.** The app must bind to `0.0.0.0`, not
+   `localhost`/`127.0.0.1`. Already handled in code
+   (`const HOST = process.env.HOST || '0.0.0.0'`) and in the backend
+   Dockerfile (`ENV HOST=0.0.0.0`) — if you've overridden `HOST` in
+   Railway variables, unset it.
+2. **Frontend not setting `HOSTNAME`.** Next.js standalone server defaults
+   to `localhost`. Already set via `ENV HOSTNAME=0.0.0.0` in the frontend
+   Dockerfile — don't override it.
+3. **Server crashing on startup** before it can bind the port. Check
+   deploy logs for module-not-found errors or missing required env vars
+   (`DATABASE_URL`, `JWT_SECRET`). A past incident here was a missing
+   `src/middleware/auditLog.js` file and a route importing a nonexistent
+   `authenticateToken` export instead of `authenticate` — both are fixed
+   in the current tree, but the failure mode (module resolution errors
+   crashing startup, which then fails every healthcheck attempt) is worth
+   recognizing quickly if it recurs after a refactor.
+4. **Wrong `PORT` handling.** The app must read `process.env.PORT`
+   (Railway injects this) rather than hardcoding a port. Already correct
+   in code.
+5. **Database unreachable and the health check treats that as fatal.**
+   The current `/health` implementation degrades gracefully instead of
+   throwing, so this shouldn't cause a healthcheck failure — but if
+   `DATABASE_URL` is entirely unset/malformed, verify the response is
+   still `200` with a `degraded`/`not_configured` body rather than a
+   connection-refused error.
+6. **`railway.json` builder mismatch.** Must be `"builder": "DOCKERFILE"`.
+   If it's `NIXPACKS` and you're relying on the checked-in Dockerfiles,
+   fix the builder — don't add npm build/start commands meant for
+   Nixpacks alongside a Dockerfile-based build.
+7. **Multi-stage Dockerfile copy issues.** Backend: verify
+   `node_modules` and source are copied into the final stage. Frontend:
+   verify `.next`/`build/standalone`, `build/static`, and `public` are all
+   copied (this repo's frontend Dockerfile copies from `builder`'s
+   `build/standalone` and `build/static` — check `next.config.ts` still
+   has `output: "standalone"` and that Next's build output directory
+   matches what the Dockerfile copies from).
 
-- [ ] **Set Service Type to "Web Service"** (NOT Serverless)
-- [ ] Configure all required environment variables
-- [ ] Set `NODE_ENV=production`
-- [ ] Configure database connection string
-- [ ] Set up frontend CORS_ORIGINS
-- [ ] If using public contact/demo emails, set `DEMO_ACCOUNT_PASSWORD`
-- [ ] **Verify reminder scheduler is enabled** (check logs for "reminders.scheduler.started")
-
-### Post-Deployment Verification
-
+**Local repro before redeploying**:
 ```bash
-# 1. Check health endpoint
-curl https://your-app.railway.app/health
-
-# Expected response:
-{
-  "status": "healthy",
-  "database": { "status": "connected", "latency": "X ms" },
-  "memory": { "rss": "XXX MB", "heapUsed": "XXX MB" },
-  "uptime": "XXX seconds",
-  "railway": {
-    "environment": "production",
-    "serviceId": "...",
-    "deploymentId": "..."
-  }
-}
-
-# 2. Check server logs for scheduler
-# Should see: "reminders.scheduler.started" with intervalMinutes
+cd controlweave/backend
+docker build -t backend-test .
+docker run -p 3001:3001 -e DATABASE_URL=postgresql://... backend-test
+curl http://localhost:3001/health
 ```
 
-### Monitoring
+### Database connection errors ("connection pool exhausted", random disconnects)
 
-Watch for these log messages to confirm everything is running:
-- `server.started` - Server is up
-- `reminders.scheduler.started` - Background scheduler is running
-- `reminders.sweep.completed` - Scheduler is executing (every 60 min)
-- No `server.shutdown.requested` unless you're intentionally restarting
+1. Verify `DATABASE_URL` is set and linked via Reference Variable, not a
+   stale copy-pasted string.
+2. Confirm `?sslmode=require` is present — Railway Postgres requires SSL.
+3. Make sure the service is Web Service mode — serverless cold-start churn
+   can look like pool exhaustion under load.
+4. Check `DB_POOL_MAX` / `DB_POOL_IDLE_TIMEOUT_MS` /
+   `DB_POOL_CONNECT_TIMEOUT_MS` if you've overridden the defaults.
 
----
+### CORS errors in the browser console
 
-## 🔧 Troubleshooting
+1. Verify `CORS_ORIGIN` (singular — not `CORS_ORIGINS`) includes the exact
+   frontend origin, protocol included (`https://...`).
+2. Multiple origins are comma-separated in the same variable.
+3. Confirm the origin matches the actual Railway/custom domain exactly —
+   trailing slashes or protocol mismatches will fail CORS silently.
 
-### Problem: Reminders Not Being Sent
+### JWT / login errors
 
-**Symptom**: Users not receiving notifications about due reviews
+1. `JWT_SECRET` must be set and stable across restarts/redeploys — if it
+   changes, all existing sessions invalidate.
+2. Must be ≥32 characters (enforced in production —
+   `src/config/security.js` throws on startup otherwise).
+3. Check `JWT_ACCESS_EXPIRY` / `JWT_REFRESH_EXPIRY` are valid duration
+   strings if overridden.
 
-**Causes**:
-1. ❌ Serverless mode is enabled - **MUST FIX**
-2. Environment variable `DISABLE_REMINDER_SCHEDULER=true` - Remove this
-3. Scheduler interval too long - Check `REMINDER_INTERVAL_MINUTES`
+## Resource Sizing
 
-**Solution**: 
-```bash
-# In Railway UI, verify:
-Service Type = Web Service (not Serverless)
-DISABLE_REMINDER_SCHEDULER = not set
-REMINDER_INTERVAL_MINUTES = 60 (or desired interval)
-```
+| Environment | Memory | CPU | Notes |
+|---|---|---|---|
+| Dev/staging | 512 MB – 1 GB | Shared | Standard container |
+| Production (small–medium) | 1–2 GB | Shared (1–2 vCPU) | Standard container |
+| Production (high traffic) | 2–4 GB | Dedicated (2–4 vCPU) | Consider Metal only here |
 
-### Problem: High Cold Start Latency
-
-**Symptom**: First request after inactivity takes 5+ seconds
-
-**Cause**: Serverless mode is enabled
-
-**Solution**: Change to Web Service mode
-
-### Problem: Database Connection Errors
-
-**Symptom**: Random "connection pool exhausted" errors
-
-**Possible Causes**:
-1. Serverless mode causing connection churn
-2. Not enough connections in pool
-3. Connections not being released
-
-**Solutions**:
-1. Ensure Web Service mode (not serverless)
-2. Check database connection limits
-3. Review connection pool configuration
-
----
-
-## 📊 Resource Recommendations
-
-### Development/Staging
-
-```
-Memory: 512 MB - 1 GB
-CPU: Shared
-Type: Standard Container
-```
-
-### Production (Small-Medium)
-
-```
-Memory: 1 GB - 2 GB
-CPU: Shared (1-2 vCPU)
-Type: Standard Container
-```
-
-### Production (High Traffic)
-
-```
-Memory: 2 GB - 4 GB
-CPU: Dedicated (2-4 vCPU)
-Type: Metal/Dedicated (if needed)
-```
-
----
-
-## 🎯 Key Takeaways
-
-1. ⚠️ **NEVER use Serverless mode** - This app requires 24/7 uptime
-2. ✅ **Use Web Service (Container) mode** - Essential for background jobs
-3. 🏗️ **Metal build is optional** - Start with standard, upgrade if needed
-4. 📊 **Monitor the scheduler** - Check logs for "reminders.scheduler.started"
-5. 🔍 **Verify health checks** - Use `/health` endpoint to confirm deployment
-
----
+Start standard-tier everywhere; move to Metal only if you observe
+sustained >80% memory usage or CPU throttling during peak hours.
 
 ## Additional Resources
 
 - [Railway Container Deployments](https://docs.railway.com/deploy/deployments)
 - [Railway Environment Variables](https://docs.railway.com/develop/variables)
-- [Node.js Best Practices on Railway](https://blog.railway.app/p/nodejs-on-railway)
-
----
-
-**Last Updated**: 2026-02-16
-**Application**: ControlWeaver-Pro Backend
-**Deployment Platform**: Railway
+- [Next.js standalone output](https://nextjs.org/docs/app/api-reference/next-config-js/output)

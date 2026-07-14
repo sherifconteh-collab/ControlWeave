@@ -1,7 +1,5 @@
 # External Integrations
 
-> 📦 **Tier**: ❌ Free | ❌ Starter | ✅ Professional | ✅ Enterprise
-
 ## Overview
 
 ControlWeave integrates with external threat intelligence feeds, vendor security rating services, and regulatory news sources to provide comprehensive, real-time security and compliance intelligence.
@@ -149,16 +147,7 @@ GET /api/v1/regulatory-news/sources
 - Publication date
 - Read status
 
-## Tier Information
-
-| Integration | Community | Pro | Pro | Enterprise |
-|-------------|------|---------|--------------|------------|
-| Threat Intelligence | ❌ | ❌ | ✅ | ✅ |
-| Vendor Security Monitoring | ❌ | ❌ | ✅ | ✅ |
-| Regulatory News | ❌ | ❌ | ✅ | ✅ |
-| Custom RSS Feeds | ❌ | ❌ | ✅ | ✅ |
-| API Access | ❌ | ❌ | ✅ | ✅ |
-| Continuous Monitoring | ❌ | ❌ | ❌ | ✅ |
+ControlWeaver has no tier gating — Threat Intelligence, Vendor Security Monitoring, Regulatory News, Custom RSS Feeds, API Access, and Continuous Monitoring are all available to every authenticated user.
 
 ## Common Tasks
 
@@ -286,5 +275,4 @@ Authorization: Bearer YOUR_JWT_TOKEN
 
 ---
 **Category**: Integrations  
-**Tier**: Professional+  
 **Last Updated**: February 18, 2026

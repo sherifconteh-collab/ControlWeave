@@ -807,6 +807,44 @@ async function ensureAssessmentProcedures() {
   log('info', 'assessment.procedures.seeded', { status: 'done' });
 }
 
+// Auto-heal already-deployed instances whose nist_800_53 catalog predates the
+// MA/MP/PE/PS/PT/SA/SR family seed (scripts/seed-missing-controls.js). Only
+// runs when the framework already exists but is missing those families —
+// a framework that was never seeded at all is a separate, manual concern.
+async function ensureFrameworkCatalogCompleteness() {
+  const client = await pool.connect();
+  let maFamilyCount;
+  try {
+    const { rows } = await client.query(
+      `SELECT COUNT(*)::int AS count
+       FROM framework_controls fc
+       JOIN frameworks f ON f.id = fc.framework_id
+       WHERE f.code = 'nist_800_53' AND fc.control_id LIKE 'MA-%'`
+    );
+    maFamilyCount = rows[0].count;
+  } finally {
+    client.release();
+  }
+  if (maFamilyCount > 0) {
+    log('info', 'framework.catalog.check', { status: 'complete', ma_family_count: maFamilyCount });
+    return;
+  }
+  const fwCheck = await pool.query(`SELECT id FROM frameworks WHERE code = 'nist_800_53' LIMIT 1`);
+  if (fwCheck.rows.length === 0) {
+    log('info', 'framework.catalog.check', { status: 'nist_800_53_not_seeded' });
+    return;
+  }
+  log('info', 'framework.catalog.seeding', { status: 'starting', reason: 'missing_800_53_families' });
+  const { spawn } = require('child_process');
+  const scriptPath = path.join(__dirname, '../scripts/seed-missing-controls.js');
+  const child = spawn(process.execPath, [scriptPath], { env: process.env, stdio: 'inherit' });
+  await new Promise((resolve, reject) => {
+    child.on('close', (code) => code === 0 ? resolve() : reject(new Error(`seed-missing-controls exited with code ${code}`)));
+    child.on('error', reject);
+  });
+  log('info', 'framework.catalog.seeded', { status: 'done' });
+}
+
 function notifyNoLicenseConfigured() {
   const adminEmail = (process.env.PLATFORM_ADMIN_EMAIL || '').trim().toLowerCase();
   if (!adminEmail) {
@@ -966,6 +1004,7 @@ ensureLicenseFromDb()
 
         // Auto-seed assessment/demo/platform data needed for shared logins.
         ensureAssessmentProcedures()
+          .then(() => ensureFrameworkCatalogCompleteness())
           .then(() => ensurePlatformAdmin())
           .then(() => ensurePlatformAdminSelfAssessment())
           .then(() => ensureDemoAccountsSeeded())

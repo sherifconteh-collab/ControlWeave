@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { tprmAPI, aiAPI, tprmPublicAPI } from '@/lib/api';
+import VendorSecurityRatingsTab from '@/components/tprm/VendorSecurityRatingsTab';
 import { useToast } from '@/hooks/useToast';
 
 type RiskTier = 'critical' | 'high' | 'medium' | 'low';
@@ -167,7 +168,7 @@ const DOC_TYPE_LABELS: Record<DocType, string> = {
   other: 'Other',
 };
 
-type ActiveTab = 'vendors' | 'questionnaires' | 'documents';
+type ActiveTab = 'vendors' | 'questionnaires' | 'documents' | 'security_ratings';
 
 const emptyVendorForm = {
   vendor_name: '',
@@ -603,7 +604,7 @@ export default function TprmPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="border-b border-gray-200">
             <nav className="flex gap-0">
-              {(['vendors', 'questionnaires', 'documents'] as ActiveTab[]).map(tab => (
+              {(['vendors', 'questionnaires', 'documents', 'security_ratings'] as ActiveTab[]).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -616,6 +617,7 @@ export default function TprmPage() {
                   {tab === 'vendors' && '🏢 Vendors'}
                   {tab === 'questionnaires' && '📋 Questionnaires'}
                   {tab === 'documents' && '📄 Documents'}
+                  {tab === 'security_ratings' && '🛡️ Security Ratings'}
                 </button>
               ))}
             </nav>
@@ -1094,6 +1096,9 @@ export default function TprmPage() {
                     )}
                   </div>
                 )}
+
+                {/* ===== SECURITY RATINGS TAB ===== */}
+                {activeTab === 'security_ratings' && <VendorSecurityRatingsTab />}
               </>
             )}
           </div>

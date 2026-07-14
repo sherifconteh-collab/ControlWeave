@@ -4,7 +4,7 @@ Stay ahead of compliance changes with an AI-powered regulatory intelligence feed
 
 ## Overview
 
-The Regulatory News module delivers a curated feed of regulatory updates, policy changes, and compliance news relevant to your organization's active frameworks. News items are automatically fetched and matched to your compliance profile. This feature is available on **Pro tier and above**.
+The Regulatory News module delivers a curated feed of regulatory updates, policy changes, and compliance news relevant to your organization's active frameworks. News items are automatically fetched and matched to your compliance profile.
 
 ---
 
@@ -97,20 +97,13 @@ Items are automatically matched to your **active frameworks** so you only see up
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| Regulatory News | ❌ | ✅ | ✅ | ✅ |
-| News filtering | ❌ | ✅ | ✅ | ✅ |
-| Manual refresh | ❌ | ✅ | ✅ | ✅ |
-| Archive management | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — Regulatory News, news filtering, manual refresh, and archive management are all available to every authenticated user.
 
 ---
 
 ## Related Features
 
 - [Frameworks Guide](FRAMEWORKS.md) — Activate frameworks to filter your news feed
-- [State AI Laws Guide](STATE_AI_LAWS.md) — AI-specific regulatory tracking (Gov Cloud & Advisory tier)
+- [State AI Laws Guide](STATE_AI_LAWS.md) — AI-specific regulatory tracking
 - [Notifications Guide](NOTIFICATIONS.md) — Get alerted to critical regulatory updates
 - [AI Analysis Guide](AI_ANALYSIS.md) — AI-powered impact analysis of regulatory changes

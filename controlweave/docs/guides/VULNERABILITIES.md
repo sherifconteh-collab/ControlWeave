@@ -7,7 +7,7 @@ This guide covers how to track, manage, and remediate security vulnerabilities u
 - **Full Configuration**: 30-45 minutes
 
 ## 📋 Prerequisites
-- ControlWeave account with **Pro tier or higher**
+- ControlWeave account
 - Assets registered in CMDB (Configuration Management Database)
 - Basic understanding of CVE and CVSS scoring
 
@@ -22,15 +22,7 @@ ControlWeave's Vulnerability Management helps you:
 - 📈 Monitor remediation progress
 - 📝 Generate vulnerability reports for audits
 
-### Tier Availability
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| **Vulnerability Tracking** | ❌ | ✅ | ✅ | ✅ |
-| **CVSS Scoring** | ❌ | ✅ | ✅ | ✅ |
-| **POA&M Integration** | ❌ | ✅ | ✅ | ✅ |
-| **Automated Scanning** | ❌ | ❌ | ✅ | ✅ |
-| **SIEM Integration** | ❌ | ❌ | ❌ | ✅ |
+ControlWeaver has no tier gating — vulnerability tracking, CVSS scoring, POA&M integration, automated scanning, and SIEM integration are all available to every authenticated user.
 
 ---
 
@@ -362,7 +354,7 @@ Track how long vulnerabilities remain open:
 
 ## Step 8: Automation & Integration
 
-### 8.1 Automated Scanning (Enterprise+)
+### 8.1 Automated Scanning
 
 Configure automatic vulnerability scanning:
 
@@ -403,7 +395,7 @@ Set up webhooks for vulnerability events:
 6. Click **Test Webhook**
 7. Click **Save**
 
-### 8.3 SIEM Integration (Enterprise+)
+### 8.3 SIEM Integration
 
 Integrate with Security Information and Event Management systems:
 

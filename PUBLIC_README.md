@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D18-green.svg" alt="Node.js"></a>
   <a href="https://www.postgresql.org"><img src="https://img.shields.io/badge/postgresql-17%2B-blue.svg" alt="PostgreSQL"></a>
   <a href="https://github.com/sherifconteh-collab/ControlWeave/stargazers"><img src="https://img.shields.io/github/stars/sherifconteh-collab/ControlWeave?style=social" alt="Stars"></a>
@@ -204,7 +204,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT. See [LICENSE](LICENSE) for details.
+Dual-licensed under AGPL v3 (open source) or a commercial license. See [LICENSE](LICENSE) for details.
 
 ---
 

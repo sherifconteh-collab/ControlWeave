@@ -4,7 +4,7 @@ Define monitoring rules for your AI systems and track policy violations, thresho
 
 ## Overview
 
-The AI Monitoring module allows you to create rules that watch for specific conditions in your AI agents and systems — such as metric thresholds, output patterns, anomalies, or policy violations — and generate events when those conditions are triggered. This feature is available on **Pro tier and above**.
+The AI Monitoring module allows you to create rules that watch for specific conditions in your AI agents and systems — such as metric thresholds, output patterns, anomalies, or policy violations — and generate events when those conditions are triggered.
 
 ---
 
@@ -117,14 +117,7 @@ Monitoring rules can target specific AI agents registered in your CMDB:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| AI Monitoring | ❌ | ✅ | ✅ | ✅ |
-| Monitoring rules | ❌ | ✅ | ✅ | ✅ |
-| Monitoring events | ❌ | ✅ | ✅ | ✅ |
-| Control linkage | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — AI Monitoring, monitoring rules, monitoring events, and control linkage are all available to every authenticated user.
 
 ---
 

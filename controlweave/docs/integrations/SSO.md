@@ -2,8 +2,6 @@
 
 Configure Single Sign-On (SSO) for ControlWeave using SAML 2.0.
 
-> **Note**: SSO/SAML is available on the **Enterprise** tier only.
-
 ## Overview
 
 SSO enables your team to log in to ControlWeave using your existing corporate identity provider (IdP), eliminating the need for separate passwords.

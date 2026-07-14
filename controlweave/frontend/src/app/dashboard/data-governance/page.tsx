@@ -6,6 +6,9 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { dataGovernanceAPI } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
+import DataSovereigntyTab from '@/components/dataGovernance/DataSovereigntyTab';
+
+type DataGovernanceView = 'retention' | 'sovereignty';
 
 interface RetentionPolicy {
   id: string;
@@ -31,6 +34,7 @@ interface LegalHold {
 }
 
 export default function DataGovernancePage() {
+  const [view, setView] = useState<DataGovernanceView>('retention');
   const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
   const [legalHolds, setLegalHolds] = useState<LegalHold[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,7 +194,27 @@ export default function DataGovernancePage() {
           </Link>
         </div>
 
-        {loading ? (
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-6">
+            {(['retention', 'sovereignty'] as DataGovernanceView[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setView(tab)}
+                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                  view === tab ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab === 'retention' ? 'Retention & Legal Holds' : 'Data Sovereignty'}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {view === 'sovereignty' ? (
+          <DataSovereigntyTab />
+        ) : loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
             <p className="text-gray-600 mt-4">Loading data governance information...</p>

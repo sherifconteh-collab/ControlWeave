@@ -4,7 +4,7 @@ Connect ControlWeave to your existing security tools — SIEM platforms, vulnera
 
 ## Overview
 
-ControlWeave's Integrations Hub lets you configure connectors to external systems and manage API keys and webhooks. Integrations are configured in **Settings** → **Integrations** and require `settings.manage` permission. Basic integration features are available on **Pro tier**; SSO requires **Pro tier or above**, and SIEM connectors and Threat Intelligence feeds require **Enterprise tier or above**.
+ControlWeave's Integrations Hub lets you configure connectors to external systems and manage API keys and webhooks. Integrations are configured in **Settings** → **Integrations** and require `settings.manage` permission. ControlWeaver has no tier gating — every connector below is available to every authenticated user.
 
 ---
 
@@ -14,60 +14,58 @@ ControlWeave's Integrations Hub lets you configure connectors to external system
 
 Forward compliance events and audit logs to your security operations platform.
 
-| Connector | Tier | Credentials |
-|-----------|------|-------------|
-| **Splunk** | Pro+ | Base URL, API Token |
-| **Elastic SIEM** | Enterprise+ | Connection URL, Auth Token |
-| **Generic SIEM** | Enterprise+ | Endpoint URL, Auth Type |
-| **Webhook** | Enterprise+ | Webhook URL |
-| **Syslog** | Enterprise+ | Host, Port |
+| Connector | Credentials |
+|-----------|-------------|
+| **Splunk** | Base URL, API Token |
+| **Elastic SIEM** | Connection URL, Auth Token |
+| **Generic SIEM** | Endpoint URL, Auth Type |
+| **Webhook** | Webhook URL |
+| **Syslog** | Host, Port |
 
 ### Vulnerability Scanners
 
 Import vulnerability scan results from external scanners.
 
-| Connector | Tier | Credentials |
-|-----------|------|-------------|
-| **ACAS/Nessus** | Pro+ | Base URL, API Key |
-| **Generic Scanner** | Pro+ | Endpoint URL |
+| Connector | Credentials |
+|-----------|-------------|
+| **ACAS/Nessus** | Base URL, API Key |
+| **Generic Scanner** | Endpoint URL |
 
 ### Software Supply Chain
 
 Integrate with SBOM repositories.
 
-| Connector | Tier | Credentials |
-|-----------|------|-------------|
-| **SBOM Repository** | Pro+ | Base URL |
-| **STIG Content Source** | Pro+ | Source Path |
+| Connector | Credentials |
+|-----------|-------------|
+| **SBOM Repository** | Base URL |
+| **STIG Content Source** | Source Path |
 
 ### Threat Intelligence
 
 Connect to threat feed providers (also configurable in the Threat Intelligence module).
 
-| Connector | Tier | Credentials |
-|-----------|------|-------------|
-| **NIST NVD** | Enterprise+ | Optional API Key |
-| **CISA KEV** | Enterprise+ | None (public feed) |
-| **MITRE ATT&CK** | Enterprise+ | None (public data) |
-| **AlienVault OTX** | Enterprise+ | API Key required |
+| Connector | Credentials |
+|-----------|-------------|
+| **NIST NVD** | Optional API Key |
+| **CISA KEV** | None (public feed) |
+| **MITRE ATT&CK** | None (public data) |
+| **AlienVault OTX** | API Key required |
 
 ### Vendor Security Ratings
 
 Pull security scores from third-party vendor rating platforms.
 
-| Connector | Tier | Credentials |
-|-----------|------|-------------|
-| **SecurityScorecard** | Enterprise+ | API Key |
-| **BitSight** | Enterprise+ | API Key |
+| Connector | Credentials |
+|-----------|-------------|
+| **SecurityScorecard** | API Key |
+| **BitSight** | API Key |
 
 ### Single Sign-On (SSO)
 
-Configure enterprise SSO for your organization.
+Configure SSO for your organization.
 
-| Provider | Tier |
-|----------|------|
-| **SAML 2.0** | Pro+ |
-| **OpenID Connect (OIDC)** | Pro+ |
+- **SAML 2.0**
+- **OpenID Connect (OIDC)**
 
 ---
 
@@ -200,17 +198,7 @@ Monitor webhook delivery health in **Settings** → **Operations**:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| Integrations Hub | ❌ | ✅ | ✅ | ✅ |
-| Splunk integration | ❌ | ✅ | ✅ | ✅ |
-| AI Evidence Suggestions | ❌ | ✅ | ✅ | ✅ |
-| SIEM (Elastic/Syslog) | ❌ | ❌ | ✅ | ✅ |
-| SSO / SAML | ❌ | ❌ | ✅ | ✅ |
-| Webhooks | ❌ | ✅ | ✅ | ✅ |
-| API Keys | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — the Integrations Hub, Splunk integration, AI Evidence Suggestions, SIEM (Elastic/Syslog), SSO/SAML, webhooks, and API keys are all available to every authenticated user.
 
 ---
 

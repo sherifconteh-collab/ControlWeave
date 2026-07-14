@@ -43,9 +43,9 @@ GET /api/v1/controls
 Authorization: Bearer eyJhbGci...
 ```
 
-### API Keys (Enterprise — External AI Ingestion Only)
+### API Keys (External AI Ingestion Only)
 
-Enterprise-tier organizations can generate long-lived API keys (`cw_live_…`) for the **external AI decision ingestion** endpoints only. These keys are managed in **Settings** → **External AI Keys** and authenticated via the `X-API-Key` header.
+Any organization can generate long-lived API keys (`cw_live_…`) for the **external AI decision ingestion** endpoints only. These keys are managed in **Settings** → **External AI Keys** and authenticated via the `X-API-Key` header.
 
 > **Note:** All other `/api/v1/*` endpoints require a JWT Bearer token as shown above. API keys cannot be used for general API access.
 
@@ -63,22 +63,21 @@ GET /api/v1/frameworks/{frameworkId}
 
 ### Controls
 
-```http
-# List all controls
-GET /api/v1/controls
+There's no top-level controls list — controls are listed embedded under their framework:
 
-# Filter by framework
-GET /api/v1/controls?framework_id={id}
+```http
+# Get a framework's controls (embedded in the framework detail response)
+GET /api/v1/frameworks/{frameworkId}
 
 # Get a specific control
 GET /api/v1/controls/{controlId}
 
-# Update control status
-PATCH /api/v1/controls/{controlId}
+# Update control implementation status
+PUT /api/v1/controls/{controlId}/implementation
 Content-Type: application/json
 {
   "status": "implemented",
-  "implementation_notes": "Implemented via IAM policies"
+  "notes": "Implemented via IAM policies"
 }
 ```
 
@@ -89,7 +88,7 @@ Content-Type: application/json
 GET /api/v1/evidence
 
 # Upload evidence
-POST /api/v1/evidence
+POST /api/v1/evidence/upload
 Content-Type: multipart/form-data
 (file, control_id, title, description)
 
@@ -99,20 +98,24 @@ GET /api/v1/evidence/{evidenceId}
 
 ### Assessments
 
-```http
-# List assessments
-GET /api/v1/assessments
+Assessment results are recorded per procedure, not as a standalone top-level resource:
 
-# Create an assessment
-POST /api/v1/assessments
+```http
+# List assessment procedures
+GET /api/v1/assessments/procedures
+
+# Record a procedure result
+POST /api/v1/assessments/results
 Content-Type: application/json
 {
-  "control_id": "uuid",
-  "depth": "focused",
+  "procedure_id": "uuid",
   "outcome": "satisfied",
-  "notes": "Assessment notes",
-  "assessor": "user@example.com"
+  "notes": "Assessment notes"
 }
+
+# List/create audit engagements
+GET  /api/v1/assessments/engagements
+POST /api/v1/assessments/engagements
 ```
 
 ### Vulnerabilities
@@ -121,17 +124,16 @@ Content-Type: application/json
 # List vulnerabilities
 GET /api/v1/vulnerabilities
 
-# Create a vulnerability
-POST /api/v1/vulnerabilities
-Content-Type: application/json
-{
-  "title": "CVE-2024-1234",
-  "severity": "high",
-  "cvss_score": 8.1,
-  "description": "...",
-  "status": "open"
-}
+# Bulk-import vulnerabilities from a scan file
+POST /api/v1/vulnerabilities/import
+Content-Type: multipart/form-data
+(file)
+
+# AI-analyze a specific vulnerability
+POST /api/v1/vulnerabilities/{vulnerabilityId}/analyze
 ```
+
+There's no endpoint for creating a single vulnerability from a plain JSON body — vulnerabilities come from a scanner-file import.
 
 ## Pagination
 
@@ -160,7 +162,6 @@ Response includes pagination metadata:
 The Pending Evidence API enables AI-powered evidence collection from connected integrations. The AI scans integration data, analyzes it against your organization's active frameworks, maps it to controls, and creates evidence suggestions in a staging area. Users approve or reject each suggestion before it enters the official evidence library.
 
 **Base path**: `/api/v1/pending-evidence`
-**Minimum tier**: Pro
 
 ### Scan Integrations
 

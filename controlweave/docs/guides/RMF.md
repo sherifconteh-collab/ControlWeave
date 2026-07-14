@@ -4,7 +4,7 @@ Manage your system authorization packages through the complete NIST SP 800-37 Re
 
 ## Overview
 
-The RMF module implements the seven-step NIST Risk Management Framework (SP 800-37 Rev 2) for system-level authorization. Each information system in your organization gets its own **RMF Package** that tracks its progress through the lifecycle, records step transitions, and stores formal authorization decisions (ATOs, DATOs, IATTs). This feature requires **Pro tier** and activation of NIST 800-53, NIST 800-171, or CMMC 2.0 frameworks.
+The RMF module implements the seven-step NIST Risk Management Framework (SP 800-37 Rev 2) for system-level authorization. Each information system in your organization gets its own **RMF Package** that tracks its progress through the lifecycle, records step transitions, and stores formal authorization decisions (ATOs, DATOs, IATTs). This feature requires activation of NIST 800-53, NIST 800-171, or CMMC 2.0 frameworks.
 
 ---
 
@@ -165,14 +165,7 @@ The RMF lifecycle is tightly integrated with your controls:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| RMF Lifecycle | ❌ | ❌ | ✅ | ✅ |
-| RMF Packages | ❌ | ❌ | ✅ | ✅ |
-| Authorization Decisions | ❌ | ❌ | ✅ | ✅ |
-| Step History | ❌ | ❌ | ✅ | ✅ |
+ControlWeaver has no tier gating — the RMF lifecycle, RMF packages, authorization decisions, and step history are all available to every authenticated user.
 
 **Required Frameworks**: NIST 800-53, NIST 800-171, or CMMC 2.0 must be active.
 

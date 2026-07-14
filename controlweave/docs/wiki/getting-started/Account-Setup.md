@@ -35,7 +35,6 @@ Navigate to **Organization Settings** tab:
 - **Organization Name**: Already set during registration (can be updated)
 - **Industry**: Select your industry vertical
 - **Size**: Number of employees
-- **Tier**: Automatically set (Free by default)
 
 **Optional Fields**:
 - **Description**: Brief description of your organization
@@ -176,7 +175,7 @@ Update your password:
 - At least one number
 - Special characters recommended
 
-### 6.2 Two-Factor Authentication with TOTP (All tiers)
+### 6.2 Two-Factor Authentication with TOTP
 Add an extra layer of security using a TOTP authenticator app (Google Authenticator, Authy, 1Password, etc.):
 1. Navigate to **Security** tab
 2. Click **Set Up Two-Factor Authentication**
@@ -188,9 +187,7 @@ After setup, every email + password sign-in will require both your password and 
 
 > **💡 Security Tip**: Authenticator-based 2FA protects your account even if your password is compromised.
 
-> **✅ Tier**: TOTP two-factor authentication is available on **all plans** — Free, Starter, Professional, Enterprise, and Utilities.
-
-### 6.3 Passkey Setup (Professional plan or higher)
+### 6.3 Passkey Setup
 Enable passwordless authentication with biometrics or a hardware security key:
 1. Navigate to **Security** tab
 2. Enter a name for your passkey (e.g., "MacBook Pro", "YubiKey")
@@ -201,8 +198,6 @@ Enable passwordless authentication with biometrics or a hardware security key:
 *Figure 6.1: Passkey setup for secure authentication*
 
 > **💡 Security Tip**: Passkeys provide stronger security than passwords and are resistant to phishing attacks.
-
-> **⚠️ Tier Requirement**: Passkeys are available on the **Professional plan or higher** (Professional, Enterprise, Utilities).
 
 ### 6.4 Active Sessions
 Review active login sessions:
@@ -282,15 +277,12 @@ To enable AI features, configure your LLM provider:
 | **xAI Grok** | console.x.ai | ❌ No | Fast, capable models |
 | **Ollama** | Local install | ✅ Free | Privacy-focused, no API key |
 
-> **💡 Tier Limits**:
-> - Free: 10 AI requests/month
-> - Starter: 50 AI requests/month
-> - Professional/Enterprise: Unlimited
+> **💡 Note**: ControlWeaver has no tier-based monthly AI request limit. Any limit you hit comes from your configured LLM provider's own rate limit or quota — use BYOK (bring your own API key) to control it directly.
 
 ### 8.3 AI Usage Tracking
 Monitor your AI usage:
 - View requests this month
-- See remaining quota (for tiered plans)
+- See remaining quota (based on your configured provider's limits)
 - Review request history
 - Download usage reports
 
@@ -354,8 +346,8 @@ Adjust visual settings:
 
 **Security**:
 - [ ] Strong password set
-- [ ] TOTP two-factor authentication enabled (all tiers — recommended)
-- [ ] Passkey registered (Professional/Enterprise/Utilities — recommended)
+- [ ] TOTP two-factor authentication enabled (recommended)
+- [ ] Passkey registered (recommended)
 - [ ] Active sessions reviewed
 
 **AI Configuration** (Optional):
@@ -377,7 +369,7 @@ If you're short on time, complete these essential items:
 1. **Organization Information**: Industry and size
 2. **Data Classification**: Select your data types
 3. **Notification Preferences**: Enable critical alerts
-4. **Security**: Set a strong password (12+ characters); enable TOTP 2FA (all plans); add a passkey if on Professional, Enterprise, or Utilities plan
+4. **Security**: Set a strong password (12+ characters); enable TOTP 2FA; add a passkey
 
 ---
 

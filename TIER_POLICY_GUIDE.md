@@ -1,3 +1,9 @@
+> **⚠️ DEPRECATED — historical reference only.** As of v4.0, the tier-limit system was
+> removed. All tier limits are unlimited for every organization, and every feature is
+> available to every authenticated user. See `.claude/rules/tier-system.md` for current
+> behavior. The content below describes the system as it existed before removal, kept for
+> historical/audit reference only.
+
 # Tier Policy & Replication Guidelines
 
 ## Purpose

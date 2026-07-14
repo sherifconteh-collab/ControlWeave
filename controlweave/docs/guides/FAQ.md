@@ -13,16 +13,13 @@ A: Yes. The core platform (frameworks, controls, evidence, assessments, reports)
 
 ---
 
-## Pricing & Tiers
+## Pricing & Licensing
 
-**Q: What's included in the Community tier?**  
-A: The Community tier includes up to 2 frameworks, basic assessments, evidence management, POA&M tracking, and 10 AI requests per month.
+**Q: Is ControlWeaver free?**  
+A: Yes. ControlWeaver is fully open source with no tier gating — every feature (unlimited frameworks, all assessment depths, evidence management, POA&M tracking, AI features, integrations, and more) is available to every authenticated user. See [Tier Comparison](../TIER_COMPARISON.md) for background on the old tiered pricing model.
 
-**Q: How do I upgrade my tier?**  
-A: Go to **Settings** → **Billing** → **Upgrade Plan**.
-
-**Q: Do AI API keys count against my request limits?**  
-A: If you configure your own API key (BYOK — Bring Your Own Key), AI requests made with that key do not count against ControlWeave's platform limits.
+**Q: Is there a limit on AI requests?**  
+A: No platform-imposed limit. AI requests are only bound by your configured LLM provider's own rate limits and quotas — using your own API key (BYOK — Bring Your Own Key) gives you direct control over that.
 
 ---
 

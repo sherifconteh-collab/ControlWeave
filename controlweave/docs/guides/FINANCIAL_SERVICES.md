@@ -4,7 +4,7 @@ Specialized compliance tools for financial institutions using AI in advisory, tr
 
 ## Access
 
-The Financial Services Compliance Workspace is available on the **Gov Cloud & Advisory** tier. Navigate to **Financial Compliance** in the sidebar or **Assets → Financial Compliance Workspace** in the CMDB.
+Navigate to **Financial Compliance** in the sidebar or **Assets → Financial Compliance Workspace** in the CMDB.
 
 ## Reg BI Alignment
 

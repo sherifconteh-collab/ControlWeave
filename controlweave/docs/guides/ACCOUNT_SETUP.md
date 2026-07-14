@@ -35,7 +35,6 @@ Navigate to **Organization Settings** tab:
 - **Organization Name**: Already set during registration (can be updated)
 - **Industry**: Select your industry vertical
 - **Size**: Number of employees
-- **Tier**: Automatically set (Community by default)
 
 **Optional Fields**:
 - **Description**: Brief description of your organization
@@ -165,16 +164,16 @@ Choose notification batching:
 Update your password:
 1. Click **Change Password**
 2. Enter current password
-3. Enter new password (min 12 characters)
+3. Enter new password (min 15 characters)
 4. Confirm new password
 5. Click **Update Password**
 
 **Password Requirements**:
-- Minimum 12 characters
+- Minimum 15 characters
 - At least one uppercase letter
 - At least one lowercase letter
 - At least one number
-- Special characters recommended
+- At least one special character (required, not just recommended)
 
 ### 6.2 Two-Factor Authentication with TOTP (All tiers)
 Add an extra layer of security using a TOTP authenticator app (Google Authenticator, Authy, 1Password, etc.):
@@ -188,9 +187,7 @@ After setup, every email + password sign-in will require both your password and 
 
 > **💡 Security Tip**: Authenticator-based 2FA protects your account even if your password is compromised.
 
-> **✅ Tier**: TOTP two-factor authentication is available on **all plans** — Community, Pro, Enterprise, and Gov Cloud.
-
-### 6.3 Passkey Setup (Enterprise tier or higher)
+### 6.3 Passkey Setup
 Enable passwordless authentication with biometrics or a hardware security key:
 1. Navigate to **Security** tab
 2. Enter a name for your passkey (e.g., "MacBook Pro", "YubiKey")
@@ -198,8 +195,6 @@ Enable passwordless authentication with biometrics or a hardware security key:
 4. Follow browser prompts to create your passkey
 
 > **💡 Security Tip**: Passkeys provide stronger security than passwords and are resistant to phishing attacks.
-
-> **⚠️ Tier Requirement**: Passkeys are available on the **Enterprise tier or higher** (Enterprise, Gov Cloud).
 
 ### 6.4 Session Security
 
@@ -289,15 +284,11 @@ To enable AI features, configure your LLM provider:
 | **xAI Grok** | console.x.ai | ❌ No | Fast, capable models |
 | **Ollama** | Local install | ✅ Free | Privacy-focused, no API key |
 
-> **💡 Tier Limits**:
-> - Community: 10 AI requests/month
-> - Pro: Unlimited
-> - Enterprise: Unlimited
+> **💡 Tip**: AI requests are unlimited when you configure your own LLM provider API key.
 
 ### 8.3 AI Usage Tracking
 Monitor your AI usage:
 - View requests this month
-- See remaining quota (for tiered plans)
 - Review request history
 - Download usage reports
 
@@ -362,7 +353,7 @@ Adjust visual settings:
 **Security**:
 - [ ] Strong password set
 - [ ] TOTP two-factor authentication enabled (all tiers — recommended)
-- [ ] Passkey registered (Enterprise/Gov Cloud — recommended)
+- [ ] Passkey registered (recommended)
 - [ ] Sessions cleared (use **Logout** to sign out everywhere; password reset also revokes sessions)
 
 **AI Configuration** (Optional):
@@ -384,7 +375,7 @@ If you're short on time, complete these essential items:
 1. **Organization Information**: Industry and size
 2. **Data Classification**: Select your data types
 3. **Notification Preferences**: Enable critical alerts
-4. **Security**: Set a strong password (12+ characters); enable TOTP 2FA (all plans); add a passkey if on Enterprise or Gov Cloud plan
+4. **Security**: Set a strong password (15+ characters); enable TOTP 2FA; add a passkey
 
 ---
 

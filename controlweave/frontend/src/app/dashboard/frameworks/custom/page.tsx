@@ -5,7 +5,7 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/access';
-import api from '@/lib/api';
+import { customFrameworksAPI } from '@/lib/api';
 
 interface CustomFramework {
   id: string;
@@ -59,7 +59,7 @@ export default function CustomFrameworkBuilderPage() {
 
   const loadFrameworks = useCallback(async () => {
     try {
-      const res = await api.get('/frameworks/custom');
+      const res = await customFrameworksAPI.list();
       setFrameworks(res.data?.data || []);
     } catch {
       setMessage({ type: 'error', text: 'Failed to load custom frameworks.' });
@@ -72,7 +72,7 @@ export default function CustomFrameworkBuilderPage() {
 
   const openFramework = useCallback(async (id: string) => {
     try {
-      const res = await api.get(`/frameworks/custom/${id}`);
+      const res = await customFrameworksAPI.get(id);
       setSelected(res.data?.data || null);
     } catch {
       setMessage({ type: 'error', text: 'Failed to load framework.' });
@@ -82,7 +82,7 @@ export default function CustomFrameworkBuilderPage() {
   const createFramework = useCallback(async () => {
     if (!newFw.code.trim() || !newFw.name.trim()) return;
     try {
-      await api.post('/frameworks/custom', newFw);
+      await customFrameworksAPI.create(newFw);
       setShowCreate(false);
       setNewFw({ code: '', name: '', version: '1.0', category: 'custom', description: '' });
       setMessage({ type: 'success', text: 'Framework created.' });
@@ -96,7 +96,7 @@ export default function CustomFrameworkBuilderPage() {
   const deleteFramework = useCallback(async (id: string) => {
     if (!confirm('Delete this custom framework?')) return;
     try {
-      await api.delete(`/frameworks/custom/${id}`);
+      await customFrameworksAPI.remove(id);
       if (selected?.id === id) setSelected(null);
       setMessage({ type: 'success', text: 'Framework deleted.' });
       loadFrameworks();
@@ -107,7 +107,7 @@ export default function CustomFrameworkBuilderPage() {
 
   const togglePublish = useCallback(async (id: string) => {
     try {
-      const res = await api.post(`/frameworks/custom/${id}/publish`);
+      const res = await customFrameworksAPI.publish(id);
       const published = res.data?.data?.is_published;
       setMessage({ type: 'success', text: published ? 'Framework published.' : 'Framework unpublished.' });
       loadFrameworks();
@@ -120,7 +120,7 @@ export default function CustomFrameworkBuilderPage() {
   const addControl = useCallback(async () => {
     if (!selected || !newCtrl.control_id.trim() || !newCtrl.title.trim()) return;
     try {
-      await api.post(`/frameworks/custom/${selected.id}/controls`, newCtrl);
+      await customFrameworksAPI.addControl(selected.id, newCtrl);
       setShowAddControl(false);
       setNewCtrl({ control_id: '', title: '', description: '', priority: 'medium', control_type: 'technical' });
       setMessage({ type: 'success', text: 'Control added.' });
@@ -134,7 +134,7 @@ export default function CustomFrameworkBuilderPage() {
   const saveControl = useCallback(async () => {
     if (!selected || !editingCtrl) return;
     try {
-      await api.put(`/frameworks/custom/${selected.id}/controls/${editingCtrl.control_id}`, editingCtrl);
+      await customFrameworksAPI.updateControl(selected.id, editingCtrl.control_id, editingCtrl);
       setEditingCtrl(null);
       setMessage({ type: 'success', text: 'Control updated.' });
       openFramework(selected.id);
@@ -146,7 +146,7 @@ export default function CustomFrameworkBuilderPage() {
   const deleteControl = useCallback(async (controlId: string) => {
     if (!selected) return;
     try {
-      await api.delete(`/frameworks/custom/${selected.id}/controls/${controlId}`);
+      await customFrameworksAPI.removeControl(selected.id, controlId);
       setMessage({ type: 'success', text: 'Control removed.' });
       openFramework(selected.id);
     } catch {
@@ -157,7 +157,7 @@ export default function CustomFrameworkBuilderPage() {
   const cloneFramework = useCallback(async () => {
     if (!cloneSource || !cloneName.trim() || !cloneCode.trim()) return;
     try {
-      await api.post(`/frameworks/custom/clone/${cloneSource}`, { name: cloneName, code: cloneCode });
+      await customFrameworksAPI.clone(cloneSource, { name: cloneName, code: cloneCode });
       setShowClone(false);
       setCloneSource('');
       setCloneName('');

@@ -38,7 +38,8 @@ Provide:
 5. Recommended monitoring frequency
 6. Questionnaire items to send to the vendor
 7. Due diligence checklist
-8. Compliance framework alignment (which controls does this vendor impact)` }]
+8. Compliance framework alignment (which controls does this vendor impact)` }],
+    feature: 'vendor_risk'
   });
 }
 
@@ -281,7 +282,8 @@ Return a JSON object with:
   "related_controls": ["..."],
   "repeat_finding": false
 }${retryBlock}`
-    }]
+    }],
+    feature: 'finding_analysis'
   });
 }
 

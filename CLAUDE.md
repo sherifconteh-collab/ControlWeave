@@ -35,7 +35,7 @@
 ### Architecture
 
 - Multi-tenant: queries MUST filter by `organization_id`
-- Tier system: Free, Starter, Professional, Enterprise — respect tier limits
+- Fully open source: all tier gating was removed — every feature is available to every authenticated user. Do not add `requireTier()`/`requireProEdition()` calls to new routes. See `.claude/rules/tier-system.md`.
 - AI features are optional — core platform works without API keys
 - BYOK (Bring Your Own Key) support for LLM providers
 

@@ -185,12 +185,6 @@ Result: 1 implementation = 4 controls satisfied!
 **Time**: 5 minutes  
 **Impact**: Instant executive visibility
 
-**For Community Tier** (use existing dashboard):
-1. Go to **Dashboard**
-2. Take screenshot
-3. Share with leadership
-
-**For Starter+ Tiers**:
 1. Go to **Custom Dashboards**
 2. Click **Create Dashboard**
 3. Name: "Executive Overview"
@@ -366,7 +360,7 @@ Once you've achieved quick wins:
 - [ ] Build evidence library (10+ docs)
 - [ ] Invite team members
 - [ ] Assign controls to owners
-- [ ] Create custom dashboard (Starter+)
+- [ ] Create custom dashboard
 - [ ] Generate first report
 
 ---

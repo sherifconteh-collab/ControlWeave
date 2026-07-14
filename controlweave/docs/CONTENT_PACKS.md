@@ -409,11 +409,10 @@ Removes an imported pack and all its overrides.
 - Use pack_version to track which pack is active
 
 ### AI Limit Reached During Draft
-**Problem:** Community tier only allows 3 AI calls per month.
+**Problem:** An AI call failed due to a rate limit or quota error from your configured LLM provider — ControlWeaver itself has no tier-based AI call limit.
 
 **Solutions:**
-- Upgrade to paid tier for unlimited AI
-- Add your own API key (BYOK) for unlimited use
+- Add your own API key (BYOK) to control your provider quota directly
 - Upload without AI assistance and edit JSON manually
 - Use JSON template to create pack from scratch
 
@@ -464,7 +463,7 @@ A: Yes, but later packs override earlier packs for the same control IDs.
 A: No. You can create JSON packs manually or upload reports without AI assistance.
 
 **Q: How much does AI-assisted drafting cost?**  
-A: Community tier: 3 AI calls/month. Paid tiers: unlimited with platform keys or bring your own API key.
+A: ControlWeaver has no tier-based AI call limit. Cost depends on your configured LLM provider's own pricing — use BYOK to control it directly.
 
 **Q: Can I edit a pack after importing?**  
 A: Not directly. Delete the pack and re-import with changes, or create a new pack version.

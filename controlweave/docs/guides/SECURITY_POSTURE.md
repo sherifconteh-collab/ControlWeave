@@ -31,7 +31,7 @@ If you have a SIEM configured, the Security Posture dashboard shows:
 
 ## SIEM Configuration
 
-Connect ControlWeave to your SIEM to forward compliance events and audit logs in real time. SIEM integration requires **Pro tier**.
+Connect ControlWeave to your SIEM to forward compliance events and audit logs in real time.
 
 ### Supported SIEM Providers
 
@@ -142,16 +142,7 @@ A lower risk score indicates better security posture. Use the Priority Actions s
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| Security Posture dashboard | ✅ | ✅ | ✅ | ✅ |
-| SIEM integration | ❌ | ❌ | ✅ | ✅ |
-| Operations dashboard | ✅ | ✅ | ✅ | ✅ |
-| Webhook health monitoring | ✅ | ✅ | ✅ | ✅ |
-
-*SIEM configuration requires `settings.manage` permission.*
+ControlWeaver has no tier gating — the Security Posture dashboard, SIEM integration, Operations dashboard, and webhook health monitoring are all available to every authenticated user. SIEM configuration requires the `settings.manage` permission.
 
 ---
 

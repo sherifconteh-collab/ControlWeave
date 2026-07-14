@@ -97,6 +97,99 @@ flowchart TD
     I --> J[Approval & Merge]
 ```
 
+### Check Frequency
+
+```mermaid
+flowchart LR
+    subgraph Immediate["IMMEDIATE — under 2 minutes"]
+        A1[Push to Main] --> A2[Detect Changes] --> A3[Sync Wiki] --> A4[Done]
+    end
+    subgraph Daily["DAILY — 9:00 AM UTC"]
+        B1[Scheduled Run] --> B2[Health Check] --> B3[Validate Docs] --> B4[Report]
+        B4 --> B5{Issues Found?}
+        B5 -->|Yes| B6[Create/Update Issue] --> B7[Alert Team]
+        B5 -->|Fixed| B8[Close Issue] --> B9[All Clear]
+    end
+    subgraph OnDemand["ON-DEMAND — Anytime"]
+        C1[Manual Trigger] --> C2[Immediate Sync/Check] --> C3[Results]
+    end
+```
+
+### Auto-Review Flow
+
+When a documentation review issue is filed, `auto-review-docs.yml` validates the changed
+documents against six quality checks and either auto-approves or flags for manual review:
+
+```mermaid
+flowchart TD
+    IssueCreated["Issue Created:\nDocumentation Review Needed"] --> WorkflowTriggered["Auto-Review Workflow Triggered\n(< 1 minute)"]
+    WorkflowTriggered --> ExtractPaths[Extract document paths from issue]
+    ExtractPaths --> QualityChecks["Run 6 Quality Checks:\n1. File Exists\n2. Valid Markdown\n3. No Broken Links\n4. Screenshots Valid\n5. Headers Consistent\n6. Code Blocks Closed"]
+    QualityChecks --> GenerateReport[Generate Report]
+    GenerateReport --> Decision{All Checks Pass?}
+    Decision -->|Yes| AutoApprove["Auto-Approve:\nCheck all boxes,\nAdd labels,\nClose issue"]
+    Decision -->|No| ManualReview["Manual Review Required:\nPost detailed report,\nKeep issue open"]
+```
+
+### Health Check Flow
+
+`wiki-health-check.yml` runs on the daily schedule above and reconciles the published wiki
+against source documentation:
+
+```mermaid
+flowchart TD
+    Trigger["Scheduled Trigger\n(cron: 0 9 * * *)"] --> CloneWiki[Clone Wiki Repository]
+    CloneWiki --> CheckDocs["Check Each Expected Document:\nHome.md, User-Guide.md,\nGetting-Started.md, Account-Setup.md,\nVulnerability-Management.md"]
+    CheckDocs --> Validate["For Each Document:\nSource exists?\nWiki exists?\nContent matches? (MD5 hash)"]
+    Validate --> Report["Generate Health Report:\nOverall health status,\nMissing documents,\nOut-of-sync documents,\nExtra documents"]
+    Report --> HealthDecision{Healthy?}
+    HealthDecision -->|Yes| CloseIssues[Close any open health issues]
+    HealthDecision -->|No| CreateIssue[Create/update health issue]
+    CreateIssue --> AutoFixDecision{Auto-fix enabled?}
+    AutoFixDecision -->|Yes| TriggerSync[Trigger sync]
+```
+
+### Complete Workflow Integration
+
+The pieces above chain together end to end, from a developer's code change through to a
+verified, published wiki page:
+
+```mermaid
+flowchart TD
+    subgraph DevWorkflow["Developer Workflow"]
+        WriteCode[1. Write code] --> UpdateDocs[2. Update documentation] --> CommitPush[3. Commit and push]
+    end
+    subgraph Automation["Automation Kicks In"]
+        DetectChanges[4. docs-auto-update.yml detects changes] --> GenUpdates[5. Generates documentation updates] --> CreatePR["6. Creates PR with 'auto-generated' label"] --> CreateIssue[7. Creates review issue]
+    end
+    subgraph AutoReview["Auto-Review"]
+        ValidateQuality[8. auto-review-docs.yml validates quality] --> ReviewDecision{Pass?}
+        ReviewDecision -->|Yes| CloseIssue[9. Closes issue, proceeds]
+        ReviewDecision -->|No| ManualReview[10. Requires manual review]
+    end
+    subgraph WikiSync["Wiki Sync"]
+        SyncWiki[11. sync-wiki.yml syncs to GitHub Wiki] --> WikiLive[12. Documents appear in wiki immediately]
+    end
+    subgraph HealthMonitoring["Health Monitoring"]
+        DailyCheck[13. wiki-health-check.yml runs daily] --> ValidateSync[14. Validates all docs are in sync]
+        ValidateSync --> HealthDecision{Problems detected?}
+        HealthDecision -->|Yes| CreateHealthIssue[15. Creates issues]
+        CreateHealthIssue --> AutoFixCheck{Auto-fix enabled?}
+        AutoFixCheck -->|Yes| AutoFix[16. Auto-fixes]
+        HealthDecision -->|No| AllClear[All clear]
+    end
+    subgraph Result["Result"]
+        FinalStatus["Always up-to-date wiki\nQuality guaranteed\nIssues auto-detected and resolved\nMinimal manual intervention"]
+    end
+
+    CommitPush --> DetectChanges
+    CreateIssue --> ValidateQuality
+    CloseIssue --> SyncWiki
+    WikiLive --> DailyCheck
+    AllClear --> FinalStatus
+    AutoFix --> FinalStatus
+```
+
 ## 📸 Screenshot System
 
 ### Naming Convention
@@ -274,6 +367,34 @@ flowchart TD
 4. Document tier requirements
 
 ## 📊 Documentation Metrics
+
+### Pipeline monitoring
+
+Where to check automation health:
+
+- **GitHub Actions tab**:
+  - `auto-review-docs` — run history, auto-approval rate, average run time
+  - `wiki-health-check` — daily runs at 9 AM UTC, health status, JSON/Markdown report artifacts (30-day retention)
+  - `sync-wiki` — triggers on push to `main`, success rate, average sync time
+- **GitHub Issues labels**: `auto-reviewed` (closed issues), `wiki-health` (health issues), `documentation` (all doc issues)
+
+Quick commands:
+
+```bash
+# Check system health
+gh run list --workflow=wiki-health-check.yml
+
+# Trigger auto-review
+gh workflow run auto-review-docs.yml -f issue_number=53
+
+# Sync wiki manually
+./scripts/sync-wiki.sh
+
+# View documentation
+open https://github.com/sherifconteh-collab/ControlWeaver-Pro/wiki
+```
+
+### Effectiveness metrics
 
 Track these metrics for effectiveness:
 

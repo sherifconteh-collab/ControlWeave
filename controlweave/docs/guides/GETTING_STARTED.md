@@ -19,7 +19,7 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 1. Navigate to ControlWeave: `http://yourinstance.com/register`
 2. Fill in the registration form:
    - **Email**: Your work email address
-   - **Password**: Strong password (min 12 characters)
+   - **Password**: Strong password (min 15 characters, must include uppercase, lowercase, a number, and a special character)
    - **Full Name**: Your name as it should appear in the system
    - **Organization Name**: Your company or organization name
 
@@ -40,7 +40,7 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 > **🔐 Login Options**: The login page (`/login`) supports:
 > - **Password** (email + password) — available to all users
 > - **Two-Factor Authentication (TOTP)** — available to all users; pair with Google Authenticator, Authy, or any TOTP app
-> - **Passkey** (biometrics or hardware security key) — available on the Enterprise tier or higher
+> - **Passkey** (biometrics or hardware security key) — available to all users
 > - **SSO / Social login** (Google, Microsoft, etc.) — available when configured by your administrator
 >
 > If you forget your password, click **Forgot password?** on the login page to receive a reset link by email.
@@ -68,7 +68,6 @@ Navigate to **Organization Settings** tab:
 - **Organization Name**: Already set during registration
 - **Industry**: Select your industry vertical
 - **Size**: Number of employees
-- **Tier**: Automatically set (Community by default)
 
 **Optional Fields**:
 - **Description**: Brief description of your organization
@@ -76,8 +75,6 @@ Navigate to **Organization Settings** tab:
 - **Primary Contact**: Main compliance contact
 
 Click **Save Organization Settings**
-
-> **💡 Tip**: To upgrade from the Community tier, go to **Settings** and scroll to **Available Plans**. You can switch between Monthly and Annual billing (annual saves 20%) and upgrade directly from the settings page.
 
 ### 2.3 Data Sensitivity Profile
 Under **Data Classification**:
@@ -151,11 +148,6 @@ Under **Data Classification**:
 
 ![Framework showing Active badge after activation](../screenshots/frameworks-active-badge-01.png)
 *Figure 3.3: Active framework with green badge*
-
-> **⚠️ Tier Limits**: 
-> - Community: Maximum 2 frameworks
-> - Pro: Unlimited  
-> - Enterprise: Unlimited
 
 ---
 
@@ -336,10 +328,7 @@ Navigate back to **Dashboard** to see:
 | **xAI Grok** | console.x.ai | Fast, capable models |
 | **Ollama** | Local install | No key needed! |
 
-> **💡 Tier Limits**:
-> - Community: 10 AI requests/month
-> - Pro: Unlimited
-> - Enterprise: Unlimited
+> **💡 Note**: ControlWeaver has no tier-based AI request limit. Any limit you hit comes from your configured provider's own rate limit or quota — use BYOK to control it directly.
 
 ### 7.2 Try the AI Copilot
 1. Look for purple **Ask AI** button (bottom-right of any page)
@@ -380,7 +369,7 @@ Navigate back to **Dashboard** to see:
   - **Manager**: Can edit controls, assessments
   - **Analyst**: Can view and update status
   - **Viewer**: Read-only access
-  - **Auditor**: External auditor role (Pro+)
+  - **Auditor**: External auditor role
 
 ![Invite user form with email, name, and role fields](../screenshots/users-invite-form-01.png)
 *Figure 8.2: Invite a new user*

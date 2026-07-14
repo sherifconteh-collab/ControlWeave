@@ -10,7 +10,7 @@ globs:
 ---
 # Assessment & Audit Conventions
 
-Assessments are ControlWeaver's core compliance workflow — available at Community tier. The assessment module is the largest route file (~3700 lines), so follow these patterns carefully.
+Assessments are ControlWeaver's core compliance workflow — available to every authenticated user, no tier gating (see `.claude/rules/tier-system.md`). `routes/assessments.js` is a thin aggregator that mounts sub-routers under `routes/assessments/*` (engagements, procedures, PBC, workpapers, findings, signoffs) — follow these patterns carefully within whichever sub-router you're touching.
 
 ## Engagement Types
 

@@ -9,16 +9,15 @@ globs:
 ---
 # TPRM Conventions
 
-ControlWeaver's Third Party Risk Management module is Enterprise tier only. All TPRM code must enforce access controls and follow vendor risk management standards.
+ControlWeaver's Third Party Risk Management module is available to every authenticated user — no tier gating (see `.claude/rules/tier-system.md`). All TPRM code must enforce access controls and follow vendor risk management standards.
 
 ## Access Control Stack
 
-Every TPRM route must apply three layers of middleware in this order:
+Every TPRM route must apply this middleware:
 
 ```javascript
-router.use(authenticate);                    // 1. Authentication
-router.use(requireProEdition('tprm'));       // 2. Edition check (from middleware/edition)
-router.use(requireTier('enterprise'));        // 3. Tier check (Enterprise minimum)
+router.use(authenticate);
+router.use(requirePermission('tprm.read')); // or .write for mutating routes
 ```
 
 ## Valid Enumerations

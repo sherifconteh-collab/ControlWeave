@@ -1,24 +1,22 @@
 # 🔒 Security Settings Guide
 
-Configure security features including passkeys, SSO, session policies, and access controls.
+Configure security features including two-factor authentication, passkeys, and SSO.
 
 ## Overview
 
-ControlWeave provides enterprise-grade security features to protect your compliance data. This guide covers all security configuration options available in **Settings** → **Security**.
+ControlWeaver provides several account and organization security features, configured from **Settings** → **Security** (organization-level SSO/passkey setup) and **Account** → **Security** (your own TOTP/passkeys). This guide covers what's actually configurable today — see the note at the end for security controls that are sometimes assumed to exist but currently don't.
 
-## Multi-Factor Authentication (MFA)
+## Two-Factor Authentication (TOTP)
 
-### Enabling MFA
+Add an extra layer of security using a TOTP authenticator app (Google Authenticator, Authy, 1Password, etc.):
 
-1. Go to **Settings** → **Security**
-2. Toggle **Require MFA** to ON
-3. Choose MFA method: Authenticator App or Email OTP
-4. Click **Save**
+1. Go to **Account** → **Security**
+2. Click **Set Up Two-Factor Authentication**
+3. Scan the QR code (or enter the manual key) into your authenticator app
+4. Enter the 6-digit code to confirm setup
+5. Save your backup codes somewhere safe
 
-### MFA Enforcement
-
-- **Mandatory**: All users must set up MFA before accessing the platform
-- **Optional**: Users can enable MFA voluntarily
+TOTP is **opt-in per user** — there is currently no organization-wide setting to require every user to enable it. Once enabled, every email + password sign-in requires both your password and a 6-digit code. Sign-ins using passkeys or SSO may authenticate without a TOTP challenge, depending on your configuration.
 
 ## Passkey Authentication (WebAuthn)
 
@@ -32,18 +30,14 @@ Passkeys provide phishing-resistant authentication using device biometrics or ha
 4. Name your passkey (e.g., "MacBook Touch ID")
 5. Click **Save**
 
-### Passkey Policies (Enterprise)
+Passkeys are opt-in per user, same as TOTP — there's no organization-wide "require passkey for all logins" enforcement toggle currently.
 
-Administrators can enforce passkey-only authentication:
-1. **Settings** → **Security** → **Authentication Policy**
-2. Enable **Require Passkey for All Logins**
-
-## Single Sign-On (SSO) — Enterprise Only
+## Single Sign-On (SSO)
 
 ### SAML 2.0 Configuration
 
 1. Go to **Settings** → **Security** → **SSO/SAML**
-2. Download the ControlWeave Service Provider metadata
+2. Download the ControlWeaver Service Provider metadata
 3. Configure your Identity Provider (IdP) with the SP metadata
 4. Enter the IdP metadata URL or paste the XML
 5. Map user attributes (email, name, role)
@@ -57,23 +51,16 @@ Administrators can enforce passkey-only authentication:
 - OneLogin
 - JumpCloud
 
-## Session Management
+## Session Behavior
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| **Session Timeout** | 8 hours | Auto-logout after inactivity |
-| **Refresh Token Expiry** | 7 days | Remember login duration |
-| **Concurrent Sessions** | Unlimited | Max simultaneous logins |
+These are fixed platform defaults, not per-organization settings — there's no Session Policy configuration UI:
 
-Configure in **Settings** → **Security** → **Session Policy**
-
-## IP Allowlisting — Enterprise Only
-
-Restrict access to specific IP ranges:
-
-1. **Settings** → **Security** → **IP Allowlist**
-2. Add allowed IP addresses or CIDR ranges
-3. Enable **Enforce IP Allowlist**
+| Setting | Value | Description |
+|---------|-------|-------------|
+| **Access Token** | 15 minutes | Short-lived; auto-refreshed in the background |
+| **Refresh Token Expiry** | 7 days | How long a login stays valid without re-authenticating |
+| **Account Lockout** | 5 failed attempts → 15-minute lock | Applies to password sign-in |
+| **Concurrent Sessions** | 10 per user by default | Oldest sessions are evicted once the limit is reached; server-configurable via `MAX_CONCURRENT_SESSIONS`, not adjustable from the UI |
 
 ## Audit Log
 
@@ -83,6 +70,13 @@ All security events are logged in **Settings** → **Audit Log**:
 - SSO events
 - Password resets
 - API key creation/revocation
+
+## Security controls that don't exist yet
+
+A few controls that sound like they should be here, but currently have no implementation — don't reference these when advising a customer, and treat a request for them as a feature gap rather than a misconfiguration:
+- **IP allowlisting** — no way to restrict access by IP range or CIDR block.
+- **Organization-wide MFA mandate** — no toggle to force every user in an org to enable TOTP or passkeys.
+- **Configurable session timeout** — the access/refresh token lifetimes above are fixed, not adjustable per organization.
 
 ## Related Guides
 

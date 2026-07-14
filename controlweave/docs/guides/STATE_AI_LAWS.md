@@ -1,10 +1,10 @@
 # ⚖️ State & International AI Laws Guide
 
-Track AI governance requirements across US state laws and international AI regulations — purpose-built for the Gov Cloud & Advisory tier.
+Track AI governance requirements across US state laws and international AI regulations.
 
 ## Overview
 
-The State AI Laws module provides a structured, searchable registry of US state AI governance laws and their corresponding compliance controls. Alongside state laws, ControlWeave also tracks international AI regulations (EU AI Act, ISO 42001, NIST AI RMF) through the main Frameworks module. State AI Laws are a **Gov Cloud & Advisory tier** feature.
+The State AI Laws module provides a structured, searchable registry of US state AI governance laws and their corresponding compliance controls. Alongside state laws, ControlWeave also tracks international AI regulations (EU AI Act, ISO 42001, NIST AI RMF) through the main Frameworks module.
 
 ---
 
@@ -129,15 +129,7 @@ To track international AI laws:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise | Gov Cloud & Advisory |
-|---------|------|---------|--------------|------------|-----------|
-| State AI Laws module | ❌ | ❌ | ❌ | ❌ | ✅ |
-| International AI frameworks | ✅ (view) | ✅ | ✅ | ✅ | ✅ |
-| State AI governance framework | ❌ | ❌ | ❌ | ❌ | ✅ |
-
-> **Note**: The Gov Cloud & Advisory tier is a specialized tier for organizations with advanced AI regulatory compliance needs. Contact ControlWeave to learn about Gov Cloud & Advisory tier access.
+ControlWeaver has no tier gating — the State AI Laws module, international AI frameworks, and the state AI governance framework are all available to every authenticated user.
 
 ---
 

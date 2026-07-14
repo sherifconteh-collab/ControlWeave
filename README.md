@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.2.1-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.4.1-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-860%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -290,7 +290,7 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 | **Frontend** | Next.js 16+ (React 19), TypeScript, Tailwind CSS, Recharts, Lucide React |
 | **Backend** | Node.js 20+, Express.js |
 | **Database** | PostgreSQL 17+ (primary), Redis (optional Socket.IO adapter for multi-instance real-time) |
-| **Auth** | JWT (jsonwebtoken), bcryptjs (12 rounds), WebAuthn (@simplewebauthn), OpenID Connect (openid-client) |
+| **Auth** | JWT (jsonwebtoken), bcryptjs (14 rounds), WebAuthn (@simplewebauthn), OpenID Connect (openid-client) |
 | **Payments** | None — ControlWeaver is fully open source; billing infrastructure removed in v4.0 |
 | **Emails** | nodemailer (SMTP-compatible — works with SendGrid, SES, Mailgun, Resend, etc.) |
 | **File handling** | multer (uploads), pdf-parse, mammoth (DOCX), exceljs, pdfkit |
@@ -299,7 +299,7 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 | **AI — Self-hosted** | Ollama (OpenAI-compatible, local) |
 | **MCP** | @modelcontextprotocol/sdk (Claude Desktop, Cursor, VS Code Copilot, Continue.dev) |
 | **Integrations** | Splunk REST API, webhooks, RSS feeds, Zod (MCP tool + SDK schemas) |
-| **Security** | Rate limiting (express middleware), CORS, sanitize-html, bcryptjs (12 rounds), manually configured security headers (CSP, HSTS, X-Frame-Options) |
+| **Security** | Rate limiting (express middleware), CORS, sanitize-html, bcryptjs (14 rounds), manually configured security headers (CSP, HSTS, X-Frame-Options) |
 | **Deployment** | Railway (primary), Docker (backend + frontend Dockerfiles), nixpacks |
 | **DevOps** | Docker, GitHub Actions CI (lint, typecheck, TEVV, security scan) |
 | **Search** | PostgreSQL ILIKE-based search (controls, assets, evidence, vendors) |
@@ -695,8 +695,8 @@ npm run mcp:secure
 - **Exceptions:** List and create compliance exceptions
 - **Audit Logs:** List logs, get statistics
 - **TPRM:** List/get/create vendors, questionnaires, programme summary
-- **Third-Party AI Governance:** AI vendor assessments, incidents, supply chain components *(Enterprise tier)*
-- **Threat Intelligence:** Stats summary, list CVEs/indicators with CVSS/exploit filtering *(Enterprise tier)*
+- **Third-Party AI Governance:** AI vendor assessments, incidents, supply chain components
+- **Threat Intelligence:** Stats summary, list CVEs/indicators with CVSS/exploit filtering
 - **Help Center:** List and retrieve in-app help articles
 
 MCP authentication policy: login-based only via `npm run mcp:login`. Applies to all users, including admins.
@@ -888,7 +888,7 @@ ControlWeave ships with a layered security posture:
 
 - **Encryption at rest** — User PII (email) encrypted with **AES-256-GCM**; HMAC-SHA-384 search indexes; CNSA Suite 1.0 compliant. Runtime `auditEncryptionStrength()` verifies algorithm, key length, HMAC strength, and TLS floor on every server start — server refuses to start if any check fails
 - **Encryption in transit** — TLS 1.2+ enforced globally (`tls.DEFAULT_MIN_VERSION`); MCP → REST API channel throws on non-HTTPS in production, warns before sending credentials over plain HTTP
-- **Authentication** — bcryptjs (12 rounds) password hashing; JWT access (15 min) + refresh (7 day) tokens; hashed refresh tokens in DB
+- **Authentication** — bcryptjs (14 rounds) password hashing; JWT access (15 min) + refresh (7 day) tokens; hashed refresh tokens in DB
 - **Account lockout** — Per-account failed login counter with configurable lockout (default: 5 attempts → 15-minute lock, `Retry-After` header on 423 response)
 - **Rate limiting** — IP-based rate limits on auth endpoints; per-org AI rate limits inside the API
 - **Input sanitization** — Null bytes, `<script>` blocks, and HTML tags stripped from all user string inputs

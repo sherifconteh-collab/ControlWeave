@@ -4,7 +4,7 @@
  *
  * Scenarios are ordered step checklists pointing at real dashboard pages.
  * Rows with organization_id IS NULL are built-in global templates (seeded in
- * migration 118) and are immutable; instructors author org-local scenarios
+ * migration 113) and are immutable; instructors author org-local scenarios
  * and can view per-student progress.
  */
 

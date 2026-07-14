@@ -1,6 +1,62 @@
-# Controlweave Quick Start Guide
+# Controlweave — Self-Hosted Quick Start
 
-Get Controlweave up and running in under 15 minutes.
+Get a self-hosted Controlweave deployment up and running in under 15 minutes.
+
+Controlweave is a fully functional, open source GRC (Governance, Risk, and Compliance)
+platform. As of v4.0, all tier gating has been removed — every feature described below is
+available to every authenticated user on a self-hosted deployment, under the AGPL v3 /
+commercial dual license (see [LICENSE](LICENSE)). There is no separate "Community edition"
+product tier to unlock; this guide is simply about standing up your own instance.
+
+## What You Get
+
+### Core Compliance Management
+- **Framework Support** — NIST 800-53, ISO 27001, SOC 2, GDPR, HIPAA, PCI DSS, and more
+- **Control Management** — 500+ pre-loaded controls with implementation tracking
+- **Control Crosswalks** — automatic mapping between frameworks (implement once, satisfy many)
+- **Control Health** — real-time health scoring based on evidence and assessments
+- **Control Exceptions** — track approved exceptions with expiry dates
+
+### Assessment & Audit Workflows
+- **Assessment Procedures** — 186 procedures based on NIST 800-53A, ISO 19011, SOC 2, HIPAA, GDPR
+- **Assessment Plans** — create and track assessment campaigns
+- **Results Recording** — NIST-standard outcomes (Satisfied / Other Than Satisfied / Not Applicable)
+- **Auditor Workspace** — dedicated portal for external auditors
+- **Audit Logging** — complete trail of all user actions for AU-2 compliance
+
+### AI-Powered Analysis (optional — the platform works without any API key configured)
+- **AI Copilot** — organization-aware conversational assistant
+- **Gap Analysis** — identify compliance gaps across frameworks
+- **Crosswalk Optimizer** — find overlap opportunities to reduce duplicate work
+- **Compliance Forecast** — predict compliance trajectory
+- **Remediation Playbooks** — generate step-by-step remediation plans
+- **Risk Heatmaps** — visualize risk across control families
+- **BYOK Support** — bring your own key for Anthropic, OpenAI, Google, xAI, Groq, or Ollama
+
+### User & Access Management
+- **User Management** — create and manage user accounts
+- **Role-Based Access Control** — custom roles with granular permissions
+- **Multi-Organization** — support multiple organizations in a single deployment
+- **Passkeys/WebAuthn** — modern passwordless authentication
+
+### Policy & Risk Management
+- **Policy Management** — create and track organizational policies
+- **POAM** — Plan of Action & Milestones for remediation tracking
+- **Policy Engine** — automate policy enforcement
+- **Implementation Tracking** — track control implementation status and assignments
+
+### Developer Features
+- **REST API** — complete API for programmatic access
+- **MCP Server** — Model Context Protocol support for LLM integration
+- **Webhooks** — outbound webhooks for external integrations
+- **Performance Monitoring** — built-in application performance tracking
+
+## Technology Stack
+
+**Backend:** Node.js 18+, Express.js, PostgreSQL 17+ (no ORM, direct parameterized SQL), JWT
+authentication with bcryptjs, multi-provider AI integration.
+
+**Frontend:** Next.js 16+ (App Router), TypeScript (strict mode), Tailwind CSS.
 
 ## Prerequisites
 
@@ -47,15 +103,17 @@ DB_PASSWORD=your_password_here
 # Server
 PORT=3001
 NODE_ENV=development
-EDITION=community
 
-# JWT Secret (generate a random string)
+# JWT Secret (generate a random string, minimum 32 characters)
 JWT_SECRET=your-secret-key-at-least-32-chars-long
 
 # CORS
 CORS_ORIGIN=http://localhost:3000
 FRONTEND_URL=http://localhost:3000
 ```
+
+`EDITION` is a legacy environment variable kept for backward compatibility only — it no
+longer gates any feature (see `.claude/rules/tier-system.md`), so you can leave it unset.
 
 ### Create Database
 
@@ -194,9 +252,9 @@ If you want AI-powered features:
 1. Go to **Settings** → **Users**
 2. Click **Add User**
 3. Assign roles:
-   - **Admin** - Full access
-   - **User** - Can manage controls and evidence
-   - **Auditor** - Read-only access
+   - **Admin** — full access
+   - **User** — can manage controls and evidence
+   - **Auditor** — read-only access
 
 ### Create Assessment Plans
 
@@ -282,6 +340,18 @@ curl http://localhost:3001/api/v1/frameworks \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
+## Architecture Notes
+
+- **Security**: JWT-based authentication, role-based access control (RBAC), comprehensive
+  audit logging, input validation and sanitization, parameterized SQL (no string
+  interpolation), XSS protection, rate limiting.
+- **Database schema**: organizations and users, frameworks and controls, control
+  implementations and evidence, assessments and audit trails, policies and POAM items,
+  performance metrics.
+- **API design**: RESTful endpoints under `/api/v1`, consistent `{ success, data }` /
+  `{ error }` response format, comprehensive error handling, rate limiting, request context
+  tracking.
+
 ## Deployment to Production
 
 ### Environment Variables
@@ -320,13 +390,22 @@ npm start
 ### Deployment Platforms
 
 Controlweave works on:
+- Docker containers
 - Railway
 - Heroku
 - AWS (EC2, ECS, Elastic Beanstalk)
 - Google Cloud Platform
 - Azure
 - DigitalOcean
-- Any Node.js hosting
+- Any Node.js hosting platform
+
+### Scaling
+
+- Horizontal scaling supported
+- Load balancer compatible
+- Session-less architecture
+- Database connection pooling
+- Performance monitoring included
 
 ## Troubleshooting
 
@@ -376,19 +455,25 @@ npm run migrate:one
 3. Verify NEXT_PUBLIC_API_URL in frontend .env.local
 4. Check browser console for errors
 
+## Contributing
+
+Contributions are welcome — code fixes and performance improvements, new framework support,
+integration development (connectors, webhooks, MCP extensions, AI provider support), and
+documentation improvements. See [CONTRIBUTING.md](CONTRIBUTING.md) for the process:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
 ## Getting Help
 
-- **GitHub Issues** - Report bugs
-- **GitHub Discussions** - Ask questions
-- **Documentation** - Read guides
-- **Community** - Join discussions
-
-## Next Steps
-
-- Read [COMMUNITY_EDITION.md](COMMUNITY_EDITION.md) for complete feature list
+- **GitHub Issues** — report bugs
+- **GitHub Discussions** — ask questions
+- **Documentation** — read guides under `controlweave/docs/`
 - Explore [docs/MCP_SETUP.md](docs/MCP_SETUP.md) for LLM integration
 - Check [API Documentation](docs/openapi.yaml) for programmatic access
-- Join our community on GitHub Discussions
 
 ---
 

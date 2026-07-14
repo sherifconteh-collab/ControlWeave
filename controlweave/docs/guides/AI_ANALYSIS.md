@@ -21,7 +21,6 @@ Before running AI Analysis:
 
 1. **Configure an LLM provider** (Settings → LLM Configuration)
 2. **Have data in the system** (activated frameworks, controls, assessments)
-3. **Check your tier limits** - each analysis consumes AI request credits
 
 > **💡 Tip**: The more data you have in ControlWeave, the more accurate and specific your AI analyses will be.
 
@@ -68,8 +67,6 @@ Before running AI Analysis:
 - List of critical issues that would likely result in findings
 - Recommended actions before the audit
 - Estimated days to audit-ready
-
-**Tier requirement:** Pro and above
 
 **Example output:**
 ```
@@ -156,8 +153,6 @@ Estimated time to ready: ~6 weeks
 - Recommended control updates
 - Timeline for compliance with new requirements
 
-**Tier requirement:** Enterprise and above
-
 ---
 
 ### 7. Risk Heatmap Analysis
@@ -186,7 +181,6 @@ Estimated time to ready: ~6 weeks
 - Recommended vendor questionnaire items
 - Mitigation strategies
 
-**Tier requirement:** Enterprise and above  
 **Requires:** CMDB data (assets/environments with vendor information)
 
 ---
@@ -318,18 +312,11 @@ Estimated time to ready: ~6 weeks
 
 ## AI Request Usage
 
-Each analysis consumes AI request credits from your monthly allowance:
-
-| Tier | Monthly AI Requests | Resets |
-|------|---------------------|--------|
-| Community | 10 | 1st of each month |
-| Pro | Unlimited | N/A |
-| Enterprise | Unlimited | N/A |
-| Gov Cloud | Unlimited | N/A |
+ControlWeaver has no tier-based monthly AI request limit — any limit you hit comes from your configured LLM provider's own rate limit or quota.
 
 **Each analysis = 1 request** (regardless of complexity or length)
 
-> **💡 Tip**: Use your own API key (BYOK) to avoid request limits. See [Settings → LLM Configuration](SETTINGS.md#llm-configuration).
+> **💡 Tip**: Use your own API key (BYOK) to control your provider quota directly. See [Settings → LLM Configuration](SETTINGS.md#llm-configuration).
 
 ### Checking Your Usage
 
@@ -426,9 +413,9 @@ See [LLM Configuration Guide](SETTINGS.md#llm-configuration).
 ### "AI Request Limit Reached"
 
 **Solutions**:
-1. Wait for monthly reset (1st of next month)
-2. Upgrade your tier
-3. Add your own API key (BYOK) to bypass limits — see [Settings → LLM Configuration](SETTINGS.md#llm-configuration)
+1. ControlWeaver has no tier-based monthly AI request limit — this error comes from your configured LLM provider's own rate limit or quota
+2. Wait for the provider's rate limit/quota to reset
+3. Add your own API key (BYOK) to control your own provider quota directly — see [Settings → LLM Configuration](SETTINGS.md#llm-configuration)
 
 ### Slow or Incomplete Results
 

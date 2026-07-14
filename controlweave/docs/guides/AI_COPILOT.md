@@ -69,13 +69,11 @@ Before using AI Copilot, you need to configure an LLM provider:
 
 > **💡 Recommendation**: Start with Google Gemini or Groq free tier
 
-### 2. Understand Tier Limits
+### 2. Understand Request Limits
 
-**AI Request Limits per Month:**
-- Community: 10 requests/month
-- Pro: Unlimited
-- Enterprise: Unlimited
-- Gov Cloud: Unlimited
+ControlWeaver has no tier-based monthly AI request cap. Any limit you hit comes
+from your configured LLM provider's own rate limit or quota — use BYOK to
+control your own provider quota directly.
 
 **What Counts as a Request:**
 - Each message you send to Copilot
@@ -123,7 +121,6 @@ The Copilot automatically knows:
 - ✅ Your POA&M items
 - ✅ Your asset inventory (if CMDB enabled)
 - ✅ Your vulnerability status
-- ✅ Your organization tier
 
 **Example:**
 ```
@@ -294,7 +291,6 @@ You can reference controls, assessments, etc. by ID:
 
 ```
 "Compare NIST 800-53 vs ISO 27001"
-"What's the difference between Pro and Enterprise tier?"
 "Compare Claude vs GPT-4 for compliance work"
 ```
 
@@ -364,12 +360,12 @@ To clear context and start new topic:
 
 ### "Usage Limit Reached"
 
-**Problem**: Exceeded monthly AI request limit
+**Problem**: Your configured LLM provider's rate limit or quota was hit — ControlWeaver has no tier-based monthly limit of its own.
 
 **Options**:
-1. Wait until next month (limit resets)
-2. Upgrade tier (Pro = Unlimited)
-3. Use Ollama (no request limits, but requires setup)
+1. Wait for the provider's limit to reset
+2. Add your own API key (BYOK) to control your provider quota directly
+3. Use Ollama (self-hosted, no external provider limits)
 
 ### Slow Responses
 

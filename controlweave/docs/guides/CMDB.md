@@ -7,7 +7,7 @@ This guide covers how to track and manage your organization's assets using Contr
 - **Full Configuration**: 1-2 hours (depending on asset inventory size)
 
 ## 📋 Prerequisites
-- ControlWeave account with **Pro tier or higher**
+- ControlWeave account
 - Admin or Asset Manager role (write access requires `assets.write` permission)
 - List of hardware, software, and service accounts to import
 
@@ -23,16 +23,7 @@ ControlWeave's CMDB helps you:
 - 🔗 Link assets to security controls and vulnerabilities
 - 📋 Generate SBOM and AIBOM for compliance evidence
 
-### Tier Availability
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| **CMDB Enabled** | ❌ | ✅ | ✅ | ✅ |
-| **Maximum Assets** | — | 50 | Unlimited | Unlimited |
-| **Hardware Assets** | ❌ | ✅ | ✅ | ✅ |
-| **Software Assets** | ❌ | ✅ | ✅ | ✅ |
-| **AI Agents** | ❌ | ✅ | ✅ | ✅ |
-| **Service Accounts** | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating and no asset limit — CMDB, hardware/software assets, AI agents, and service accounts are all available to every authenticated user.
 | **Environments** | — | 5 | Unlimited | Unlimited |
 | **Password Vaults** | ❌ | ✅ | ✅ | ✅ |
 | **SBOM Management** | ❌ | ✅ Basic | ✅ Full | ✅ Full |
@@ -324,7 +315,7 @@ Once registered, vaults appear as options when creating service accounts.
 
 Link CMDB assets to compliance controls to demonstrate evidence coverage.
 
-### 8.1 Manual Mapping (Pro+)
+### 8.1 Manual Mapping
 
 1. Navigate to **Controls**
 2. Open a control (e.g., CM-8 System Component Inventory)
@@ -332,7 +323,7 @@ Link CMDB assets to compliance controls to demonstrate evidence coverage.
 4. Search for and select relevant assets
 5. Click **Save**
 
-### 8.2 AI-Powered Mapping (Enterprise+)
+### 8.2 AI-Powered Mapping
 
 ControlWeave AI can automatically suggest control-to-asset mappings:
 
@@ -380,7 +371,7 @@ See how CMDB assets contribute to compliance:
 
 ## Step 10: AI-Assisted CMDB Operations
 
-### 10.1 Shadow IT Detection (Enterprise+)
+### 10.1 Shadow IT Detection
 
 AI can detect assets that are active in your environment but not registered in the CMDB:
 

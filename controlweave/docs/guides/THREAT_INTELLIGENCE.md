@@ -4,7 +4,7 @@ Integrate threat feeds, track indicators of compromise (IOCs), and map threats t
 
 ## Overview
 
-The Threat Intelligence module lets you connect to external threat feeds, ingest IOCs and threat data, and correlate threats against your asset inventory and compliance controls. This feature requires **Pro tier**.
+The Threat Intelligence module lets you connect to external threat feeds, ingest IOCs and threat data, and correlate threats against your asset inventory and compliance controls.
 
 ---
 
@@ -136,16 +136,7 @@ SBOM component vulnerabilities are enriched with NVD and CISA KEV data to show:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| Threat Intelligence | ❌ | ❌ | ✅ | ✅ |
-| NVD feed | ❌ | ❌ | ✅ | ✅ |
-| CISA KEV feed | ❌ | ❌ | ✅ | ✅ |
-| MITRE ATT&CK | ❌ | ❌ | ✅ | ✅ |
-| AlienVault OTX | ❌ | ❌ | ✅ | ✅ |
-| Manual sync | ❌ | ❌ | ✅ | ✅ |
+ControlWeaver has no tier gating — Threat Intelligence, the NVD/CISA KEV/MITRE ATT&CK/AlienVault OTX feeds, and manual sync are all available to every authenticated user.
 
 ---
 

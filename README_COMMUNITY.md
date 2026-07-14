@@ -2,7 +2,7 @@
 
 **Open Source GRC (Governance, Risk, and Compliance) Platform**
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-recommended%2017%2B%20(14%2B%20supported)-blue.svg)](https://www.postgresql.org)
 
@@ -203,7 +203,7 @@ We welcome contributions! Here are ways to get involved:
 
 ## 📄 License
 
-See [LICENSE](LICENSE) file for details.
+Dual-licensed under AGPL v3 (open source) or a commercial license. See [LICENSE](LICENSE) file for details.
 
 ## 🗺️ Roadmap
 

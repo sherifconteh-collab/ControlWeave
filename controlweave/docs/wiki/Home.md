@@ -88,35 +88,9 @@ Architecture and implementation reference docs:
 - Database Schema (Coming Soon)
 - Architecture Overview (Coming Soon)
 
-## 🎯 Feature Availability by Tier
+## 🎯 Feature Availability
 
-ControlWeave offers different feature sets based on your subscription tier:
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| **Frameworks** | 10 max | 20 max | Unlimited | Unlimited |
-| **AI Requests/Month** | 10 | 50 | Unlimited | Unlimited |
-| **CMDB (Assets)** | ❌ | 50 assets | Unlimited | Unlimited |
-| **Assessments** | ✅ Basic | ✅ All depths | ✅ All depths | ✅ All depths |
-| **AI Copilot** | ✅ Limited | ✅ | ✅ | ✅ |
-| **Evidence Management** | ✅ | ✅ | ✅ | ✅ |
-| **Auditor Workspace** | ❌ | ✅ | ✅ | ✅ |
-| **Custom Dashboards** | ❌ | ✅ | ✅ | ✅ |
-| **AI Monitoring Dashboard** | ❌ | ✅ | ✅ | ✅ |
-| **Data Governance Dashboard** | ❌ | ✅ | ✅ | ✅ |
-| **Vendor Risk Dashboard** | ❌ | ✅ | ✅ | ✅ |
-| **Real-Time Updates** | ❌ | ✅ | ✅ | ✅ |
-| **Predictive Risk Scoring** | ❌ | ❌ | ✅ | ✅ |
-| **Regulatory Impact Analysis** | ❌ | ❌ | ✅ | ✅ |
-| **Smart Remediation Plans** | ❌ | ❌ | ✅ | ✅ |
-| **Threat Intelligence Feeds** | ❌ | ❌ | ✅ | ✅ |
-| **Vendor Security Monitoring** | ❌ | ❌ | ✅ | ✅ |
-| **Regulatory News Feeds** | ❌ | ❌ | ✅ | ✅ |
-| **SBOM/AIBOM** | ❌ | ✅ Basic | ✅ Full | ✅ Full |
-| **Vulnerability Mgmt** | ❌ | ✅ | ✅ | ✅ |
-| **POA&M Tracking** | ✅ | ✅ | ✅ | ✅ |
-| **SSO/SAML** | ❌ | ❌ | ❌ | ✅ |
-| **SIEM Integration** | ❌ | ❌ | ❌ | ✅ |
+ControlWeaver is fully open source with no tier gating — Frameworks, unlimited CMDB assets, all assessment depths, AI Copilot, evidence management, Auditor Workspace, Custom Dashboards, AI Monitoring/Data Governance/Vendor Risk Dashboards, Predictive Risk Scoring, Regulatory Impact Analysis, Smart Remediation Plans, Threat Intelligence Feeds, Vendor Security Monitoring, Regulatory News Feeds, SBOM/AIBOM, Vulnerability Management, POA&M Tracking, SSO/SAML, and SIEM Integration are all available to every authenticated user.
 
 ## 🎓 Learning Paths
 
@@ -188,14 +162,8 @@ For leadership monitoring compliance status.
 ### Resources
 - **[User Guide](User-Guide)** - Comprehensive documentation
 - **AI Copilot** - Purple button in the platform (bottom-right)
-- **Email Support** - contehconsulting@gmail.com (Professional & Enterprise)
+- **Email Support** - contehconsulting@gmail.com
 - **GitHub Issues** - [Report bugs or request features](https://github.com/sherifconteh-collab/ControlWeaver-Pro/issues)
-
-### Support by Tier
-- **Free**: Documentation and AI Copilot
-- **Starter**: Documentation, AI Copilot, Email support
-- **Professional**: Priority email support, faster response times
-- **Enterprise**: Dedicated Customer Success Manager (CSM)
 
 ## 💡 Key Features
 

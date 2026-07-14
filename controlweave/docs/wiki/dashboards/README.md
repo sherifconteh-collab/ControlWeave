@@ -1,7 +1,5 @@
 # Dashboards
 
-> 📦 **Tier**: ❌ Free | ✅ Starter | ✅ Professional | ✅ Enterprise
-
 ## Overview
 
 ControlWeave provides comprehensive dashboards for monitoring AI systems, managing data governance, and tracking vendor risk. These dashboards give you real-time visibility into your compliance posture.
@@ -12,7 +10,7 @@ ControlWeave provides comprehensive dashboards for monitoring AI systems, managi
 Monitor AI system usage, review high-risk decisions, and track compliance with AI governance policies.
 
 **Features:**
-- Real-time AI usage tracking with tier limits
+- Real-time AI usage tracking
 - AI decision review workflow with bias flagging
 - Usage analytics and trend charts
 - High-risk decision identification
@@ -48,15 +46,8 @@ Access dashboards from the main navigation menu:
 - **Data Governance**: Dashboard → Data Governance
 - **Vendor Risk**: Dashboard → Vendor Risk
 
-## Tier Information
-
-| Dashboard | Community | Pro | Pro | Enterprise |
-|-----------|------|---------|--------------|------------|
-| AI Monitoring | ❌ | ✅ | ✅ | ✅ |
-| Data Governance | ❌ | ✅ | ✅ | ✅ |
-| Vendor Risk | ❌ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — AI Monitoring, Data Governance, and Vendor Risk dashboards are all available to every authenticated user.
 
 ---
 **Category**: Dashboards  
-**Tier**: Starter+  
-**Last Updated**: February 18, 2026
+**Last Updated**: July 14, 2026

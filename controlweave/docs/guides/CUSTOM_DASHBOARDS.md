@@ -4,7 +4,7 @@ Build personalized compliance dashboards tailored to your role and workflow.
 
 ## Overview
 
-Custom Dashboards let you create role-specific views combining the metrics, charts, and data that matter most to you. Available on Pro tier and above.
+Custom Dashboards let you create role-specific views combining the metrics, charts, and data that matter most to you.
 
 ## Accessing Custom Dashboards
 

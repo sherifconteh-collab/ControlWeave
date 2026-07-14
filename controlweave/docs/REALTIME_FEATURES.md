@@ -335,6 +335,27 @@ Potential improvements for Phase 6+:
 - Real-time dashboard updates with live metrics
 - Collaborative control mapping
 
+## Implementation Notes
+
+Reference details from the original Phase 5 build, consolidated here from
+now-removed root-level Phase 5 planning/summary docs:
+
+- **Migration**: `057_realtime_features.sql` creates `push_subscriptions`
+  and `user_presence`, each with `organization_id`-scoped indexes.
+- **Routes currently emitting real-time events**: `routes/evidence.js`
+  (upload notifications), `routes/notifications.js` (in-app notification
+  delivery), `routes/vulnerabilities.js` (detection alerts). Extending
+  real-time coverage to controls/assessments/POA&M event types listed
+  above requires adding emit calls in those routes — the event types are
+  defined in `realtimeEventService.js` but not all are wired into every
+  route yet.
+- **Dependency versions** at introduction: `socket.io@4.8.1`,
+  `redis@4.7.0`, `ioredis@5.4.1`, `@socket.io/redis-adapter@8.3.0`
+  (backend); `socket.io-client@4.8.1` (frontend).
+- **Why JWT for WebSocket auth**: reuses the existing REST JWT
+  verification path for consistency and statelessness, rather than a
+  separate socket-auth scheme.
+
 ## Support
 
 For issues or questions:

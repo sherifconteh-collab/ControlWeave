@@ -5349,18 +5349,15 @@ function SettingsPageInner() {
             <div className="bg-white rounded-lg shadow-md p-6 border-2 border-red-200">
               <h2 className="text-lg font-bold text-red-700 mb-1">Danger Zone</h2>
               <p className="text-sm text-gray-600 mb-4">
-                Cancelling your account will immediately downgrade your organization to the Free tier.
-                Your data will be retained for 30 days. Payment processing will stop once Stripe integration is live.
+                Cancelling your account does not change which features you can use — ControlWeaver has no
+                tier gating. Your data will be retained for 30 days.
               </p>
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <p className="text-sm font-medium text-red-800 mb-2">What happens when you cancel:</p>
                 <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
-                  <li>Your organization is downgraded to the Free tier immediately</li>
-                  <li>Framework access is limited to 2 frameworks (Free tier limit)</li>
-                  <li>AI features remain available with reduced usage limits</li>
+                  <li>If your organization has an active Stripe subscription, it is cancelled — no further charges</li>
+                  <li>All features remain fully available — cancellation does not restrict frameworks, AI usage, or anything else</li>
                   <li>Your data is retained for 30 days — export it before cancelling</li>
-                  <li>Payment will stop once Stripe billing integration is live</li>
-                  <li>You can reactivate by upgrading your tier in Settings at any time</li>
                 </ul>
               </div>
               <button

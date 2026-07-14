@@ -46,7 +46,6 @@ Evidence is collected as a JSON file containing the search/query results and met
 
 ## Requirements
 
-- Auto-Evidence Collection requires Pro tier or higher
 - Each source must be configured in **Settings → Integrations** before use
 - Splunk requires base URL and API token
 - Cloud sources (Sentinel, CloudTrail) require appropriate API credentials

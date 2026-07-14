@@ -21,11 +21,19 @@ All three are now fixed, but the process gap remains: **when you land a
 security or correctness fix in shared code in one repo, port it to the other
 in the same working session.**
 
+A July 2026 review closed a fourth gap that had been carried as an
+"intentional delta" rather than fixed: ControlWeaver-Pro's JWT signing
+algorithm (HS256) and refresh/reset-token hashing (SHA-256) were aligned to
+ai-grc-platform's CNSA Suite 1.0 posture (HS384 signing with a transitional
+HS256 verify allow-list; SHA-384 token hashing with legacy SHA-256 lookup
+acceptance). Existing sessions and pre-cutover tokens keep working until they
+expire naturally — see `config/security.js` and `utils/encrypt.js` in both
+repos.
+
 ## Known intentional deltas
 
 | Area | ControlWeaver-Pro | ai-grc-platform |
 |---|---|---|
-| JWT signing algorithm | HS256 | HS384 (CNSA 1.0), HS256 accepted during rotation |
 | Evidence integrity hash | SHA-256 (`computeFileSha256`) | SHA-384 (`computeFileHash`) |
 | Extra routes | `scheduledReports.js` | `integrations.js`, `openclawWebhook.js`, `settings.js` |
 | Logging convention | structured `log()` from `utils/logger` preferred | `console.*` blessed (observability layer hooks it) |

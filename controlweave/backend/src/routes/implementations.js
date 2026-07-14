@@ -6,7 +6,23 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { validateBody, requireFields, isUuid } = require('../middleware/validate');
 const { createNotification } = require('../services/notificationService');
 const { invalidateAICache } = require('../services/llmService');
+const { decrypt } = require('../utils/encrypt');
 const { log } = require('../utils/logger');
+
+const PRIORITY_EQUIVALENTS = {
+  critical: ['critical'],
+  high: ['1', 'P1', 'high'],
+  medium: ['2', 'P2', 'medium'],
+  low: ['3', 'P3', 'low'],
+};
+
+function decryptEmailSafe(email) {
+  try {
+    return decrypt(email) || null;
+  } catch (_error) {
+    return null;
+  }
+}
 
 router.use(authenticate);
 
@@ -66,7 +82,7 @@ router.get('/', requirePermission('implementations.read'), async (req, res) => {
 
     let query = `
       SELECT ci.id, ci.status, ci.implementation_notes, ci.evidence_location,
-             ci.assigned_to, ci.notes, ci.implementation_date, ci.created_at,
+             ci.assigned_to, ci.notes, ci.implementation_date, ci.due_date, ci.created_at,
              fc.control_id as control_code, fc.title as control_title, fc.priority,
              fc.id as framework_control_id,
              f.name as framework_name, f.code as framework_code,
@@ -97,8 +113,9 @@ router.get('/', requirePermission('implementations.read'), async (req, res) => {
       idx++;
     }
     if (priority) {
-      query += ` AND fc.priority = $${idx}`;
-      params.push(priority);
+      const set = PRIORITY_EQUIVALENTS[String(priority).toLowerCase()] || [String(priority)];
+      query += ` AND fc.priority = ANY($${idx}::text[])`;
+      params.push(set);
       idx++;
     }
     if (controlId) {
@@ -107,10 +124,27 @@ router.get('/', requirePermission('implementations.read'), async (req, res) => {
       idx++;
     }
 
-    query += ' ORDER BY ci.created_at DESC';
+    query += ' ORDER BY ci.created_at DESC, ci.id DESC';
+
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+    let pagination = null;
+    if (hasPagination) {
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      const offset = (page - 1) * limit;
+      query += ` LIMIT $${idx} OFFSET $${idx + 1}`;
+      params.push(limit, offset);
+      pagination = { page, limit };
+    } else {
+      query += ' LIMIT 2000';
+    }
 
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows });
+    const data = result.rows.map((row) => ({
+      ...row,
+      assigned_to_email: row.assigned_to_email ? decryptEmailSafe(row.assigned_to_email) : row.assigned_to_email
+    }));
+    res.json({ success: true, data, ...(pagination ? { pagination } : {}) });
   } catch (error) {
     log('error', 'implementations_error', { error: error?.message || String(error) });
     res.status(500).json({ success: false, error: 'Failed to load implementations' });
@@ -129,10 +163,13 @@ router.get('/activity/feed', requirePermission('implementations.read'), async (r
              u.first_name || ' ' || u.last_name as changed_by_name,
              COALESCE(al.details->>'status', '') as new_status,
              COALESCE(al.details->>'old_status', '') as old_status,
-             fc.control_id as control_code, fc.title as control_title
+             COALESCE(fc.control_id, fc_legacy.control_id) as control_code,
+             COALESCE(fc.title, fc_legacy.title) as control_title
       FROM audit_logs al
       LEFT JOIN users u ON u.id = al.user_id
       LEFT JOIN framework_controls fc ON fc.id = al.resource_id
+      LEFT JOIN control_implementations ci_legacy ON ci_legacy.id = al.resource_id AND ci_legacy.organization_id = al.organization_id
+      LEFT JOIN framework_controls fc_legacy ON fc_legacy.id = ci_legacy.control_id
       WHERE al.organization_id = $1
         AND al.resource_type = 'control'
       ORDER BY al.created_at DESC
@@ -153,7 +190,7 @@ router.get('/due/upcoming', requirePermission('implementations.read'), async (re
     const days = parseInt(req.query.days) || 30;
 
     const result = await pool.query(`
-      SELECT ci.id, ci.status, ci.implementation_date, ci.assigned_to,
+      SELECT ci.id, ci.status, ci.due_date, ci.assigned_to,
              fc.control_id as control_code, fc.title as control_title, fc.priority,
              f.name as framework_name,
              u.first_name || ' ' || u.last_name as assigned_to_name
@@ -163,9 +200,9 @@ router.get('/due/upcoming', requirePermission('implementations.read'), async (re
       LEFT JOIN users u ON u.id = ci.assigned_to
       WHERE ci.organization_id = $1
         AND ci.status IN ('in_progress', 'needs_review')
-        AND ci.implementation_date IS NOT NULL
-        AND ci.implementation_date <= CURRENT_DATE + ($2 || ' days')::INTERVAL
-      ORDER BY ci.implementation_date ASC
+        AND ci.due_date IS NOT NULL
+        AND ci.due_date <= CURRENT_DATE + ($2 || ' days')::INTERVAL
+      ORDER BY ci.due_date ASC
     `, [orgId, days.toString()]);
 
     res.json({ success: true, data: result.rows });
@@ -180,7 +217,7 @@ router.get('/:id', requirePermission('implementations.read'), async (req, res) =
   try {
     const result = await pool.query(`
       SELECT ci.id, ci.status, ci.implementation_notes, ci.evidence_location,
-             ci.assigned_to, ci.notes, ci.implementation_date, ci.implementation_date as due_date,
+             ci.assigned_to, ci.notes, ci.implementation_date, ci.due_date,
              CASE WHEN ci.status = 'implemented' THEN ci.implementation_date ELSE NULL END as completed_at,
              ci.created_at,
              fc.id as framework_control_id, fc.control_id as control_code, fc.title as control_title, fc.priority,
@@ -199,6 +236,9 @@ router.get('/:id', requirePermission('implementations.read'), async (req, res) =
     }
 
     const implementation = result.rows[0];
+    implementation.assigned_to_email = implementation.assigned_to_email
+      ? decryptEmailSafe(implementation.assigned_to_email)
+      : implementation.assigned_to_email;
 
     const statusHistoryResult = await pool.query(`
       SELECT al.id,
@@ -211,10 +251,10 @@ router.get('/:id', requirePermission('implementations.read'), async (req, res) =
       LEFT JOIN users u ON u.id = al.user_id
       WHERE al.organization_id = $1
         AND al.resource_type = 'control'
-        AND al.resource_id = $2
+        AND al.resource_id = ANY($2::uuid[])
       ORDER BY al.created_at DESC
       LIMIT 50
-    `, [req.user.organization_id, req.params.id]);
+    `, [req.user.organization_id, [implementation.framework_control_id, req.params.id]]);
 
     const evidenceResult = await pool.query(`
       SELECT e.id, e.file_name, e.description, e.mime_type,
@@ -251,7 +291,7 @@ router.patch('/:id/status', requirePermission('implementations.write'), validate
     const { status, notes } = req.body;
 
     const existing = await pool.query(
-      'SELECT id, status FROM control_implementations WHERE id = $1 AND organization_id = $2',
+      'SELECT id, status, control_id FROM control_implementations WHERE id = $1 AND organization_id = $2',
       [req.params.id, req.user.organization_id]
     );
 
@@ -275,33 +315,36 @@ router.patch('/:id/status', requirePermission('implementations.write'), validate
     const result = await pool.query(`
       UPDATE control_implementations SET status = $1, notes = COALESCE($2, notes),
         implementation_date = CASE WHEN $4 = 'implemented' THEN CURRENT_DATE ELSE implementation_date END
-      WHERE id = $3 RETURNING *
-    `, [status, notes || null, req.params.id, status]);
+      WHERE id = $3 AND organization_id = $5 RETURNING *
+    `, [status, notes || null, req.params.id, status, req.user.organization_id]);
 
-    // Log audit
+    // Log audit — resource_id uses the framework_control id (not the
+    // control_implementations id) to stay consistent with controls.js
     await pool.query(
       `INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details)
        VALUES ($1, $2, 'control_status_changed', 'control', $3, $4)`,
-      [req.user.organization_id, req.user.id, existing.rows[0].id,
+      [req.user.organization_id, req.user.id, existing.rows[0].control_id,
        JSON.stringify({ old_status: oldStatus, status, notes })]
     );
 
     // Notify org when a control reaches 'verified'
     if (status === 'verified') {
       const ctrl = await pool.query(
-        `SELECT fc.control_id FROM control_implementations ci
+        `SELECT fc.id AS framework_control_id, fc.control_id AS control_code
+         FROM control_implementations ci
          JOIN framework_controls fc ON fc.id = ci.control_id
-         WHERE ci.id = $1 LIMIT 1`,
-        [req.params.id]
+         WHERE ci.id = $1 AND ci.organization_id = $2 LIMIT 1`,
+        [req.params.id, req.user.organization_id]
       );
-      const controlRef = ctrl.rows[0]?.control_id || req.params.id;
+      const frameworkControlId = ctrl.rows[0]?.framework_control_id || null;
+      const controlRef = ctrl.rows[0]?.control_code || req.params.id;
       await createNotification(
         req.user.organization_id,
         null, // broadcast to org
         'status_change',
         'Control Verified',
         `Control ${controlRef} has been marked as Verified.`,
-        `/dashboard/controls/${ctrl.rows[0]?.id || req.params.id}`
+        frameworkControlId ? `/dashboard/controls/${frameworkControlId}` : null
       );
     }
 
@@ -333,7 +376,7 @@ router.patch('/:id/assign', requirePermission('implementations.write'), validate
     const result = await pool.query(`
       UPDATE control_implementations SET
         assigned_to = $1,
-        implementation_date = $2,
+        due_date = $2,
         notes = COALESCE($3, notes)
       WHERE id = $4 AND organization_id = $5
       RETURNING *

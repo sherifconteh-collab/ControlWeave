@@ -13,96 +13,29 @@ Or navigate directly to `/dashboard/settings`.
 
 ## Settings Tabs Overview
 
-The Settings page is organized into the following tabs:
+The Settings page is organized into the following tabs (shown left to right, subject to your permissions):
 
 | Tab | Description | Access |
 |-----|-------------|--------|
-| **Roles & Users** | Manage team members, roles, and permissions | Admins |
-| **LLM Configuration** | Configure AI providers and API keys | Admins |
-| **AI Activity** | Monitor AI usage and decisions | Admins |
-| **Integrations** | Connect external tools (SIEM, Splunk, webhooks) | Admins |
-| **Content Packs** | Import vendor-provided compliance content | Admins |
-| **Audit Logs** | Review organization activity history | Admins |
+| **Roles & Permissions** | Manage team members, roles, and permissions | Users who can manage roles |
+| **LLM Configuration** | Configure AI providers and API keys | Users who can manage settings |
+| **AI Activity & Decisions** | Monitor AI usage and decisions | Users who can manage settings |
+| **Automation** | Configure auto-crosswalk and other automation | Users who can manage settings |
+| **Integrations** | Connect external tools (SIEM, Splunk, webhooks) | Users who can use integrations |
+| **Content Packs** | Import vendor-provided compliance content | Users who can manage settings |
+| **Audit Logs** | Review organization activity history | Users who can manage settings |
+| **Platform Ops** | Platform-wide administration | Platform admins only |
 | **Security** | Manage passkeys and security settings | All users with Settings access |
 | **Notifications** | Configure alerts and email preferences | All users with Settings access |
-| **Account** | Data export and account cancellation | Admins |
-| **Platform Admin** | Platform-wide administration | Platform admins only |
+| **Account** | Data export and account cancellation | Users who can manage settings |
 
-At the top of the Settings page (above the tabs), all users with Settings access see a **Plan & Trial** banner showing the current tier and billing status. Admins also see **Subscription Details** and **Available Plans** for upgrading or switching plans.
+At the top of the Settings page (above the tabs), all users see an **Open Source** notice confirming ControlWeaver is open source (AGPL v3) and that all features are available to all authenticated users — no subscription required.
 
 ---
 
-## Billing & Plan Management
+## Open Source — No Billing or Plan Management
 
-The top of the Settings page shows your organization's current plan and billing status before the tab navigation. Admins have additional controls for viewing subscription details and changing plans.
-
-### Plan & Trial Banner
-
-Every user sees a **Plan & Trial** card at the top of Settings showing:
-- Your current tier (Community, Pro, Enterprise, or Gov Cloud)
-- Billing status: shows your current billing state, such as **Community**, **Trial**, **Active**, **Canceling**, **Comped**, or similar
-
-### Subscription Details (Admins Only)
-
-Admins see a **Subscription Details** section with:
-- Current tier and billing status
-- Paid tier (if applicable)
-- Trial end date (if in trial)
-- Stripe subscription status and **Next Billing Date**
-- Scheduled cancellation date (if cancellation is pending)
-- **Manage Subscription on Stripe →** button to open the Stripe Customer Portal for invoice history, payment method changes, and billing address updates
-
-> **Note**: If your organization has no active Stripe subscription yet (for example, you're on a free trial or your account was provisioned manually), a link to complete checkout is shown instead.
-
-### Available Plans (Admins Only)
-
-Admins see an **Available Plans** grid showing all available tiers with pricing and key features. You can toggle between **Monthly** and **Annual** pricing (annual billing offers a discount where available).
-
-| Tier | Monthly | Annual |
-|------|---------|--------|
-| **Community** | $0/forever | $0/forever |
-| **Pro** | $499/mo | $416/mo ($4,990/yr) |
-| **Enterprise** | Custom ($3,500–$12,000/mo) | Custom |
-| **Gov Cloud** | Custom | Custom |
-
-Each plan card shows a button based on your current subscription state:
-
-| Scenario | Button shown |
-|----------|-------------|
-| Already on that plan | "Your current plan" (no action) |
-| Active Stripe subscription exists | **Switch to [Plan]** — changes plan immediately via Stripe |
-| Stripe customer exists but no active subscription | **Subscribe to [Plan]** → redirects to Stripe Checkout |
-| No Stripe account yet | **Upgrade to [Plan]** → redirects to Stripe Checkout |
-
-For **Enterprise and Gov Cloud** licensing and custom contracts, contact **contehconsulting@gmail.com**.
-
-To downgrade to the Community tier, use the **Account** tab (see [Account Cancellation](#account-cancellation) below).
-
-### Upgrading Your Plan
-
-**If you already have a Stripe subscription:**
-1. Go to **Settings** and scroll to **Available Plans**
-2. Select **Monthly** or **Annual**
-3. Click **Switch to [Plan Name]** on the desired plan
-4. The plan change takes effect immediately; upgrades are prorated and downgrades credit unused time
-
-**If you are on the Community tier or have no Stripe subscription:**
-1. Go to **Settings** and scroll to **Available Plans**
-2. Click **Upgrade to [Plan Name]** or **Subscribe to [Plan Name]**
-3. You will be redirected to Stripe Checkout to enter payment details
-4. After successful payment, your tier is upgraded automatically
-
-### Managing Your Subscription via Stripe Portal
-
-Admins with an active Stripe subscription can access the Stripe Customer Portal to:
-- View and download invoices
-- Update payment methods
-- Change billing address
-
-1. Go to **Settings** → scroll to **Subscription Details**
-2. Click **Manage Subscription on Stripe →**
-3. Complete any changes in the Stripe portal
-4. Click **Return to ControlWeave** to come back
+ControlWeaver removed all tier gating and billing/Stripe infrastructure. Every feature described in this guide is available to every authenticated user; there is no Plan & Trial banner, no Subscription Details panel, no Available Plans grid, and no Stripe Checkout or Customer Portal flow. The Settings page shows a simple **Open Source** notice above the tab navigation instead.
 
 ---
 
@@ -129,7 +62,7 @@ Admins with an active Stripe subscription can access the Stripe Customer Portal 
 | **Manager** | Can manage controls, assessments, and evidence |
 | **Analyst** | Can view and update control status |
 | **Viewer** | Read-only access |
-| **Auditor** | External auditor portal access (Pro+) |
+| **Auditor** | External auditor portal access |
 
 4. Click **Send Invitation**
 5. User receives email invitation to create their account
@@ -234,7 +167,7 @@ When you use your own API key (BYOK):
 - ✅ Data goes directly to your provider (not stored by ControlWeave)
 - ✅ Subject to your provider's privacy policy
 
-> **💡 Recommendation**: BYOK is ideal for Pro, Enterprise, and Gov Cloud users who want to use their own AI provider directly without routing through platform limits.
+> **💡 Recommendation**: BYOK is ideal for anyone who wants to use their own AI provider directly and control costs at the provider level.
 
 ### Ollama (Self-Hosted)
 
@@ -317,7 +250,7 @@ View your monthly AI consumption:
 
 Connect ControlWeave with external security and compliance tools.
 
-### SIEM Integration (Enterprise+)
+### SIEM Integration
 
 Connect to your Security Information and Event Management (SIEM) platform:
 
@@ -424,7 +357,7 @@ Review a complete history of actions taken in your organization.
 
 Click **Export** to download logs as CSV for external audit tools.
 
-> **Compliance Note**: Audit logs are retained per your tier's data retention policy and support AU-2 (Audit Events) control requirements.
+> **Compliance Note**: Audit logs support AU-2 (Audit Events) control requirements. Retention is not tier-dependent — there is no tier gating in ControlWeaver.
 
 ---
 
@@ -452,9 +385,9 @@ ControlWeave supports passkeys (WebAuthn) for secure, password-free authenticati
 - Platform authenticators: Touch ID, Face ID, Windows Hello
 - Roaming authenticators: YubiKey, hardware security keys
 
-### SSO / SAML (Pro+)
+### SSO / SAML
 
-Pro, Enterprise, and Gov Cloud tier organizations can configure Single Sign-On:
+Any organization can configure Single Sign-On:
 
 1. Go to **Settings** → **Security** → **SSO Configuration**
 2. Enter your IdP details:
@@ -535,14 +468,13 @@ Export a complete JSON archive of your organization's data:
 
 ### Account Cancellation
 
-> ⚠️ **Important**: Cancelling your account **downgrades your organization to the Community tier immediately**. It does **not** permanently delete your data — your data is retained for 30 days and you can reactivate by upgrading again.
+> ⚠️ **Important**: Cancelling your account does **not** permanently delete your data — your data is retained for 30 days. It also does **not** reduce which features you can use: ControlWeaver has no tier gating, so every feature stays available to every authenticated user regardless of this setting.
 
 **What happens when you cancel:**
-- Organization is downgraded to the Community tier immediately
-- Framework access is limited to 2 frameworks (Community tier limit)
-- AI features remain available with reduced usage limits (10 requests/month)
-- Active Stripe subscription is cancelled — no further charges
+- The organization record is marked cancelled internally (a legacy `tier`/`billing_status` field is set for historical bookkeping — this has no effect on which features or frameworks you can use)
+- If the organization has an active Stripe subscription attached, it is cancelled — no further charges
 - Your data is retained for 30 days
+- A cancellation record and audit log entry are created with the reason you provide
 
 **To cancel:**
 
@@ -552,9 +484,7 @@ Export a complete JSON archive of your organization's data:
 4. In the confirmation dialog, enter the reason for cancelling (required)
 5. Click **Confirm Cancellation**
 
-After cancellation, your organization is immediately set to the Community tier. You can reactivate at any time by returning to **Settings** and upgrading your plan in the **Available Plans** section.
-
-> **Note**: If you have an active Stripe subscription, it is cancelled immediately with no further charges. If you do not have a Stripe subscription, the downgrade to Community is applied without any payment interaction.
+There is no self-service reactivation flow — cancellation does not affect feature access, so there is nothing to "upgrade" back to. Contact your administrator if you need the cancellation record cleared.
 
 ---
 
@@ -576,7 +506,6 @@ View aggregate metrics across all organizations:
 
 Platform admins can:
 - View all organizations
-- Adjust tier settings
 - Investigate issues
 
 ---
@@ -587,12 +516,9 @@ Platform admins can:
 
 Yes. Configure multiple providers with their own API keys. You can set a default provider and switch per-session as needed.
 
-### What happens when I hit my AI request limit?
+### Is there a monthly AI request limit?
 
-You'll see an error when attempting an AI action. Options:
-1. Wait until the 1st of next month for the limit to reset
-2. Upgrade your tier
-3. Add your own API key (BYOK) to bypass limits
+No. ControlWeaver has no tier gating, so there is no monthly AI request cap. If you see an AI error, it's from the underlying provider (rate limit, quota, or a misconfigured API key) — check **Settings** → **LLM Configuration**, or use BYOK to control your own provider quota directly.
 
 ### How do I remove a user without losing their history?
 
@@ -606,17 +532,17 @@ API keys are stored encrypted at rest in the database. They are never logged or 
 
 Yes. Go to Settings → Audit Logs → Export. Logs are available as CSV.
 
-### How do I upgrade my plan?
+### Do I need to upgrade a plan to unlock features?
 
-Go to **Settings**, scroll to **Available Plans**, and click **Upgrade to [Plan]** or **Switch to [Plan]** on the desired tier. See [Billing & Plan Management](#billing--plan-management) for details.
+No. ControlWeaver has no tier gating or paid plans — every feature described in this guide is available to every authenticated user. There is no Available Plans grid or Stripe Checkout flow.
 
-### How do I cancel my subscription?
+### How do I cancel my account?
 
-Go to **Settings** → **Account** → **Cancel Account**. This immediately downgrades your organization to the Community tier and cancels your Stripe subscription. Your data is retained for 30 days.
+Go to **Settings** → **Account** → **Cancel Account**. This cancels any active Stripe subscription (if one exists) and retains your data for 30 days. See [Account Cancellation](#account-cancellation) for details — cancelling does not change which features you can use.
 
-### Can I manage invoices or update my payment method?
+### Can I manage invoices or update a payment method?
 
-Yes. Admins with an active Stripe subscription can click **Manage Subscription on Stripe →** in the Subscription Details section to access the Stripe Customer Portal for invoice downloads, payment method changes, and billing address updates.
+Not from the Settings page — there is no billing/invoice management UI. If your organization has a legacy Stripe subscription from before tier gating was removed, cancelling your account (**Settings** → **Account** → **Cancel Account**) will cancel that subscription so no further charges apply.
 
 ---
 
@@ -627,4 +553,4 @@ Yes. Admins with an active Stripe subscription can click **Manage Subscription o
 - [👥 User Management](ACCOUNT_SETUP.md) - Account and organization setup guide
 - [🔐 Vulnerabilities](VULNERABILITIES.md) - Vulnerability management guide
 - [🚀 Getting Started](GETTING_STARTED.md) - Initial platform setup
-- [💳 Tier Comparison](../TIER_COMPARISON.md) - Detailed feature comparison across tiers
+- [💳 Tier Comparison](../TIER_COMPARISON.md) - Why there's no tier comparison anymore (open source, no gating)

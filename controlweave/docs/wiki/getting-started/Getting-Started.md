@@ -40,7 +40,7 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 > **🔐 Login Options**: The login page (`/login`) supports:
 > - **Password** (email + password) — available to all users
 > - **Two-Factor Authentication (TOTP)** — available to all users; pair with Google Authenticator, Authy, or any TOTP app
-> - **Passkey** (biometrics or hardware security key) — available on the Professional plan or higher (Professional, Enterprise, Utilities)
+> - **Passkey** (biometrics or hardware security key) — available to all users
 > - **SSO / Social login** (Google, Microsoft, etc.) — available when configured by your administrator
 >
 > If you forget your password, click **Forgot password?** on the login page to receive a reset link by email.
@@ -68,7 +68,6 @@ Navigate to **Organization Settings** tab:
 - **Organization Name**: Already set during registration
 - **Industry**: Select your industry vertical
 - **Size**: Number of employees
-- **Tier**: Automatically set (Free by default)
 
 **Optional Fields**:
 - **Description**: Brief description of your organization
@@ -149,11 +148,6 @@ Under **Data Classification**:
 
 ![Framework showing Active badge after activation](../screenshots/frameworks-active-badge-01.png)
 *Figure 3.3: Active framework with green badge*
-
-> **⚠️ Tier Limits**: 
-> - Free: Maximum 2 frameworks
-> - Starter: Maximum 5 frameworks  
-> - Professional/Enterprise: Unlimited
 
 ---
 
@@ -333,10 +327,7 @@ Navigate back to **Dashboard** to see:
 | **OpenAI** | platform.openai.com | Popular choice |
 | **Ollama** | Local install | No key needed! |
 
-> **💡 Tier Limits**:
-> - Free: 10 AI requests/month
-> - Starter: 50 AI requests/month
-> - Professional/Enterprise: Unlimited
+> **💡 Note**: ControlWeaver has no tier-based AI request limit. Any limit you hit comes from your configured provider's own rate limit or quota — use BYOK to control it directly.
 
 ### 7.2 Try the AI Copilot
 1. Look for purple **Ask AI** button (bottom-right of any page)
@@ -377,7 +368,7 @@ Navigate back to **Dashboard** to see:
   - **Manager**: Can edit controls, assessments
   - **Analyst**: Can view and update status
   - **Viewer**: Read-only access
-  - **Auditor**: External auditor role (Starter+)
+  - **Auditor**: External auditor role
 
 ![Invite user form with email, name, and role fields](../screenshots/users-invite-form-01.png)
 *Figure 8.2: Invite a new user*

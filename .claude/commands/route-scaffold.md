@@ -20,14 +20,14 @@ $ARGUMENTS — Route description (e.g., "incident response management at /api/v1
    const express = require('express');
    const router = express.Router();
    const pool = require('../config/database');
-   const { authenticate, requirePermission, requireTier } = require('../middleware/auth');
+   const { authenticate, requirePermission } = require('../middleware/auth');
    const { createRateLimiter } = require('../middleware/rateLimit');
 
    // Apply authentication to all routes in this module
    router.use(authenticate);
 
-   // Apply tier requirement (remove if community tier)
-   router.use(requireTier('<tier>'));
+   // ControlWeaver has no tier gating — do not add requireTier()/requireProEdition()
+   // to new routes. Use requirePermission() for access control instead.
 
    // Rate limiter: adjust based on expected usage
    const rateLimiter = createRateLimiter({
@@ -151,7 +151,7 @@ $ARGUMENTS — Route description (e.g., "incident response management at /api/v1
 3. **Register the route in server.js**
    - Add import: `const <routeName>Routes = safeRequire('./routes/<routeName>');`
    - Add registration: `if (<routeName>Routes) app.use('/api/v1/<url-path>', <routeName>Routes);`
-   - For community tier routes, use direct `require` instead of `safeRequire`
+   - Use direct `require` instead of `safeRequire` only for routes whose module is always present (no optional dependency)
 
 4. **Create database migration** (if new table needed)
    - Use the `/db-migration` command to create the migration

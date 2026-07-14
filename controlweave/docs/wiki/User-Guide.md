@@ -42,29 +42,9 @@ Welcome to ControlWeave! This comprehensive guide will help you navigate and use
 - [📉 Analytics Dashboard](guides/ANALYTICS.md) - Visualize compliance data
 - [🎨 Custom Dashboards](guides/CUSTOM_DASHBOARDS.md) - Build personalized views
 
-## 🎯 Feature Availability by Tier
+## 🎯 Feature Availability
 
-ControlWeave offers different feature sets based on your subscription tier:
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| **Frameworks** | 10 max | 20 max | Unlimited | Unlimited |
-| **AI Requests/Month** | 10 | 50 | Unlimited | Unlimited |
-| **CMDB (Assets)** | ❌ | 50 assets | Unlimited | Unlimited |
-| **Assessments** | ✅ Basic | ✅ All depths | ✅ All depths | ✅ All depths |
-| **AI Copilot** | ✅ Limited | ✅ | ✅ | ✅ |
-| **Evidence Management** | ✅ | ✅ | ✅ | ✅ |
-| **Auditor Workspace** | ❌ | ✅ | ✅ | ✅ |
-| **Custom Dashboards** | ❌ | ✅ | ✅ | ✅ |
-| **SBOM/AIBOM** | ❌ | ✅ Basic | ✅ Full | ✅ Full |
-| **Vulnerability Mgmt** | ❌ | ✅ | ✅ | ✅ |
-| **POA&M Tracking** | ✅ | ✅ | ✅ | ✅ |
-| **SSO/SAML** | ❌ | ❌ | ❌ | ✅ |
-| **SIEM Integration** | ❌ | ❌ | ❌ | ✅ |
-| **Priority Support** | ❌ | ❌ | ✅ | ✅ |
-| **Dedicated CSM** | ❌ | ❌ | ❌ | ✅ |
-
-[View detailed tier comparison →](TIER_COMPARISON.md)
+ControlWeaver is fully open source with no tier gating — every feature listed in this guide (frameworks, unlimited CMDB assets, all assessment depths, AI Copilot, evidence management, Auditor Workspace, custom dashboards, SBOM/AIBOM, vulnerability management, POA&M tracking, SSO/SAML, and SIEM integration) is available to every authenticated user. See [Tier Comparison](TIER_COMPARISON.md) for background on why the old tiered pricing model no longer applies.
 
 ## 🎓 Learning Paths
 
@@ -141,8 +121,7 @@ For leadership monitoring compliance status.
 ### Getting Help
 - **In-App Support**: Use the AI Copilot (purple button, bottom-right) to ask questions
 - **Documentation**: Search this guide for how-to articles
-- **Email Support**: contehconsulting@gmail.com (Professional & Enterprise)
-- **Dedicated CSM**: Available for Enterprise customers
+- **Email Support**: contehconsulting@gmail.com
 
 ## 🔄 Updates & Changelog
 

@@ -17,7 +17,6 @@ Common error messages in ControlWeave and how to resolve them.
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | `Insufficient permissions` | Role doesn't allow the action | Request role upgrade from admin |
-| `Feature not available on your tier` | Tier limitation | Upgrade your subscription |
 | `Access denied` | Resource not in your organization | Confirm you're in the correct org |
 
 ## AI & LLM Errors
@@ -26,7 +25,6 @@ Common error messages in ControlWeave and how to resolve them.
 |-------|-------|------------|
 | `LLM provider not configured` | No AI provider set up | Go to Settings → LLM Configuration |
 | `Invalid API key` | API key expired or incorrect | Update the API key in Settings |
-| `AI request limit reached` | Monthly quota exhausted | Upgrade tier or add BYOK API key |
 | `Provider unavailable` | LLM service outage | Try a different provider |
 | `Context too large` | Too much data for model | Apply filters to narrow scope |
 
@@ -43,8 +41,6 @@ Common error messages in ControlWeave and how to resolve them.
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| `Framework limit reached` | Tier framework limit hit | Deactivate a framework or upgrade |
-| `Asset limit reached` | CMDB asset quota exceeded | Upgrade tier or remove unused assets |
 | `Duplicate entry` | Already exists in system | Check for existing records before creating |
 
 ## Integration Errors

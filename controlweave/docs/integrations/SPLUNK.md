@@ -2,8 +2,6 @@
 
 Connect ControlWeave to Splunk for SIEM-powered compliance evidence and security event correlation.
 
-> **Note**: Splunk integration is available on the **Pro tier and above**.
-
 ## Overview
 
 The ControlWeave–Splunk integration enables:

@@ -346,7 +346,7 @@ For agency authorization-specific findings:
 
 ## Auditor Review Workflow
 
-*Available to users with Auditor role (Pro+ tiers)*
+*Available to users with the Auditor role*
 
 ### Viewing POA&Ms Pending Review
 
@@ -519,15 +519,7 @@ The POA&M status changes to `Closed` and is retained in the audit trail.
 | Review (Approve/Reject) | `audit.write` |
 | View Auditor Guidance | `audit.read` |
 
-### Feature Availability by Tier
-
-| Feature | Community | Pro | Enterprise | Gov Cloud |
-|---------|------|---------|--------------|------------|
-| POA&M Tracking | ✅ | ✅ | ✅ | ✅ |
-| Auditor Review Workflow | ❌ | ✅ | ✅ | ✅ |
-| Framework-Specific Types | ❌ | ✅ | ✅ | ✅ |
-| From-Vulnerability Creation | ❌ | ✅ | ✅ | ✅ |
-| Automated POA&M Creation | ✅ | ✅ | ✅ | ✅ |
+ControlWeaver has no tier gating — POA&M tracking, the auditor review workflow, framework-specific types, from-vulnerability creation, and automated POA&M creation are all available to every authenticated user.
 
 ---
 

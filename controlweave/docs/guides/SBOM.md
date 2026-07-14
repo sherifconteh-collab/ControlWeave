@@ -4,7 +4,7 @@ Track software and AI components, manage license compliance, and link vulnerabil
 
 ## Overview
 
-ControlWeave's SBOM (Software Bill of Materials) and AIBOM (AI Bill of Materials) module lets you upload standard SBOM files, automatically parse their components into your asset inventory, detect license risks, and link discovered vulnerabilities to specific components. This feature requires **Pro tier** and the Pro Edition SBOM feature.
+ControlWeave's SBOM (Software Bill of Materials) and AIBOM (AI Bill of Materials) module lets you upload standard SBOM files, automatically parse their components into your asset inventory, detect license risks, and link discovered vulnerabilities to specific components.
 
 ---
 
@@ -148,17 +148,7 @@ AIBOM components link to the **AI Governance** module for additional risk assess
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| SBOM Upload | ❌ | ❌ | ✅ | ✅ |
-| Component Parsing | ❌ | ❌ | ✅ | ✅ |
-| License Risk Detection | ❌ | ❌ | ✅ | ✅ |
-| Vulnerability Linking | ❌ | ❌ | ✅ | ✅ |
-| AIBOM Support | ❌ | ❌ | ✅ | ✅ |
-
-*Also requires Pro Edition SBOM feature flag.*
+ControlWeaver has no tier gating — SBOM upload, component parsing, license risk detection, vulnerability linking, and AIBOM support are all available to every authenticated user.
 
 ---
 

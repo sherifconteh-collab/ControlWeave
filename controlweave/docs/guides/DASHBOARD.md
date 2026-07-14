@@ -23,8 +23,6 @@ The top-level metric showing your organization's compliance posture:
 
 ### Compliance Maturity Score
 
-> **💡 Tier requirement**: The Maturity Score panel requires **Enterprise tier or above**.
-
 The Maturity Score rates your GRC program on a **0–5 scale** across multiple dimensions:
 
 | Level | Label | Description |

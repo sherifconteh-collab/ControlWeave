@@ -9,13 +9,13 @@ globs:
 ---
 # Evidence Handling Conventions
 
-Evidence management in ControlWeaver requires Pro tier minimum. Evidence contains sensitive compliance data and may include PII — handle with care.
+Evidence contains sensitive compliance data and may include PII — handle with care. Available to every authenticated user; no tier gating (see `.claude/rules/tier-system.md`).
 
-## Tier Requirement
+## Access Control
 
 ```javascript
 router.use(authenticate);
-router.use(requireTier('pro'));
+router.use(requirePermission('evidence.read')); // or .write for mutating routes
 ```
 
 ## PII Classification

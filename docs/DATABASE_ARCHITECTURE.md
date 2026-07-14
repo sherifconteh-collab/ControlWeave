@@ -246,9 +246,9 @@ Unified asset table with `asset_type` discriminator. Types: `hardware`, `softwar
 | `asset_type` | VARCHAR | Discriminator |
 | `name` | VARCHAR | Asset name |
 | `owner_id` | UUID | FK → users |
-| `risk_score` | NUMERIC | Composite risk score (Pro+) |
+| `risk_score` | NUMERIC | Composite risk score |
 | `criticality` | VARCHAR | `critical`, `high`, `medium`, `low` |
-| `custom_fields` | JSONB | Enterprise-tier custom metadata |
+| `custom_fields` | JSONB | Custom metadata |
 | `last_seen_at` | TIMESTAMPTZ | For stale asset detection |
 
 ### `cmdb_relationships`

@@ -51,35 +51,9 @@ Welcome to ControlWeave! This comprehensive guide will help you navigate and use
 - [📉 Analytics Dashboard](guides/ANALYTICS.md) - Visualize compliance data
 - [🎨 Custom Dashboards](guides/CUSTOM_DASHBOARDS.md) - Build personalized views
 
-## 🎯 Feature Availability by Tier
+## 🎯 Feature Availability
 
-ControlWeave offers different feature sets based on your subscription tier:
-
-| Feature | Community | Pro | Enterprise | Gov Cloud & Advisory |
-|---------|------|---------|--------------|------------|
-| **Frameworks** | 2 max | Unlimited | Unlimited | Unlimited |
-| **AI Requests/Month** | 10 | Unlimited | Unlimited | Unlimited |
-| **CMDB (Assets)** | ❌ | 50 assets | Unlimited | Unlimited |
-| **Assessments** | ✅ Basic | ✅ All depths | ✅ All depths | ✅ All depths |
-| **AI Copilot** | ✅ Limited | ✅ | ✅ | ✅ |
-| **Evidence Management** | ✅ | ✅ | ✅ | ✅ |
-| **Auto-Evidence Collection** | ❌ | ✅ | ✅ | ✅ |
-| **AI Evidence Suggestions** | ❌ | ✅ | ✅ | ✅ |
-| **Splunk / DevOps Connectors** | ❌ | ✅ | ✅ | ✅ |
-| **SIEM Integration** (Splunk, Elastic, webhook, syslog) | ❌ | ❌ | ✅ | ✅ |
-| **Auditor Workspace** | ❌ | ✅ | ✅ | ✅ |
-| **Maturity Score** | ❌ | ❌ | ✅ | ✅ |
-| **Custom Dashboards** | ❌ | ✅ | ✅ | ✅ |
-| **SBOM/AIBOM** | ❌ | ✅ Basic | ✅ Full | ✅ Full |
-| **Vulnerability Mgmt** | ❌ | ✅ | ✅ | ✅ |
-| **POA&M Tracking** | ✅ | ✅ | ✅ | ✅ |
-| **SSO/SAML** | ❌ | ✅ | ✅ | ✅ |
-| **Priority Support** | ❌ | ❌ | ✅ | ✅ |
-| **Dedicated CSM** | ❌ | ❌ | ❌ | ✅ |
-| **FINRA/SEC/SR 11-7** | ❌ | ❌ | ❌ | ✅ |
-| **Financial Services Workspace** | ❌ | ❌ | ❌ | ✅ |
-
-[View detailed tier comparison →](TIER_COMPARISON.md)
+ControlWeaver is fully open source with no tier gating — every feature listed in this guide (frameworks, unlimited CMDB assets, all assessment depths, AI Copilot, evidence management, auto-evidence collection, AI evidence suggestions, integrations/connectors, SIEM integration, Auditor Workspace, maturity score, custom dashboards, SBOM/AIBOM, vulnerability management, POA&M tracking, SSO/SAML, and the specialized financial-services frameworks) is available to every authenticated user. See [Tier Comparison](TIER_COMPARISON.md) for background on why the old tiered pricing model no longer applies.
 
 ## 🎓 Learning Paths
 
@@ -199,7 +173,7 @@ Stay informed about new features and improvements:
 1. **Leverage Crosswalks**: Maximize control overlap across frameworks
 2. **Automate with AI**: Use AI for gap analysis and remediation planning
 3. **Build Custom Dashboards**: Create role-specific views
-4. **Integrate Evidence Sources**: Connect Splunk and other supported sources (e.g., Microsoft Sentinel, CrowdStrike, AWS CloudTrail, GitHub, Jira, ITSM tools, or Custom Connectors) for automated evidence collection (Pro+)
+4. **Integrate Evidence Sources**: Connect Splunk and other supported sources (e.g., Microsoft Sentinel, CrowdStrike, AWS CloudTrail, GitHub, Jira, ITSM tools, or Custom Connectors) for automated evidence collection
 
 ## 🎯 Success Metrics
 

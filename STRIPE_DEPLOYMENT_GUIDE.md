@@ -1,3 +1,8 @@
+> **⚠️ DEPRECATED — historical reference only.** As of v4.0, Stripe billing was removed.
+> Stripe checkout/portal endpoints now return `410 Gone`. See `.claude/rules/tier-system.md`
+> for current behavior. The content below describes the system as it existed before removal,
+> kept for historical/audit reference only.
+
 # Stripe Billing Integration - Deployment Guide
 
 ## Summary

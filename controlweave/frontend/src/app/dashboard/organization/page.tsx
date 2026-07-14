@@ -4,9 +4,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import OrganizationSystemsAndVendors from '@/components/OrganizationSystemsAndVendors';
+import OrganizationContactsTab from '@/components/organization/OrganizationContactsTab';
 import { frameworkAPI, organizationAPI } from '@/lib/api';
 import { hasPermission } from '@/lib/access';
 import { useAuth } from '@/contexts/AuthContext';
+
+type OrganizationPageTab = 'profile' | 'contacts';
 
 type CiaLevel = 'low' | 'moderate' | 'high';
 type RmfStage = 'prepare' | 'categorize' | 'select' | 'implement' | 'assess' | 'authorize' | 'monitor';
@@ -72,6 +75,7 @@ export default function OrganizationProfilePage() {
   const canReadOrganization = hasPermission(user, 'organizations.read');
   const canManageFrameworks = hasPermission(user, 'frameworks.manage');
 
+  const [activeTab, setActiveTab] = useState<OrganizationPageTab>('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -333,16 +337,40 @@ export default function OrganizationProfilePage() {
               View and update your organization and system context for assessments and SSP reporting.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? 'Saving...' : 'Save Profile'}
-          </button>
+          {activeTab === 'profile' && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving ? 'Saving...' : 'Save Profile'}
+            </button>
+          )}
         </div>
 
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-6">
+            {(['profile', 'contacts'] as OrganizationPageTab[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab === 'profile' ? 'Profile' : 'Contacts'}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {activeTab === 'contacts' ? (
+          <OrganizationContactsTab />
+        ) : (
+          <>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-sm text-gray-600">
             Active frameworks:{' '}
@@ -718,6 +746,8 @@ export default function OrganizationProfilePage() {
         )}
 
         <OrganizationSystemsAndVendors canReadOrganization={canReadOrganization} />
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

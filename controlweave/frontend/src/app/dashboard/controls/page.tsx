@@ -9,6 +9,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { organizationAPI, controlsAPI, implementationsAPI } from '@/lib/api';
 import { groupByControlFamily } from '@/lib/controlFamilies';
 import { hasPermission } from '@/lib/access';
+import ControlHealthView from '@/components/controls/ControlHealthView';
+
+type ControlsPageView = 'list' | 'health';
 
 interface InlineTestDraft {
   testResult: string;
@@ -40,6 +43,7 @@ interface Control {
 export default function ControlsPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [pageView, setPageView] = useState<ControlsPageView>('list');
   const canExport = hasPermission(user, 'implementations.read');
   const canImport = hasPermission(user, 'implementations.write');
   const canUseAI = hasPermission(user, 'ai.use');
@@ -481,6 +485,28 @@ export default function ControlsPage() {
           </Link>
         </div>
 
+        {/* View toggle */}
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-6">
+            {(['list', 'health'] as ControlsPageView[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setPageView(tab)}
+                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                  pageView === tab ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab === 'list' ? 'Control List' : 'Health'}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {pageView === 'health' ? (
+          <ControlHealthView />
+        ) : (
+          <>
         {(canExport || canImport) && (
           <div className="bg-white rounded-lg shadow-md p-4 space-y-4">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -962,6 +988,8 @@ export default function ControlsPage() {
           <div className="text-sm text-gray-600 text-center">
             Showing {filteredControls.length} of {controls.length} controls
           </div>
+        )}
+          </>
         )}
       </div>
     </DashboardLayout>

@@ -3,34 +3,36 @@
 # Labels are organized into categories for compliance tracking
 
 # --- Compliance Control Family Labels ---
-# NIST 800-53 control families mapped to CI/CD and documentation workflows
+# Applied automatically by compliance-labeler.yml via keyword matching on the
+# issue/PR title+body — NOT a verified NIST 800-53 control mapping. Treat as
+# a rough categorization hint that still needs a human to confirm relevance.
 - name: "compliance:AC"
   color: "1d76db"
-  description: "Access Control (NIST 800-53 AC family)"
+  description: "Keyword hint: Access Control (NIST 800-53 AC) — unverified"
 - name: "compliance:AU-2"
   color: "1d76db"
-  description: "Audit Events (NIST 800-53 AU-2)"
+  description: "Keyword hint: Audit Events (NIST 800-53 AU-2) — unverified"
 - name: "compliance:CM-3"
   color: "1d76db"
-  description: "Configuration Change Control (NIST 800-53 CM-3)"
+  description: "Keyword hint: Config Change Control (NIST 800-53 CM-3) — unverified"
 - name: "compliance:RA-5"
   color: "1d76db"
-  description: "Vulnerability Scanning (NIST 800-53 RA-5)"
+  description: "Keyword hint: Vulnerability Scanning (NIST 800-53 RA-5) — unverified"
 - name: "compliance:SA-3"
   color: "1d76db"
-  description: "System Development Life Cycle (NIST 800-53 SA-3)"
+  description: "Keyword hint: SDLC (NIST 800-53 SA-3) — unverified"
 - name: "compliance:SA-5"
   color: "1d76db"
-  description: "System Documentation (NIST 800-53 SA-5)"
+  description: "Keyword hint: System Documentation (NIST 800-53 SA-5) — unverified"
 - name: "compliance:SA-11"
   color: "1d76db"
-  description: "Developer Security Testing (NIST 800-53 SA-11)"
+  description: "Keyword hint: Dev Security Testing (NIST 800-53 SA-11) — unverified"
 - name: "compliance:SI-2"
   color: "1d76db"
-  description: "Flaw Remediation (NIST 800-53 SI-2)"
+  description: "Keyword hint: Flaw Remediation (NIST 800-53 SI-2) — unverified"
 - name: "compliance:SI-10"
   color: "1d76db"
-  description: "Information Input Validation (NIST 800-53 SI-10)"
+  description: "Keyword hint: Input Validation (NIST 800-53 SI-10) — unverified"
 
 # --- Framework Labels ---
 - name: "framework:nist-800-53"

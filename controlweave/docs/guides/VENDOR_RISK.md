@@ -6,8 +6,8 @@ Manage third-party vendor risk, run vendor security assessments, track questionn
 
 ControlWeave provides two complementary vendor risk management capabilities:
 
-1. **TPRM (Third-Party Risk Management)** — full vendor lifecycle management with questionnaires, document tracking, and risk tiering (Pro tier)
-2. **Vendor Security Scores** — external security ratings from SecurityScorecard and BitSight (Enterprise tier)
+1. **TPRM (Third-Party Risk Management)** — full vendor lifecycle management with questionnaires, document tracking, and risk tiering
+2. **Vendor Security Scores** — external security ratings from SecurityScorecard and BitSight
 
 Together, these modules give you a complete picture of your vendor ecosystem's risk posture.
 
@@ -143,8 +143,6 @@ Track compliance documentation received from vendors.
 
 External security ratings provide continuous, objective measurement of vendor security posture.
 
-> **Enterprise tier required** — also requires Pro Edition vendorSecurity feature.
-
 ### Supported Rating Providers
 
 | Provider | Description |
@@ -186,16 +184,7 @@ Automated score ingestion is available via the Integrations Hub:
 
 ---
 
-## Tier Requirements
-
-| Feature | Community | Pro | Pro | Enterprise |
-|---------|------|---------|--------------|------------|
-| TPRM Vendor Registry | ❌ | ❌ | ✅ | ✅ |
-| Questionnaires | ❌ | ❌ | ✅ | ✅ |
-| Document Tracking | ❌ | ❌ | ✅ | ✅ |
-| Vendor Security Scores | ❌ | ❌ | ❌ | ✅ |
-| SecurityScorecard Integration | ❌ | ❌ | ❌ | ✅ |
-| BitSight Integration | ❌ | ❌ | ❌ | ✅ |
+ControlWeaver has no tier gating — the TPRM vendor registry, questionnaires, document tracking, vendor security scores, and the SecurityScorecard/BitSight integrations are all available to every authenticated user.
 
 ---
 
