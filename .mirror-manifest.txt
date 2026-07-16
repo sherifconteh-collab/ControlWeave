@@ -49,6 +49,7 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
+.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -348,11 +349,7 @@ controlweave/backend/scripts/migrate-all.js
 controlweave/backend/scripts/qa-auditor-workflow.js
 controlweave/backend/scripts/qa-dynamic-scenarios.js
 controlweave/backend/scripts/qa-dynamic.js
-controlweave/backend/scripts/qa-enterprise-demo.js
-controlweave/backend/scripts/qa-local-integration.js
 controlweave/backend/scripts/qa-rbac-mega-test.js
-controlweave/backend/scripts/qa-test.js
-controlweave/backend/scripts/qa-tier-limits-and-contacts.js
 controlweave/backend/scripts/repair-demo-account-via-api.js
 controlweave/backend/scripts/reset-demo-org-tiers.js
 controlweave/backend/scripts/run-migration.js
@@ -636,6 +633,7 @@ controlweave/docs/best-practices/ASSESSMENT_STRATEGIES.md
 controlweave/docs/best-practices/EVIDENCE_COLLECTION.md
 controlweave/docs/best-practices/GRC_BEST_PRACTICES.md
 controlweave/docs/doc-review-log/PR-544.md
+controlweave/docs/doc-review-log/PR-594.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md

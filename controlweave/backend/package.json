@@ -1,6 +1,6 @@
 {
   "name": "controlweave-backend",
-  "version": "4.4.1",
+  "version": "4.4.0",
   "engines": {
     "node": ">=20.16.0"
   },
@@ -32,8 +32,7 @@
     "test:watch": "jest --watch",
     "qa:e2e:auditor": "node scripts/qa-auditor-workflow.js",
     "qa:e2e:dynamic": "node scripts/qa-dynamic.js",
-    "qa:e2e:dynamic:all": "node scripts/qa-dynamic.js --suites=syntax,mega,dynamic,auditor,legacy",
-    "qa:e2e:local": "node scripts/qa-local-integration.js",
+    "qa:e2e:dynamic:all": "node scripts/qa-dynamic.js --suites=syntax,mega,dynamic,auditor",
     "qa:crosswalk:live": "node scripts/verify-live-crosswalk.js",
     "check:ip-hygiene": "node scripts/ip-hygiene-check.js",
     "seed:admin-demo-workspace": "node scripts/seed-admin-demo-workspace.js",
@@ -68,7 +67,6 @@
     "cleanup:dedupe-user-emails": "node scripts/dedupe-users-by-email.js",
     "security:generate-jwt-secret": "node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\"",
     "audit:check": "npm audit --audit-level=moderate",
-    "qa:e2e:enterprise": "node scripts/qa-enterprise-demo.js",
     "qa:mega-with-data": "node scripts/mega-qa-test-with-data.js",
     "qa:demo:integration": "node scripts/test-demo-accounts-integration.js",
     "qa:demo:verify-logins": "node scripts/verify-demo-account-logins.js",

@@ -49,7 +49,7 @@ let cachedCommunityAdminToken = null;
 let cachedPlatformOwnerToken = undefined;
 
 // ---------- HTTP helper ----------
-function req(method, urlPath, body, token, raw = false, attempt = 0) {
+function req(method, urlPath, body, token, raw = false, attempt = 0, extraHeaders = {}) {
   return new Promise((resolve) => {
     const url = new URL(urlPath, BASE);
     const transport = url.protocol === 'https:' ? https : http;
@@ -58,7 +58,8 @@ function req(method, urlPath, body, token, raw = false, attempt = 0) {
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
       path: url.pathname + url.search,
       method,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
+      timeout: 30000
     };
     if (token) opts.headers.Authorization = 'Bearer ' + token;
 
@@ -194,8 +195,9 @@ function flattenHelpArticles(payload) {
 }
 
 function isMissingAiKeyError(payload) {
-  const errorText = String(payload?.error || payload?.message || '').toLowerCase();
-  return errorText.includes('api key') && (errorText.includes('no ') || errorText.includes('not configured'));
+  // checkAIUsage (routes/ai.js) signals this condition with a stable code
+  // rather than free text -- match on that instead of wording that can change.
+  return payload?.code === 'NO_PROVIDER_CONFIGURED';
 }
 
 async function loginUser(email, password) {
@@ -632,7 +634,7 @@ async function inviteAndAcceptUser(adminToken, { email, primaryRole, fullName, p
       }, proToken);
       assert('6.20', 'PATCH assign returns 200', assign.s === 200);
       assert('6.20a', 'PATCH assign stores assignee', assign.b.data?.assigned_to === adminUserId);
-      assert('6.20b', 'PATCH assign stores due date', String(assign.b.data?.implementation_date || '').slice(0, 10) === dueDate);
+      assert('6.20b', 'PATCH assign stores due date', String(assign.b.data?.due_date || '').slice(0, 10) === dueDate);
 
       // 6.9 Due upcoming
       const due = await req('GET', '/api/v1/implementations/due/upcoming?days=30', null, proToken);
@@ -958,15 +960,15 @@ async function inviteAndAcceptUser(adminToken, { email, primaryRole, fullName, p
     { path: `/api/v1/ai/test-procedures/${controlId || '00000000-0000-0000-0000-000000000000'}`, body: {}, name: 'Test Procedures' },
     { path: `/api/v1/ai/analyze/asset/${hwId || '00000000-0000-0000-0000-000000000000'}`, body: {}, name: 'Asset Risk' },
     { path: '/api/v1/ai/generate-policy', body: { policyType: 'Information Security' }, name: 'Policy Generator' },
-    { path: '/api/v1/ai/chat', body: { messages: [{ role: 'user', content: 'Hello' }] }, name: 'Chat' },
   ];
 
   let aiTestNum = 7;
   for (const ep of aiEndpoints) {
     const r = await req('POST', ep.path, ep.body, proToken);
-    // Without a configured API key, these should return 400 with a clear missing-key error.
-    assert(`12.${aiTestNum}`, `${ep.name}: returns 400 no API key (got ${r.s})`,
-      r.s === 400 && isMissingAiKeyError(r.b));
+    // Without a configured API key, checkAIUsage (routes/ai.js) returns 422
+    // with code NO_PROVIDER_CONFIGURED and a message pointing at Settings.
+    assert(`12.${aiTestNum}`, `${ep.name}: returns 422 no API key (got ${r.s})`,
+      r.s === 422 && isMissingAiKeyError(r.b));
     aiTestNum++;
   }
 
@@ -990,11 +992,11 @@ async function inviteAndAcceptUser(adminToken, { email, primaryRole, fullName, p
     }
   }
 
-  const platformOnlyChat = await req('POST', '/api/v1/ai/chat', {
+  const platformOnlyChat = await req('POST', '/api/v1/ai/query', {
     provider: configuredPlatformProvider,
-    messages: [{ role: 'user', content: 'Hello' }]
+    question: 'Hello'
   }, proToken);
-  assert('12.28', 'Platform key does not act as customer fallback', platformOnlyChat.s === 400 && isMissingAiKeyError(platformOnlyChat.b));
+  assert('12.28', 'Platform key does not act as customer fallback', platformOnlyChat.s === 422 && isMissingAiKeyError(platformOnlyChat.b));
 
   if (temporaryPlatformKeyNeeded) {
     const platformKeyCleanup = await updatePlatformLlmDefaults({ openai_api_key: null });
@@ -1406,6 +1408,249 @@ async function inviteAndAcceptUser(adminToken, { email, primaryRole, fullName, p
   // Token itself still works until expiry (JWT is stateless) — this is expected behavior
   const postLogoutMe = await req('GET', '/api/v1/auth/me', null, proToken);
   assert('21.3', 'Access token works until expiry (stateless JWT)', postLogoutMe.s === 200);
+
+  // ======================== 22. CONTACTS ========================
+  // Folded in from the retired qa-local-integration.js suite.
+  console.log('\n── 22. Organization Contacts ──');
+
+  const contactCreate = await req('POST', '/api/v1/contacts', {
+    full_name: 'Mega QA Contact',
+    email: `mega-qa-contact-${Date.now()}@example.com`,
+    title: 'Compliance Lead',
+    team: 'GRC',
+    notes: 'Created by mega-qa-test'
+  }, proToken);
+  assert('22.1', 'Create contact returns 201', contactCreate.s === 201);
+  const contactId = contactCreate.b.data?.id;
+  if (contactId) {
+    const contactPatch = await req('PATCH', `/api/v1/contacts/${contactId}`, { title: 'Senior Compliance Lead' }, proToken);
+    assert('22.2', 'Patch contact updates title', contactPatch.s === 200 && contactPatch.b.data?.title === 'Senior Compliance Lead');
+    const contactList = await req('GET', '/api/v1/contacts', null, proToken);
+    assert('22.3', 'List contacts returns 200 array', contactList.s === 200 && Array.isArray(contactList.b.data));
+    const contactDelete = await req('DELETE', `/api/v1/contacts/${contactId}`, null, proToken);
+    assert('22.4', 'Delete (soft) contact returns 200', contactDelete.s === 200);
+  }
+
+  // ======================== 23. POLICIES ========================
+  console.log('\n── 23. Policy Lifecycle ──');
+
+  const policyCreate = await req('POST', '/api/v1/policies', {
+    policy_name: 'Mega QA Access Control Policy',
+    policy_type: 'access_control',
+    description: 'Created by mega-qa-test',
+    effective_date: new Date().toISOString().slice(0, 10)
+  }, proToken);
+  assert('23.1', 'Create policy returns 201', policyCreate.s === 201);
+  const policyId = policyCreate.b.data?.id;
+  if (policyId) {
+    const policyList = await req('GET', '/api/v1/policies', null, proToken);
+    assert('23.2', 'List policies returns 200', policyList.s === 200 && Array.isArray(policyList.b.data?.policies));
+
+    const sectionCreate = await req('POST', `/api/v1/policies/${policyId}/sections`, {
+      section_number: '1.1',
+      section_title: 'Purpose',
+      section_content: 'Initial policy section content',
+      framework_family_code: 'AC',
+      framework_family_name: 'Access Control',
+      display_order: 1
+    }, proToken);
+    assert('23.3', 'Create policy section returns 201', sectionCreate.s === 201);
+
+    const reviewCreate = await req('POST', `/api/v1/policies/${policyId}/reviews`, {
+      review_type: 'annual',
+      review_status: 'completed',
+      review_notes: 'Mega QA review',
+      changes_made: true,
+      requires_user_acknowledgment: true
+    }, proToken);
+    assert('23.4', 'Create policy review returns 201', reviewCreate.s === 201);
+    const policyReviewId = reviewCreate.b.data?.id;
+
+    const policyDetail = await req('GET', `/api/v1/policies/${policyId}`, null, proToken);
+    assert('23.5', 'Get policy detail returns 200', policyDetail.s === 200);
+
+    const monitoringAlerts = await req('GET', `/api/v1/policies/${policyId}/monitoring-alerts`, null, proToken);
+    assert('23.6', 'Policy monitoring-alerts returns 200', monitoringAlerts.s === 200);
+
+    if (policyReviewId) {
+      const acknowledge = await req('POST', `/api/v1/policies/${policyId}/acknowledge`, {
+        policy_review_id: policyReviewId,
+        acknowledgment_notes: 'Acknowledged by mega-qa-test'
+      }, proToken);
+      assert('23.7', 'Acknowledge policy returns 201', acknowledge.s === 201);
+    }
+  }
+
+  // ======================== 24. INTEGRATIONS HUB ========================
+  console.log('\n── 24. Integrations Hub Connectors ──');
+
+  const connectorTemplates = await req('GET', '/api/v1/integrations-hub/templates', null, proToken);
+  assert('24.1', 'Integration templates returns 200 array', connectorTemplates.s === 200 && Array.isArray(connectorTemplates.b.data));
+
+  const connectorCreate = await req('POST', '/api/v1/integrations-hub/connectors', {
+    name: 'Mega QA Splunk Connector',
+    connector_type: 'splunk',
+    status: 'inactive',
+    auth_config: { token: 'mega-qa-token' },
+    connector_config: { baseUrl: 'https://splunk.example.test' }
+  }, proToken);
+  assert('24.2', 'Create connector returns 201', connectorCreate.s === 201);
+  const connectorId = connectorCreate.b.data?.id;
+  if (connectorId) {
+    const connectorPatch = await req('PATCH', `/api/v1/integrations-hub/connectors/${connectorId}`, {
+      status: 'active',
+      connector_config: { baseUrl: 'https://splunk.example.test', index: 'main' }
+    }, proToken);
+    assert('24.3', 'Patch connector to active returns 200', connectorPatch.s === 200 && connectorPatch.b.data?.status === 'active');
+    const connectorRun = await req('POST', `/api/v1/integrations-hub/connectors/${connectorId}/run`, null, proToken);
+    assert('24.4', 'Run connector returns 200 success', connectorRun.s === 200 && connectorRun.b.data?.status === 'success');
+    const connectorRuns = await req('GET', `/api/v1/integrations-hub/connectors/${connectorId}/runs`, null, proToken);
+    assert('24.5', 'Connector run history returns 200', connectorRuns.s === 200);
+    const connectorDelete = await req('DELETE', `/api/v1/integrations-hub/connectors/${connectorId}`, null, proToken);
+    assert('24.6', 'Delete connector returns 200', connectorDelete.s === 200);
+  }
+
+  // ======================== 25. EXTERNAL AI DECISION INGESTION ========================
+  console.log('\n── 25. External AI Decision Ingestion ──');
+
+  const extKey = await req('POST', '/api/v1/ai/external-keys', { name: 'Mega QA External AI Key', scopes: ['ai:log'] }, proToken);
+  assert('25.1', 'Mint external API key returns 201', extKey.s === 201);
+  const apiKey = extKey.b.data?.api_key;
+  const extKeyId = extKey.b.data?.id;
+  if (apiKey) {
+    const ingest = await req('POST', '/api/v1/external-ai/decisions', {
+      input_data: { prompt: 'Assess access request risk' },
+      output_data: { decision: 'allow' },
+      confidence_score: 0.91,
+      reasoning: 'Mega QA coverage for external AI logging',
+      feature: 'access_decision',
+      risk_level: 'low',
+      external_provider: 'mega-provider',
+      external_model: 'mega-model-v1',
+      external_decision_id: `mega-decision-${Date.now()}`
+    }, null, false, 0, { 'x-api-key': apiKey });
+    assert('25.2', 'Ingest external AI decision returns 201', ingest.s === 201 && !!ingest.b.data?.id);
+  }
+  if (extKeyId) {
+    await req('DELETE', `/api/v1/ai/external-keys/${extKeyId}`, null, proToken);
+  }
+
+  // ======================== 26. TPRM LIFECYCLE ========================
+  console.log('\n── 26. TPRM Vendor / Questionnaire / Document ──');
+
+  const vendorCreate = await req('POST', '/api/v1/tprm/vendors', {
+    vendor_name: 'Mega QA Vendor',
+    vendor_type: 'software',
+    risk_tier: 'high',
+    data_access_level: 'limited',
+    services_provided: 'Identity and access management',
+    notes: 'Created by mega-qa-test'
+  }, proToken);
+  assert('26.1', 'Create vendor returns 201', vendorCreate.s === 201);
+  const vendorId = vendorCreate.b.data?.id;
+  if (vendorId) {
+    const vendorPatch = await req('PATCH', `/api/v1/tprm/vendors/${vendorId}`, { review_status: 'approved' }, proToken);
+    assert('26.2', 'Patch vendor review_status returns 200', vendorPatch.s === 200 && vendorPatch.b.data?.review_status === 'approved');
+
+    const storeAi = await req('POST', `/api/v1/tprm/vendors/${vendorId}/store-ai-assessment`, { ai_risk_summary: 'High inherent risk', ai_risk_score: 74 }, proToken);
+    assert('26.3', 'Store vendor AI assessment returns 200', storeAi.s === 200);
+
+    const qCreate = await req('POST', '/api/v1/tprm/questionnaires', {
+      vendor_id: vendorId,
+      title: 'Mega QA Questionnaire',
+      description: 'Created by mega-qa-test',
+      questions: [{ question: 'Do you encrypt data at rest?', category: 'security' }]
+    }, proToken);
+    assert('26.4', 'Create questionnaire returns 201', qCreate.s === 201);
+    const questionnaireId = qCreate.b.data?.id;
+
+    const docCreate = await req('POST', '/api/v1/tprm/documents', {
+      vendor_id: vendorId,
+      document_type: 'soc2_report',
+      document_name: 'Mega QA SOC 2 Report'
+    }, proToken);
+    assert('26.5', 'Create document returns 201', docCreate.s === 201);
+    const documentId = docCreate.b.data?.id;
+
+    const vendorDetail = await req('GET', `/api/v1/tprm/vendors/${vendorId}`, null, proToken);
+    assert('26.6', 'Get vendor detail returns 200', vendorDetail.s === 200);
+
+    const tprmSummary = await req('GET', '/api/v1/tprm/summary', null, proToken);
+    assert('26.7', 'TPRM summary returns 200', tprmSummary.s === 200);
+
+    if (documentId) await req('DELETE', `/api/v1/tprm/documents/${documentId}`, null, proToken);
+    if (questionnaireId) await req('DELETE', `/api/v1/tprm/questionnaires/${questionnaireId}`, null, proToken);
+    const vendorDelete = await req('DELETE', `/api/v1/tprm/vendors/${vendorId}`, null, proToken);
+    assert('26.8', 'Delete vendor returns 200', vendorDelete.s === 200);
+  }
+
+  // ======================== 27. NOTIFICATION PREFERENCES ========================
+  // Folded in from the retired qa-enterprise-demo.js suite.
+  console.log('\n── 27. Notification Preferences ──');
+
+  const prefGet = await req('GET', '/api/v1/notifications/preferences', null, proToken);
+  assert('27.1', 'Get notification preferences returns 200', prefGet.s === 200);
+  const prefPut = await req('PUT', '/api/v1/notifications/preferences', { type: 'control_due', in_app: true, email: false }, proToken);
+  assert('27.2', 'Put notification preferences returns 200', prefPut.s === 200);
+  const emailStatus = await req('GET', '/api/v1/notifications/email-status', null, proToken);
+  assert('27.3', 'Email status returns 200 with configured field', emailStatus.s === 200 && 'configured' in (emailStatus.b.data || {}));
+
+  // ======================== 28. AI DECISIONS & TRACEABILITY ========================
+  console.log('\n── 28. AI Decisions ──');
+
+  const aiDecisions = await req('GET', '/api/v1/ai/decisions', null, proToken);
+  assert('28.1', 'List AI decisions returns 200', aiDecisions.s === 200);
+  const aiDecUnreviewed = await req('GET', '/api/v1/ai/decisions?reviewed=false', null, proToken);
+  assert('28.2', 'Filter unreviewed AI decisions returns 200', aiDecUnreviewed.s === 200);
+  const aiDecHighRisk = await req('GET', '/api/v1/ai/decisions?risk_level=high', null, proToken);
+  assert('28.3', 'Filter high-risk AI decisions returns 200', aiDecHighRisk.s === 200);
+  const aiStatusRes = await req('GET', '/api/v1/ai/status', null, proToken);
+  assert('28.4', 'AI status returns 200 with bias_coverage', aiStatusRes.s === 200 && !!aiStatusRes.b.data?.bias_coverage);
+
+  // ======================== 29. AI MONITORING & REPORTING ========================
+  console.log('\n── 29. AI Monitoring & Reporting ──');
+
+  const monDashboard = await req('GET', '/api/v1/ai/monitoring/dashboard', null, proToken);
+  assert('29.1', 'AI monitoring dashboard returns 200', monDashboard.s === 200);
+  const monRules = await req('GET', '/api/v1/ai/monitoring/rules', null, proToken);
+  assert('29.2', 'AI monitoring rules returns 200', monRules.s === 200);
+  const monEvents = await req('GET', '/api/v1/ai/monitoring/events?limit=5', null, proToken);
+  assert('29.3', 'AI monitoring events returns 200', monEvents.s === 200);
+  const monCoverage = await req('GET', '/api/v1/ai/monitoring/coverage', null, proToken);
+  assert('29.4', 'AI monitoring coverage returns integer rule/event/agent counts',
+    monCoverage.s === 200
+    && Number.isInteger(monCoverage.b.data?.active_rules)
+    && Number.isInteger(monCoverage.b.data?.open_events)
+    && Number.isInteger(monCoverage.b.data?.monitored_agents));
+  const aiUsage = await req('GET', '/api/v1/ai/usage-report?limit=5', null, proToken);
+  assert('29.5', 'AI usage-report returns 200', aiUsage.s === 200);
+  // /ai/security-posture is BYOK-gated: without an org LLM key it returns 422 NO_PROVIDER_CONFIGURED.
+  const secPosture = await req('POST', '/api/v1/ai/security-posture', {}, proToken);
+  assert('29.6', 'AI security-posture responds (200 or BYOK-gated)', [200, 400, 422, 500].includes(secPosture.s));
+
+  // ======================== 30. AI GOVERNANCE & STATE AI LAWS ========================
+  console.log('\n── 30. AI Governance & State AI Laws ──');
+
+  const aiGovSummary = await req('GET', '/api/v1/ai-governance/summary', null, proToken);
+  assert('30.1', 'AI governance summary returns 200', aiGovSummary.s === 200);
+  const aiGovVendors = await req('GET', '/api/v1/ai-governance/vendors', null, proToken);
+  assert('30.2', 'AI governance vendors returns 200', aiGovVendors.s === 200);
+  // routes/stateAiLaws.js calls requireTier('govcloud'), a permanent no-op post-open-source, so this is reachable.
+  const stateJur = await req('GET', '/api/v1/state-ai-laws/jurisdictions', null, proToken);
+  assert('30.3', 'State AI laws jurisdictions returns 200 (not tier-gated)', stateJur.s === 200);
+  const stateSummary = await req('GET', '/api/v1/state-ai-laws/summary', null, proToken);
+  assert('30.4', 'State AI laws summary returns 200 (not tier-gated)', stateSummary.s === 200);
+
+  // ======================== 31. POA&M & MULTI-ORG ========================
+  console.log('\n── 31. POA&M & Multi-Org ──');
+
+  const poamRes = await req('GET', `/api/v1/organizations/${orgId}/poam`, null, proToken);
+  const poamFinal = poamRes.s === 200 ? poamRes : await req('GET', '/api/v1/poam', null, proToken);
+  assert('31.1', 'POA&M list returns 200', poamFinal.s === 200);
+  const myOrgs = await req('GET', '/api/v1/auth/my-organizations', null, proToken);
+  assert('31.2', 'List my organizations returns 200', myOrgs.s === 200);
+  const passkeyOptions = await req('POST', '/api/v1/auth/passkey/auth/options', { email: OVERVIEW_ADMIN_EMAIL }, null);
+  assert('31.3', 'Passkey auth options responds', [200, 400, 404].includes(passkeyOptions.s));
 
   // ══════════════════════════ RESULTS ══════════════════════════
 

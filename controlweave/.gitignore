@@ -50,3 +50,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Uploaded evidence/document files (runtime uploads + seed/demo output, not committed)
+backend/uploads/

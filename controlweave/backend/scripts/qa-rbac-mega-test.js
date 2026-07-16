@@ -33,6 +33,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 require('dotenv').config();
+const pool = require('../src/config/database');
 
 const BASE = (process.env.QA_BASE_URL || process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3001}`).replace(/\/+$/, '');
 let passed = 0;
@@ -147,15 +148,7 @@ function skip(testId, description, reason) {
 
 // Directly query DB to upgrade org tier
 function dbQuery(sql, params = []) {
-  const { Pool } = require('pg');
-  const p = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'grc_platform',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || ''
-  });
-  return p.query(sql, params).then(r => { p.end(); return r; });
+  return pool.query(sql, params);
 }
 
 // =====================================================================
@@ -167,7 +160,7 @@ function dbQuery(sql, params = []) {
   const customEmail = `rbac-custom-${ts}@test.com`;
   const crossOrgEmail = `rbac-crossorg-${ts}@test.com`;
   const extraUserEmail = `rbac-extra-${ts}@test.com`;
-  const pass = 'TestPass123!';
+  const pass = 'RbacMegaQaPass123!';
 
   let adminToken, auditorToken, userToken, customToken, crossOrgToken;
   let adminUserId, auditorUserId, regularUserId, customUserId;
@@ -206,7 +199,7 @@ function dbQuery(sql, params = []) {
     await dbQuery(
       `UPDATE organizations
        SET tier = 'enterprise',
-           billing_status = 'active',
+           billing_status = 'active_paid',
            trial_status = 'converted'
        WHERE id = $1`,
       [orgId]
@@ -241,7 +234,7 @@ function dbQuery(sql, params = []) {
     email: auditorEmail, password: pass, full_name: 'RBAC Auditor', primary_role: 'auditor'
   }, adminToken);
   assert('2.1', 'Admin creates auditor user', createAuditor.s === 201);
-  auditorUserId = createAuditor.b.data?.id;
+  auditorUserId = createAuditor.b.data?.user?.id;
 
   const auditorLogin = await req('POST', '/api/v1/auth/login', { email: auditorEmail, password: pass });
   assert('2.2', 'Auditor login returns 200', auditorLogin.s === 200);
@@ -254,7 +247,7 @@ function dbQuery(sql, params = []) {
     email: userEmail, password: pass, full_name: 'RBAC User', primary_role: 'user'
   }, adminToken);
   assert('3.1', 'Admin creates regular user', createUser.s === 201);
-  regularUserId = createUser.b.data?.id;
+  regularUserId = createUser.b.data?.user?.id;
 
   const userLogin = await req('POST', '/api/v1/auth/login', { email: userEmail, password: pass });
   assert('3.2', 'User login returns 200', userLogin.s === 200);
@@ -383,6 +376,8 @@ function dbQuery(sql, params = []) {
   // ======================== 8. ASSETS (CMDB) PERMISSIONS ========================
   console.log('\n── 8. Assets (CMDB) permissions ──');
 
+  // Asset reads are exposed under /api/v1/cmdb/assets (read-only alias);
+  // asset create/update/delete lives under /api/v1/assets and requires category_id.
   const assetsAdmin = await req('GET', '/api/v1/cmdb/assets', null, adminToken);
   assert('8.1', 'Admin CAN read assets', assetsAdmin.s === 200);
 
@@ -392,23 +387,26 @@ function dbQuery(sql, params = []) {
   const assetsUser = await req('GET', '/api/v1/cmdb/assets', null, userToken);
   assert('8.3', 'User CAN read assets', assetsUser.s === 200);
 
-  const createAssetAdmin = await req('POST', '/api/v1/cmdb/assets', {
-    name: 'RBAC Admin Asset', type: 'server', status: 'active'
+  const assetCategories = await req('GET', '/api/v1/assets/categories', null, adminToken);
+  const assetCategoryId = assetCategories.b.data?.categories?.[0]?.id;
+
+  const createAssetAdmin = await req('POST', '/api/v1/assets', {
+    name: 'RBAC Admin Asset', category_id: assetCategoryId, status: 'active'
   }, adminToken);
   assert('8.4', 'Admin CAN create asset', createAssetAdmin.s === 200 || createAssetAdmin.s === 201);
   assetId = createAssetAdmin.b.data?.id;
 
-  const createAssetAuditor = await req('POST', '/api/v1/cmdb/assets', {
-    name: 'RBAC Auditor Asset', type: 'server', status: 'active'
+  const createAssetAuditor = await req('POST', '/api/v1/assets', {
+    name: 'RBAC Auditor Asset', category_id: assetCategoryId, status: 'active'
   }, auditorToken);
   assert('8.5', 'Auditor CANNOT create asset', createAssetAuditor.s === 403);
 
-  const createAssetUser = await req('POST', '/api/v1/cmdb/assets', {
-    name: 'RBAC User Asset', type: 'server', status: 'active'
+  const createAssetUser = await req('POST', '/api/v1/assets', {
+    name: 'RBAC User Asset', category_id: assetCategoryId, status: 'active'
   }, userToken);
   assert('8.6', 'User CAN create asset', createAssetUser.s === 200 || createAssetUser.s === 201);
 
-  const delAssetAuditor = await req('DELETE', `/api/v1/cmdb/assets/${assetId || '00000000-0000-0000-0000-000000000001'}`, null, auditorToken);
+  const delAssetAuditor = await req('DELETE', `/api/v1/assets/${assetId || '00000000-0000-0000-0000-000000000001'}`, null, auditorToken);
   assert('8.7', 'Auditor CANNOT delete asset', delAssetAuditor.s === 403);
 
   // ======================== 9. ENVIRONMENTS PERMISSIONS ========================
@@ -424,12 +422,12 @@ function dbQuery(sql, params = []) {
   assert('9.3', 'User CAN read environments', envsUser.s === 200);
 
   const createEnvAuditor = await req('POST', '/api/v1/cmdb/environments', {
-    name: 'RBAC Auditor Env', type: 'staging'
+    name: 'RBAC Auditor Env', code: `rbac-auditor-env-${ts}`, environment_type: 'staging'
   }, auditorToken);
   assert('9.4', 'Auditor CANNOT create environment', createEnvAuditor.s === 403);
 
   const createEnvUser = await req('POST', '/api/v1/cmdb/environments', {
-    name: 'RBAC User Env', type: 'staging'
+    name: 'RBAC User Env', code: `rbac-user-env-${ts}`, environment_type: 'staging'
   }, userToken);
   assert('9.5', 'User CAN create environment', createEnvUser.s === 200 || createEnvUser.s === 201);
   environmentId = createEnvUser.b.data?.id;
@@ -447,12 +445,12 @@ function dbQuery(sql, params = []) {
   assert('10.3', 'User CAN read service accounts', saUser.s === 200);
 
   const createSaAuditor = await req('POST', '/api/v1/cmdb/service-accounts', {
-    name: 'RBAC Auditor SA', type: 'api_key', owner: 'test'
+    account_name: 'RBAC Auditor SA', account_type: 'api_key'
   }, auditorToken);
   assert('10.4', 'Auditor CANNOT create service account', createSaAuditor.s === 403);
 
   const createSaUser = await req('POST', '/api/v1/cmdb/service-accounts', {
-    name: 'RBAC User SA', type: 'api_key', owner: 'test'
+    account_name: 'RBAC User SA', account_type: 'api_key'
   }, userToken);
   assert('10.5', 'User CAN create service account', createSaUser.s === 200 || createSaUser.s === 201);
   serviceAccountId = createSaUser.b.data?.id;
@@ -497,8 +495,11 @@ function dbQuery(sql, params = []) {
   const usersAuditor = await req('GET', '/api/v1/users', null, auditorToken);
   assert('12.2', 'Auditor CAN list users (users.read)', usersAuditor.s === 200);
 
+  // migrations/013_rbac_bootstrap.sql deliberately grants the seeded 'user'
+  // role users.read (org directory visibility) — not a lockout like the
+  // roles/settings/audit-log endpoints below.
   const usersUser = await req('GET', '/api/v1/users', null, userToken);
-  assert('12.3', 'User CANNOT list users', usersUser.s === 403);
+  assert('12.3', 'User CAN list users (users.read)', usersUser.s === 200);
 
   const createUserAdmin = await req('POST', '/api/v1/users', {
     email: extraUserEmail, password: pass, full_name: 'Extra User', primary_role: 'user'
@@ -636,10 +637,13 @@ function dbQuery(sql, params = []) {
   assert('18.3', 'User CANNOT export data', exportUser.s === 403);
 
   // ======================== 19. CUSTOM ROLE ENFORCEMENT ========================
-  // Note: Permissions are MERGED — custom role perms + primary_role fallback perms.
-  // A user with primary_role 'user' always gets 'user' fallback (dashboard.read, etc.)
-  // Custom roles ADD granular perms beyond the base role.
-  // An auditor base user CANNOT write controls, but a custom role with controls.write CAN.
+  // Note: POST /roles/assign is a full REPLACE of a user's role set (DELETE
+  // then INSERT — see routes/roles.js), matching the settings UI's
+  // multi-select "these are all the roles this user has" checklist. It does
+  // NOT merge with whatever roles the user already held. To keep the
+  // auditor's base permissions (evidence.read, etc.) while adding
+  // controls.write, the assign call below must include the system
+  // 'auditor' role id alongside the custom role id.
   console.log('\n── 19. Custom role enforcement ──');
 
   if (customRoleId) {
@@ -648,12 +652,17 @@ function dbQuery(sql, params = []) {
       email: customEmail, password: pass, full_name: 'RBAC Custom Role Auditor', primary_role: 'auditor'
     }, adminToken);
     assert('19.1', 'Admin creates auditor user for custom role test', createCustomUser.s === 201);
-    customUserId = createCustomUser.b.data?.id;
+    customUserId = createCustomUser.b.data?.user?.id;
 
-    // Assign custom role (controls.read + controls.write) to the auditor
+    // Look up the system 'auditor' role id so the assign call below can
+    // include it alongside the custom role (assign REPLACES the role set).
+    const rolesForAssign = await req('GET', '/api/v1/roles', null, adminToken);
+    const auditorSystemRoleId = rolesForAssign.b.data?.find((r) => r.is_system_role && r.name === 'auditor')?.id;
+
+    // Assign custom role (controls.read + controls.write) alongside the base auditor role
     if (customUserId) {
       const assignRole = await req('POST', '/api/v1/roles/assign', {
-        userId: customUserId, roleIds: [customRoleId]
+        userId: customUserId, roleIds: [customRoleId, auditorSystemRoleId].filter(Boolean)
       }, adminToken);
       assert('19.2', 'Admin assigns custom role to auditor', assignRole.s === 200 || assignRole.s === 201);
     } else {
@@ -748,7 +757,7 @@ function dbQuery(sql, params = []) {
     await dbQuery(
       `UPDATE organizations
        SET tier = 'enterprise',
-           billing_status = 'active',
+           billing_status = 'active_paid',
            trial_status = 'converted'
        WHERE id = $1`,
       [crossOrgId]

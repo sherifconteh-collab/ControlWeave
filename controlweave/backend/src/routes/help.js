@@ -4,7 +4,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { authenticate } = require('../middleware/auth');
-const { normalizeTier, tierLevel } = require('../config/tierPolicy');
+const { tierLevel } = require('../config/tierPolicy');
 const { createOrgRateLimiter } = require('../middleware/rateLimit');
 
 router.use(authenticate);
@@ -152,11 +152,6 @@ const ARTICLE_CATALOG = [
   }
 ];
 
-function getUserTierLevel(req) {
-  const tier = normalizeTier(req.user?.effective_tier || req.user?.organization_tier);
-  return tierLevel(tier);
-}
-
 /**
  * GET /api/v1/help
  * Returns the list of help articles the current user is entitled to view,
@@ -164,8 +159,6 @@ function getUserTierLevel(req) {
  * marked as `locked: true` so the UI can show an upgrade prompt.
  */
 router.get('/', helpRateLimiter, (req, res) => {
-  const userTier = getUserTierLevel(req);
-
   const articles = ARTICLE_CATALOG.map(({ slug, title, description, icon, category, minTier }) => ({
     slug,
     title,
@@ -189,8 +182,10 @@ router.get('/', helpRateLimiter, (req, res) => {
 
 /**
  * GET /api/v1/help/:slug
- * Returns the Markdown content of a specific help article.
- * Returns 403 if the article requires a higher tier than the user has.
+ * Returns the Markdown content of a specific help article. All articles are
+ * available to every authenticated user -- see .claude/rules/tier-system.md;
+ * article.minTier is kept as historical/informational catalog metadata only,
+ * matching the GET / list route's locked:false, and is not enforced here.
  */
 router.get('/:slug', helpRateLimiter, (req, res) => {
   const { slug } = req.params;
@@ -198,16 +193,6 @@ router.get('/:slug', helpRateLimiter, (req, res) => {
 
   if (!article) {
     return res.status(404).json({ success: false, error: 'Article not found' });
-  }
-
-  const userTier = getUserTierLevel(req);
-  if (userTier < article.minTier) {
-    return res.status(403).json({
-      success: false,
-      error: 'This article requires a higher subscription tier.',
-      minTierRequired: Object.entries({ community: 0, pro: 1, enterprise: 2, govcloud: 3 })
-        .find(([, v]) => v === article.minTier)?.[0] || 'community'
-    });
   }
 
   const filePath = path.resolve(DOCS_ROOT, article.file);

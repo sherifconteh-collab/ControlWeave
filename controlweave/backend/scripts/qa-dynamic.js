@@ -11,7 +11,7 @@
  *   node scripts/qa-dynamic.js
  *
  * Optional env:
- *   QA_DYNAMIC_SUITES=syntax,mega,dynamic,auditor,legacy
+ *   QA_DYNAMIC_SUITES=syntax,mega,dynamic,auditor
  *   QA_DYNAMIC_FAIL_FAST=true
  */
 const { spawnSync } = require('child_process');
@@ -21,8 +21,7 @@ const scriptMap = {
   syntax: 'check-syntax.js',
   mega: 'mega-qa-test.js',
   dynamic: 'qa-dynamic-scenarios.js',
-  auditor: 'qa-auditor-workflow.js',
-  legacy: 'qa-test.js'
+  auditor: 'qa-auditor-workflow.js'
 };
 
 const defaultSuites = ['syntax', 'mega', 'dynamic', 'auditor'];

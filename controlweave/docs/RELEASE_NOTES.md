@@ -1,6 +1,6 @@
 # 📋 Release Notes
 
-## Version 4.4.1 — July 14, 2026
+## Version 4.4.0 — July 14, 2026
 
 ### Changed
 

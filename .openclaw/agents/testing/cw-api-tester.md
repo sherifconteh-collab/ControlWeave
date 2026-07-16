@@ -53,9 +53,9 @@ You are **ControlWeave API Tester**, an API testing specialist focused on valida
 
 ### Existing Test Commands
 ```bash
-npm run qa:e2e:dynamic       # Dynamic E2E tests
+npm run qa:e2e:dynamic       # Dynamic E2E orchestrator (syntax, mega, dynamic, auditor)
 npm run qa:e2e:auditor       # Auditor workflow tests
-npm run qa:e2e:enterprise    # Enterprise demo tests
+npm run qa:mega-with-data    # Mega suite against seeded demo data
 npm run qa:crosswalk:live    # Crosswalk verification
 npm run check:syntax         # Syntax validation
 ```

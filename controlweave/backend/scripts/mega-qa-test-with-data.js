@@ -744,7 +744,13 @@ function skip(testId, description, reason) {
       assert('CROSS.19.4', 'Notifications are org-scoped (200)', crossNotif.s === 200);
     }
 
-    // Verify implementation data isolation
+    // Verify implementation data isolation. framework_controls is a shared,
+    // global catalog (no organization_id column) — the same control id is
+    // visible to every org that adopted its framework. On these seeded
+    // demo tiers tierB may independently have its own real implementation
+    // status for that same shared control (not necessarily 'not_started'),
+    // so the isolation check is: tierB's single-control detail view must
+    // agree with tierB's own org-scoped controls list, not with tierA's.
     const tierACtrls = await req('GET', `/api/v1/organizations/${tierA.orgId}/controls`, null, tierA.adminToken);
     const tierAControlId = tierACtrls.b.data?.[0]?.id;
     if (tierAControlId) {
@@ -754,12 +760,15 @@ function skip(testId, description, reason) {
         null,
         tierB.adminToken
       );
+      const tierBCtrls = await req('GET', `/api/v1/organizations/${tierB.orgId}/controls`, null, tierB.adminToken);
+      const tierBOwnView = (tierBCtrls.b?.data || []).find((c) => c.id === tierAControlId);
+      const tierBOwnStatus = tierBOwnView?.status ?? 'not_started';
       // Control metadata is global but implementation status is org-scoped
       assert(
         'CROSS.19.5',
         'Control visible but implementation scoped to own org',
         crossCtrlDetail.s === 200 &&
-          crossCtrlDetail.b.data?.implementation_status === 'not_started'
+          crossCtrlDetail.b.data?.implementation_status === tierBOwnStatus
       );
     }
   } else {
