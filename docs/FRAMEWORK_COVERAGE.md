@@ -8,13 +8,13 @@
 
 ## Overview
 
-ControlWeaver-Pro provides **comprehensive coverage of 40 compliance frameworks, standards, and regulations**, organized across four tiers. With **675+ controls** and **97 crosswalk mappings**, the platform lets organizations implement once and satisfy many — reducing compliance burden by 40–60%.
+ControlWeaver provides **comprehensive coverage of 44 compliance frameworks, standards, and regulations**, organized across four categories below. ControlWeaver is fully open source — every framework is available to every authenticated user, with no paid tiers or feature gates. With **1,190+ controls** and **97 crosswalk mappings**, the platform lets organizations implement once and satisfy many — reducing compliance burden by 40–60%.
 
 ---
 
-## Tier 1 — Core Frameworks (All Plans)
+## Tier 1 — Core Frameworks
 
-These foundational frameworks are available on every plan, including Free.
+These foundational frameworks, like every framework in this catalog, are available to every authenticated user.
 
 ### NIST Cybersecurity Framework (CSF) 2.0
 **Published:** February 2024 | **Controls:** 106 | **Category:** Cybersecurity
@@ -134,8 +134,6 @@ Normative guidance on Zero Trust Architecture (ZTA) principles. Includes: Never 
 ---
 
 ## Tier 2 — Regulatory & Industry Frameworks
-
-Available on Starter, Professional, Enterprise, and Utilities plans.
 
 ### HIPAA Security Rule + HITECH
 **Published:** 2003/2009 | **Controls:** 45 | **Category:** Healthcare
@@ -285,8 +283,6 @@ Implemented in ControlWeave's four-layer CE-MCP security defense (Static Analysi
 
 ## Tier 3 — AI & International ISO/IEC Standards
 
-Available on Professional, Enterprise, and Utilities plans.
-
 ### ISO 42001:2023 — AI Management System
 **Category:** AI Governance | **Organization:** ISO/IEC
 
@@ -334,9 +330,9 @@ Technical report providing an overview of AI ethics frameworks, principles, and 
 
 ---
 
-## Tier 4 — Financial Services (Utilities Add-On)
+## Tier 4 — Financial Services
 
-The Utilities add-on is available exclusively to Enterprise-tier organizations. It unlocks specialized frameworks for financial services firms, AI governance for regulated financial markets, and privacy-first compliance.
+Specialized frameworks for financial services firms, AI governance for regulated financial markets, and privacy-first compliance.
 
 ### FINRA Notice 24-09 — Supervisory Controls for AI
 **Category:** Financial Services (US) | **Organization:** FINRA
@@ -379,7 +375,7 @@ The definitive model risk management framework for financial institutions:
 
 Required for: Federal Reserve-supervised institutions, OCC-chartered banks, and increasingly adopted by all regulated financial institutions with material model exposure.
 
-Crosswalked to: NIST AI RMF (pre-built in the Gov Cloud & Advisory tier), FINRA Notice 24-09, SEC AI Risk Management.
+Crosswalked to: NIST AI RMF, FINRA Notice 24-09, SEC AI Risk Management.
 
 ---
 
@@ -390,10 +386,10 @@ Crosswalked to: NIST AI RMF (pre-built in the Gov Cloud & Advisory tier), FINRA 
 | Core (NIST + ISO + SOC) | 9 | 675+ | 97 |
 | Regulatory & Industry | 8 | — | — |
 | AI & International ISO/IEC | 10 | — | — |
-| Financial Services (Utilities) | 3 | — | — |
+| Financial Services | 3 | — | — |
 | Application Security (OWASP) | 3 | — | — |
 | Reference Models | 2 | — | — |
-| **Total** | **40** | **675+** | **97** |
+| **Total** | **44** | **1,190+** | **97** |
 
 ---
 
@@ -428,8 +424,8 @@ These areas have the highest density of cross-framework overlap — implementing
 
 ### Financial Services
 1. **Start:** FFIEC (regulatory baseline) + NIST CSF 2.0 + SOC 2
-2. **Add:** FINRA Notice 24-09 + SEC AI Risk Management + SR 11-7 (Gov Cloud & Advisory tier)
-3. **Add AI:** NIST AI RMF (mapped to FINRA/SEC/SR 11-7 via Utilities crosswalks)
+2. **Add:** FINRA Notice 24-09 + SEC AI Risk Management + SR 11-7
+3. **Add AI:** NIST AI RMF (mapped to FINRA/SEC/SR 11-7 via crosswalks)
 
 ### Federal Contractors
 1. **Start:** NIST 800-171 + CMMC 2.0 (DoD requirement)
@@ -453,4 +449,4 @@ These areas have the highest density of cross-framework overlap — implementing
 
 ---
 
-*Last updated: March 2026. Framework versions reflect the most current published standards as of this date.*
+*Last updated: July 2026. Framework versions reflect the most current published standards as of this date.*
