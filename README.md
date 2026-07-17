@@ -6,10 +6,10 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.4.2-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.5.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
-[![Controls](https://img.shields.io/badge/Controls-860%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
+[![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Crosswalks](https://img.shields.io/badge/Crosswalks-360%2B-blue.svg)](./docs/CROSSWALK_GUIDE.md)
 
 ---
@@ -22,7 +22,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 
 **Core differentiators:**
 
-- **44 Frameworks, 860+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
+- **44 Frameworks, 1,190+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
 - **Auto-Crosswalk Engine** — Implement one control, automatically satisfy equivalent controls across other frameworks (40–60% effort reduction)
 - **Optional AI Insights (BYOK)** — Gap analysis, compliance forecast, audit readiness, and inline assists on controls/evidence using your own Anthropic, OpenAI, Gemini, Grok, Groq, or Ollama key. The platform works without any AI key configured.
 - **RMF Lifecycle** — Full NIST SP 800-37 Rev 2 seven-step workflow with ATO tracking
@@ -41,7 +41,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ Cyber Resilience module — BC/DR, incident-response, and ransomware-playbook plan tracking with tabletop/functional/full-scale exercise logging, RTO/RPO attainment, and a computed Cyber Resilience Score
 - ✅ JWT + OAuth 2.0 authentication with TOTP 2FA and account lockout
 - ✅ RBAC with Admin, ISSE, Auditor, Read-Only, and custom roles
-- ✅ 44 compliance frameworks, 860+ controls, 360+ crosswalk mappings
+- ✅ 44 compliance frameworks, 1,190+ controls, 360+ crosswalk mappings
 - ✅ Auto-crosswalk engine (≥90% similarity auto-satisfies controls across frameworks)
 - ✅ Custom Framework Builder — create, publish, and clone org-scoped frameworks with full control editor
 - ✅ Executive Analytics Dashboard — cross-framework compliance trends with period selector and SVG sparklines
@@ -73,7 +73,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 ### Core Compliance Management
 - **44 Frameworks** across federal, security, privacy, AI governance, and enterprise categories — NIST CSF 2.0, NIST Privacy Framework, NIST AI RMF, FISCAM, NIST 800-53, ISO 27001, SOC 2, NIST 800-171, CMMC 2.0, GDPR, HIPAA, HITECH, FFIEC, NERC CIP, PCI DSS v4.0, CIS Controls v8, COBIT 2019, FedRAMP High, FedRAMP Moderate, FINRA Supervisory Controls for AI, SEC AI Risk Management, SR 11-7 Model Risk Management, EU AI Act, ISO 42001, ISO 42005, ISO 27002, ISO 27005, ISO 27017, ISO 27018, ISO 27701, ISO 31000, CCPA/CPRA, State AI Governance, International AI Governance, OWASP LLM Top 10, OWASP Agentic AI Top 10, NIST SP 800-207 Zero Trust, and 7 ISO/IEC AI standards (23894, 38507, 22989, 23053, 5259, TR 24027, TR 24028)
 - **NIST Publications Library (62 seeded references)** — Searchable NIST publication catalog with direct mappings to in-app controls and assessment tasks, available as optional best-practice guidance or mandatory baseline by organization profile
-- **860+ Controls** with broad multi-framework coverage and crosswalk mappings
+- **1,190+ Controls** with broad multi-framework coverage and crosswalk mappings
 - **360+ Crosswalk Mappings** — Implement one control and automatically satisfy equivalent controls across frameworks
 - **Custom Framework Builder** — create org-scoped frameworks with custom controls, clone from any seeded framework, and publish for org-wide use
 - **Control Implementation Tracking** — Status workflow from Not Started to Implemented with assignment and due dates
@@ -540,7 +540,7 @@ All releases and changelogs: [github.com/sherifconteh-collab/ai-grc-platform/rel
 
 A fresh self-hosted install gives you everything — no license key required:
 
-- All 40 compliance frameworks, 675+ controls, 97 crosswalk mappings
+- All 44 compliance frameworks, 1,190+ controls, 97 crosswalk mappings
 - Full evidence management, CMDB, SBOM/AIBOM, TPRM, POA&M, RMF Lifecycle, auditor workspace
 - AI-assisted compliance analysis (BYOK — bring your own LLM key)
 - Multi-org management, SSO, webhooks, MCP server

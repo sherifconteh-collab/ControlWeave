@@ -42,10 +42,8 @@ source at implementation time.
 
 | Framework (`code`) | Seeded today | Official target | Wave |
 |---|---:|---|---|
-| NIST SP 800-53 Rev 5 (`nist_800_53`) | 154 | ~322 base controls, 20 families (withdrawn excluded) | 1 |
 | NIST CSF 2.0 (`nist_csf_2.0`) | 76 | 106 subcategories | 1 |
 | NIST SP 800-171 Rev 3 (`nist_800_171`) | 24 | 97 requirements | 1 |
-| CMMC 2.0 (`cmmc_2.0`) | 50 | L1: 15 / L2: 110 practices (derived from 800-171) | 1 |
 | FedRAMP Moderate (`fedramp_moderate`) | 38 | ~323 controls (Rev 5 baseline, derived from 800-53) | 1 |
 | FedRAMP High (`fedramp_high`) | 25 | ~410 controls (derived from 800-53) | 1 |
 | ISO/IEC 27001:2022 (`iso_27001`) | 82 | 93 Annex A controls | 2 |
@@ -63,7 +61,14 @@ source at implementation time.
 
 `cobit_2019` (40), `state_ai_governance` (47), `international_ai_governance`
 (49), `owasp_llm_top10`, `owasp_agentic_top10` (seeded via
-`seed-owasp-frameworks.js`).
+`seed-owasp-frameworks.js`), `nist_800_53` (300 non-withdrawn base controls,
+generated from the official NIST OSCAL catalog — completed in Wave 1 by
+[#576](https://github.com/sherifconteh-collab/ControlWeaver-Pro/pull/576)),
+`cmmc_2.0` (110 Level 2 practices, generated from NIST SP 800-171 Rev 2
+OSCAL data — completed in Wave 1 by
+[#586](https://github.com/sherifconteh-collab/ControlWeaver-Pro/pull/586);
+CMMC 2.0 Level 1's 15 practices remain unseeded and out of this plan's
+original target scope).
 
 ### Frameworks staying `representative` (no completion target)
 

@@ -1,5 +1,29 @@
 # Release Notes
 
+## v4.5.0 — New Features, Improvements, & Bug Fixes
+
+> **Release Date**: 2026-07-17  
+> **Version**: 4.5.0
+
+### Overview
+
+This release includes 2 new features, 1 improvement, and 2 bug fixes.
+
+### Added
+- Complete NIST 800-53 to 300 official base controls (#576)
+- Complete CMMC 2.0 to all 110 Level 2 practices (#586)
+
+### Changed
+- Auto-fix stale content in docs [skip ci]
+
+### Fixed
+- Close gaps found in README feature-claim verification (#568)
+- Encrypt demo account emails in seed-demo-accounts.js (#599)
+
+
+
+---
+
 ## v4.4.2 — Improvements & Bug Fixes
 
 > **Release Date**: 2026-07-17  

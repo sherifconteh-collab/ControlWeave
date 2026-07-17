@@ -29,7 +29,7 @@
 > | **Release date** | 2026-07-10 |
 > | **Tag** | `v4.3.0` |
 > | **Release branch** | `release/4.3.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 ### ⚠️ Breaking Changes
@@ -112,7 +112,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-18 |
 > | **Tag** | `v3.5.0` |
 > | **Release branch** | `release/3.5.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -152,7 +152,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-16 |
 > | **Tag** | `v3.4.0` |
 > | **Release branch** | `release/3.4.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -202,7 +202,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -235,7 +235,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -268,7 +268,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -301,7 +301,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -334,7 +334,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -367,7 +367,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -400,7 +400,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -433,7 +433,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -466,7 +466,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -499,7 +499,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -532,7 +532,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -572,7 +572,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -603,7 +603,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -636,7 +636,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -679,7 +679,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -717,7 +717,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -753,7 +753,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -799,7 +799,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -838,7 +838,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -869,7 +869,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1100,7 +1100,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Community tier.
+> Not available on the Free tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
@@ -1235,7 +1235,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1279,7 +1279,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1312,7 +1312,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1363,7 +1363,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `81ff13c5` |
+> | **Built from** | `ff1437ac` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1391,5 +1391,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-07-17T09:22:01.676Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-07-17T09:47:32.086Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->
