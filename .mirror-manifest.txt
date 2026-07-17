@@ -49,7 +49,6 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
-.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -308,6 +307,7 @@ controlweave/backend/migrations/119_ai_organizations_permissions.sql
 controlweave/backend/migrations/120_control_implementations_updated_at.sql
 controlweave/backend/migrations/121_audit_log_immutability.sql
 controlweave/backend/migrations/122_cmmc_2_0_comprehensive.sql
+controlweave/backend/migrations/123_nist_800_53_comprehensive.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -333,11 +333,13 @@ controlweave/backend/scripts/export-stig-cklb.js
 controlweave/backend/scripts/export-stig-reports-quarterly.js
 controlweave/backend/scripts/generate-community-license.js
 controlweave/backend/scripts/generate-vulnerability-upload-samples.js
+controlweave/backend/scripts/import-oscal-80053.js
 controlweave/backend/scripts/import-oscal-cmmc-l2.js
 controlweave/backend/scripts/ip-hygiene-check.js
 controlweave/backend/scripts/lib/aiuc1-data.js
 controlweave/backend/scripts/lib/demo-account-config.js
 controlweave/backend/scripts/lib/frameworks/cmmc_2_0.js
+controlweave/backend/scripts/lib/frameworks/nist_800_53.js
 controlweave/backend/scripts/lib/hf-vulnerability-fetch.js
 controlweave/backend/scripts/lib/migrationValidation.js
 controlweave/backend/scripts/lib/userSeedHelpers.js
@@ -642,6 +644,7 @@ controlweave/docs/best-practices/EVIDENCE_COLLECTION.md
 controlweave/docs/best-practices/GRC_BEST_PRACTICES.md
 controlweave/docs/doc-review-log/PR-544.md
 controlweave/docs/doc-review-log/PR-568.md
+controlweave/docs/doc-review-log/PR-576.md
 controlweave/docs/doc-review-log/PR-581.md
 controlweave/docs/doc-review-log/PR-586.md
 controlweave/docs/doc-review-log/PR-594.md
