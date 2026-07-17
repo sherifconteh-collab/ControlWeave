@@ -1,5 +1,24 @@
 # Release Notes
 
+## v4.4.1 — Improvements & Bug Fixes
+
+> **Release Date**: 2026-07-16  
+> **Version**: 4.4.1
+
+### Overview
+
+This release includes 1 improvement and 1 bug fix.
+
+### Changed
+- Auto-fix stale content in docs [skip ci]
+
+### Fixed
+- Overhaul QA/test scripts and fix bugs they surfaced (#594)
+
+
+
+---
+
 ## v4.4.0 -- July 14, 2026
 
 > **Release Date**: 2026-07-14  

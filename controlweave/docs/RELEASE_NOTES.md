@@ -1,5 +1,21 @@
 # 📋 Release Notes
 
+## Version 4.4.1 — Improvements & Bug Fixes
+
+### Overview
+
+This release includes 1 improvement and 1 bug fix.
+
+### Changed
+- Auto-fix stale content in docs [skip ci]
+
+### Fixed
+- Overhaul QA/test scripts and fix bugs they surfaced (#594)
+
+
+
+---
+
 ## Version 4.4.0 — July 14, 2026
 
 ### Changed

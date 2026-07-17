@@ -49,7 +49,6 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
-.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -1036,6 +1035,7 @@ doc-staleness-report.json
 docs/ACQUISITION_STRATEGY.md
 docs/CROSSWALK_GUIDE.md
 docs/DATABASE_ARCHITECTURE.md
+docs/FRAMEWORK_CATALOG_COMPLETION_PLAN.md
 docs/FRAMEWORK_COVERAGE.md
 docs/HOW_CROSSWALKS_WORK.md
 docs/OPEN_SOURCE_BUSINESS_MODEL.md

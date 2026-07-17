@@ -1,5 +1,11 @@
 # ControlWeaver-Pro — Framework Coverage
 
+> **Note:** framework catalogs vary in completeness — most are curated core
+> subsets of their official standards, labeled per-framework via
+> `frameworks.coverage_status`. For the live per-framework inventory and the
+> roadmap to full catalogs, see
+> [FRAMEWORK_CATALOG_COMPLETION_PLAN.md](FRAMEWORK_CATALOG_COMPLETION_PLAN.md).
+
 ## Overview
 
 ControlWeaver-Pro provides **comprehensive coverage of 40 compliance frameworks, standards, and regulations**, organized across four tiers. With **675+ controls** and **97 crosswalk mappings**, the platform lets organizations implement once and satisfy many — reducing compliance burden by 40–60%.
