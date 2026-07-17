@@ -61,10 +61,10 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ TLS 1.2+ enforced on all API channels; MCP → REST API channel hardened against plaintext credential exposure
 - ✅ AU-2 compliant immutable audit logging
 - ✅ All features free — no subscription or license key required
-- ✅ MCP server (51 tools: frameworks, controls, assets, evidence, POA&M, audit, TPRM, AI)
+- ✅ MCP server (54 tools: frameworks, controls, assets, evidence, POA&M, audit, TPRM, AI)
 - ✅ CE-MCP 4-layer security (MAESTRO 16 attack class coverage)
 - ✅ iOS companion app (SwiftUI, iOS 17+) — dashboard, controls, assessments, evidence upload, push notifications
-- ✅ Android companion app (Jetpack Compose, API 26+) — full feature parity with iOS companion app
+- ⚠️ Android companion app (Jetpack Compose, API 26+) — dashboard, auth, push notifications; Controls, Assessments, and Evidence screens are not yet implemented (tracked as follow-up, not at parity with iOS)
 
 ---
 
@@ -1146,10 +1146,8 @@ Beyond the main security pipeline, the following workflows run on schedule or ev
 | [`docs/DATABASE_ARCHITECTURE.md`](./docs/DATABASE_ARCHITECTURE.md) | Full Pro schema: all domains, table structure, security notes |
 | [`controlweave/README.md`](./controlweave/README.md) | Full feature documentation, API reference, setup guide |
 | [`controlweave/QUICK_START.md`](./controlweave/QUICK_START.md) | Step-by-step setup including database configuration |
-| [`controlweave/docs/MCP_TOOLS_REFERENCE.md`](./controlweave/docs/MCP_TOOLS_REFERENCE.md) | Complete MCP tool catalog (51 tools) |
-| [`controlweave/docs/MCP_SECURITY_GUIDE.md`](./controlweave/docs/MCP_SECURITY_GUIDE.md) | MCP server security configuration |
-| [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SECURITY_GUIDE.md) | Code Execution MCP four-layer security guide |
-| [`controlweave/docs/MAESTRO_CEMCP_GUIDANCE.md`](./controlweave/docs/MAESTRO_CEMCP_GUIDANCE.md) | MAESTRO attack class coverage |
+| [`controlweave/docs/MCP_GUIDE.md`](./controlweave/docs/MCP_GUIDE.md) | Complete MCP tool catalog (54 tools) and server setup |
+| [`controlweave/docs/CE_MCP_GUIDE.md`](./controlweave/docs/CE_MCP_GUIDE.md) | Code Execution MCP four-layer security guide and MAESTRO attack class coverage |
 | [`.openclaw/agents/README.md`](./.openclaw/agents/README.md) | OpenClaw agent roster, architecture, and AI governance compliance |
 
 ---

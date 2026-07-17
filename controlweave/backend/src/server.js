@@ -51,6 +51,10 @@ function safeRequire(modulePath) {
 }
 const _reminderMod = safeRequire('./services/reminderService');
 const startReminderScheduler = _reminderMod ? _reminderMod.startReminderScheduler : null;
+const _reportSchedulerMod = safeRequire('./services/reportScheduler');
+const startReportScheduler = _reportSchedulerMod ? _reportSchedulerMod.startReportScheduler : null;
+const _retentionSchedulerMod = safeRequire('./services/retentionScheduler');
+const startRetentionScheduler = _retentionSchedulerMod ? _retentionSchedulerMod.startRetentionScheduler : null;
 const { SECURITY_CONFIG } = require('./config/security');
 const { validateEdition, getEditionInfo, attachEditionInfo } = require('./middleware/edition');
 const { getRedisAdapterStatus } = require('./services/websocketService');
@@ -141,6 +145,25 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Enforce TLS on all API channels. Railway (and equivalent hosts) terminate
+// TLS at the edge and forward X-Forwarded-Proto to the app, so that header
+// -- checked directly, independent of Express's 'trust proxy' setting -- is
+// the source of truth for the scheme the client actually used. Only rejects
+// when the header is present and explicitly non-https, so a proxy that
+// doesn't forward the header (or a direct connection in dev) can't cause a
+// false-positive outage; previously nothing in app code checked the scheme
+// at all, so a misconfigured plaintext front-door would have gone unnoticed.
+if (SECURITY_CONFIG.isProduction) {
+  app.use((req, res, next) => {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    if (forwardedProto && forwardedProto.split(',')[0].trim().toLowerCase() !== 'https') {
+      return res.status(400).json({ error: 'HTTPS required. This API only accepts TLS-encrypted requests.' });
+    }
+    next();
+  });
+}
+
 app.use(attachRequestContext);
 
 app.use('/api/v1/billing/webhook', express.raw({ type: 'application/json' }));
@@ -968,6 +991,8 @@ async function ensureLicenseFromDb() {
 // Other startup tasks (notifications, reminders, platform admin, assessment
 // procedures) are intentionally deferred until after the server is listening.
 let stopReminders = () => {};
+let stopReportScheduler = () => {};
+let stopRetentionScheduler = () => {};
 const HOST = process.env.HOST || '0.0.0.0';
 
 ensureLicenseFromDb()
@@ -991,13 +1016,19 @@ ensureLicenseFromDb()
 
       // Start background jobs only after the HTTP server is reachable.
       if (databaseConfigured) {
-        stopReminders = startReminderScheduler ? startReminderScheduler() : () => {};
+        // In PM2 cluster mode pm_id is set per-worker (0-indexed); only worker 0
+        // runs interval-based schedulers to avoid duplicate concurrent sweeps
+        // (duplicate reminder notifications, duplicate scheduled-report emails,
+        // duplicate retention deletions, duplicate pg_dump processes).
+        const _isPrimaryWorker = !process.env.pm_id || process.env.pm_id === '0';
+        if (_isPrimaryWorker) {
+          stopReminders = startReminderScheduler ? startReminderScheduler() : () => {};
+          stopReportScheduler = startReportScheduler ? startReportScheduler() : () => {};
+          stopRetentionScheduler = startRetentionScheduler ? startRetentionScheduler() : () => {};
+        }
 
         // Start scheduled database backups if enabled.
-        // In PM2 cluster mode pm_id is set per-worker (0-indexed); only worker 0
-        // runs the scheduler to avoid duplicate concurrent pg_dump processes.
         const _backupScheduler = safeRequire('./services/backupScheduler');
-        const _isPrimaryWorker = !process.env.pm_id || process.env.pm_id === '0';
         if (_backupScheduler && process.env.BACKUP_ENABLED === 'true' && _isPrimaryWorker) {
           _backupScheduler.start();
         }
@@ -1022,6 +1053,8 @@ ensureLicenseFromDb()
     function shutdown(signal) {
       log('warn', 'server.shutdown.requested', { signal });
       stopReminders();
+      stopReportScheduler();
+      stopRetentionScheduler();
       const _bs = safeRequire('./services/backupScheduler');
       if (_bs) _bs.stop();
       server.close(() => {

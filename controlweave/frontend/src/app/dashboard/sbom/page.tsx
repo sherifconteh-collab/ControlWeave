@@ -153,6 +153,40 @@ export default function SbomPage() {
     setDetailLoading(false);
   }
 
+  async function handleExportCycloneDx() {
+    if (!detail) return;
+    try {
+      const response = await sbomAPI.exportCycloneDx(detail.sbom.id);
+      const blob = new Blob([response.data], { type: 'application/vnd.cyclonedx+json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${detail.sbom.file_name.replace(/\.[^.]+$/, '')}-cyclonedx.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (requestError: any) {
+      console.error('Failed to export CycloneDX SBOM:', requestError);
+      // responseType: 'blob' means axios delivers a JSON error body as a
+      // Blob too, not parsed JSON -- read and parse it explicitly, or
+      // requestError.response?.data?.error is always undefined here.
+      let errorMessage = 'Failed to export SBOM';
+      if (requestError.response?.data instanceof Blob) {
+        try {
+          const text = await requestError.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed.error) errorMessage = parsed.error;
+        } catch {
+          // Non-JSON blob body -- fall back to the generic message.
+        }
+      } else if (requestError.response?.data?.error) {
+        errorMessage = requestError.response.data.error;
+      }
+      setError(errorMessage);
+    }
+  }
+
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     setSelectedFile(event.target.files?.[0] || null);
   }
@@ -352,9 +386,20 @@ export default function SbomPage() {
                     {detail?.sbom.file_name || 'Loading'}
                   </h2>
                 </div>
-                <button type="button" onClick={closeDetail} className="text-sm text-gray-600 hover:text-gray-900">
-                  Close
-                </button>
+                <div className="flex items-center gap-3">
+                  {detail?.sbom.sbom_format === 'CycloneDX' && (
+                    <button
+                      type="button"
+                      onClick={handleExportCycloneDx}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                    >
+                      Export CycloneDX
+                    </button>
+                  )}
+                  <button type="button" onClick={closeDetail} className="text-sm text-gray-600 hover:text-gray-900">
+                    Close
+                  </button>
+                </div>
               </div>
               <div className="p-5 space-y-5">
                 {detailLoading || !detail ? (

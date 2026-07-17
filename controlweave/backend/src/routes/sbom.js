@@ -419,6 +419,47 @@ router.get('/:id', requirePermission('assets.read'), async (req, res) => {
   }
 });
 
+// GET /api/v1/sbom/:id/export -- CycloneDX export. sbom_data stores the
+// original parsed document verbatim (see the /upload handler below), so a
+// CycloneDX-format SBOM is exported byte-faithful. Non-CycloneDX formats
+// (SPDX, SWID) are not converted -- format conversion is out of scope here,
+// and silently reformatting a document as if it were CycloneDX would be
+// incorrect, not just incomplete.
+router.get('/:id/export', requirePermission('assets.read'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const sbomId = req.params.id;
+
+    const result = await pool.query(
+      `SELECT sbom_format, spec_version, file_name, sbom_data
+         FROM sboms
+        WHERE organization_id = $1 AND id = $2
+        LIMIT 1`,
+      [orgId, sbomId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'SBOM record not found' });
+    }
+
+    const sbom = result.rows[0];
+    if (sbom.sbom_format !== 'CycloneDX') {
+      return res.status(409).json({
+        success: false,
+        error: `This SBOM was ingested as ${sbom.sbom_format}. CycloneDX export is only available for SBOMs uploaded in CycloneDX format.`
+      });
+    }
+
+    const baseName = (sbom.file_name || 'sbom').replace(/\.[^.]+$/, '');
+    res.setHeader('Content-Type', 'application/vnd.cyclonedx+json');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}-cyclonedx.json"`);
+    res.send(JSON.stringify(sbom.sbom_data, null, 2));
+  } catch (error) {
+    console.error('SBOM export error:', error);
+    res.status(500).json({ success: false, error: 'Failed to export SBOM' });
+  }
+});
+
 // POST /api/v1/sbom/upload
 router.post('/upload', requirePermission('assets.write'), upload.single('file'), async (req, res) => {
   if (!req.file) {

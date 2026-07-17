@@ -674,6 +674,9 @@ export const sbomAPI = {
 
   upload: (formData: FormData) =>
     api.post('/sbom/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT }),
+
+  exportCycloneDx: (id: string) =>
+    api.get(`/sbom/${id}/export`, { responseType: 'blob' }),
 };
 
 // Implementations APIs

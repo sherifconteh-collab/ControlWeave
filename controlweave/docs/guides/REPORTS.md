@@ -90,6 +90,28 @@ Depending on report type, configure:
 
 ---
 
+## Scheduled Report Delivery
+
+In addition to on-demand generation, Reports supports recurring report delivery by email — switch to the **Scheduled** view on the Reports page.
+
+### Setting up a scheduled report
+
+1. Click **Reports** in the left sidebar, then switch to **Scheduled**
+2. Click **New Scheduled Report** and configure:
+   - **Report type**: Compliance Summary, Framework Gap, Evidence Status, Audit Trail, or Executive Summary
+   - **Schedule**: Daily, Weekly, Monthly, or Quarterly
+   - **Format**: PDF, CSV, or JSON
+   - **Recipients**: one or more email addresses
+3. Save — the report runs automatically on the configured cadence and is emailed as an attachment to each recipient
+
+### How delivery works
+
+A background scheduler checks for due reports and runs them without any manual trigger. Each run generates a fresh file from live data (not a cached snapshot) and emails it through your organization's configured SMTP settings (**Settings → Notifications**) or the platform default if none is set. If no SMTP transport is configured at all, the report still runs and `last_run_at` updates, but delivery is skipped — configure SMTP to receive the file.
+
+**Use when**: You need recurring compliance visibility (e.g., a weekly gap report to your compliance lead, or a monthly executive summary to leadership) without remembering to generate it manually.
+
+---
+
 ## Report Content Details
 
 ### PDF Reports

@@ -54,17 +54,17 @@ Postgres directly. Treat any doc or script referencing `MCP_PORT` as stale.
 
 ### Tool categories
 
-The secure server exposes **51 tools** across:
+The secure server exposes **54 tools** across:
 
 - System & Authentication (2)
-- Compliance & Frameworks (7, including the crosswalk-inheritance trigger)
+- Compliance & Frameworks (9, including the crosswalk-inheritance trigger)
 - Evidence Management (5)
-- Asset/CMDB Management (8)
+- Asset/CMDB Management (10)
 - POA&M (4)
 - Reports (2)
 - Exceptions (2)
-- Audit Logs (2)
-- TPRM — Third-Party Risk Management (5)
+- Audit Logs (5)
+- TPRM — Third-Party Risk Management (6)
 - Third-Party AI Governance (5)
 - Threat Intelligence (2)
 - Help Center (2)
@@ -572,7 +572,7 @@ steps, and impact assessment.
 
 ## Tools Reference
 
-The secure MCP server provides **51 tools**. All tools follow the security
+The secure MCP server provides **54 tools**. All tools follow the security
 controls described above: rate limiting, audit logging, input validation,
 output sanitization. Detailed per-tool documentation is provided below for
 System & Auth, Compliance & Frameworks, Evidence, Asset/CMDB, Third-Party AI
