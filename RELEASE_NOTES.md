@@ -1,5 +1,25 @@
 # Release Notes
 
+## v4.4.2 — Improvements & Bug Fixes
+
+> **Release Date**: 2026-07-17  
+> **Version**: 4.4.2
+
+### Overview
+
+This release includes 2 improvements and 1 bug fix.
+
+### Changed
+- Auto-fix stale content in docs [skip ci]
+- Add framework catalog completion plan (waves 1-4) (#565)
+
+### Fixed
+- Record and display control test-result history (#581)
+
+
+
+---
+
 ## v4.4.1 — Improvements & Bug Fixes
 
 > **Release Date**: 2026-07-16  

@@ -14,6 +14,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('../src/config/database');
+const { encrypt, hashForLookup } = require('../src/utils/encrypt');
 const {
   DEMO_ADMIN_ACCOUNTS,
   DEFAULT_DEMO_PASSWORD,
@@ -65,14 +66,26 @@ async function run() {
       try {
         const orgId = await upsertOrg(client, acct);
 
-        // Upsert user (email is unique)
+        // users.email is field-level encrypted at rest; email_hash is the
+        // deterministic HMAC-SHA-384 lookup/uniqueness key since encrypt()
+        // uses a random IV and never produces the same ciphertext twice.
+        // Normalize (trim + lowercase) to match the app's auth/register flow.
+        const normalizedEmail = acct.email.trim().toLowerCase();
+        const emailHash = hashForLookup(normalizedEmail);
+
+        // Upsert user (email_hash is the stable unique key across re-runs).
         // Always reset lockout state and ensure account is active.
         // Only update password_hash when DEMO_ACCOUNT_PASSWORD is explicitly provided.
+        // email is intentionally not re-written on conflict: email_hash is
+        // deterministic, so a conflict means the same email, and encrypt()'s
+        // random IV would otherwise churn the ciphertext on every re-run.
+        // RETURNING id avoids a separate SELECT to fetch the user id.
+        let userId;
         if (HAS_EXPLICIT_PASSWORD_OVERRIDE) {
-          await client.query(
-            `INSERT INTO users (organization_id, email, password_hash, first_name, last_name, role, is_active, failed_login_attempts, locked_until)
-             VALUES ($1, $2, $3, $4, $5, 'admin', true, 0, NULL)
-             ON CONFLICT (email) DO UPDATE
+          const userRes = await client.query(
+            `INSERT INTO users (organization_id, email, email_hash, password_hash, first_name, last_name, role, is_active, failed_login_attempts, locked_until)
+             VALUES ($1, $2, $3, $4, $5, $6, 'admin', true, 0, NULL)
+             ON CONFLICT (email_hash) DO UPDATE
                SET organization_id        = EXCLUDED.organization_id,
                    password_hash          = EXCLUDED.password_hash,
                    first_name             = EXCLUDED.first_name,
@@ -80,31 +93,28 @@ async function run() {
                    role                   = 'admin',
                    is_active              = true,
                    failed_login_attempts  = 0,
-                   locked_until           = NULL`,
-            [orgId, acct.email, passwordHash, acct.firstName, acct.lastName]
+                   locked_until           = NULL
+             RETURNING id`,
+            [orgId, encrypt(normalizedEmail), emailHash, passwordHash, acct.firstName, acct.lastName]
           );
+          userId = userRes.rows[0].id;
         } else {
-          await client.query(
-            `INSERT INTO users (organization_id, email, password_hash, first_name, last_name, role, is_active, failed_login_attempts, locked_until)
-             VALUES ($1, $2, $3, $4, $5, 'admin', true, 0, NULL)
-             ON CONFLICT (email) DO UPDATE
+          const userRes = await client.query(
+            `INSERT INTO users (organization_id, email, email_hash, password_hash, first_name, last_name, role, is_active, failed_login_attempts, locked_until)
+             VALUES ($1, $2, $3, $4, $5, $6, 'admin', true, 0, NULL)
+             ON CONFLICT (email_hash) DO UPDATE
                SET organization_id        = EXCLUDED.organization_id,
                    first_name             = EXCLUDED.first_name,
                    last_name              = EXCLUDED.last_name,
                    role                   = 'admin',
                    is_active              = true,
                    failed_login_attempts  = 0,
-                   locked_until           = NULL`,
-            [orgId, acct.email, passwordHash, acct.firstName, acct.lastName]
+                   locked_until           = NULL
+             RETURNING id`,
+            [orgId, encrypt(normalizedEmail), emailHash, passwordHash, acct.firstName, acct.lastName]
           );
+          userId = userRes.rows[0].id;
         }
-
-        // Get user id for profile
-        const userRes = await client.query(
-          'SELECT id FROM users WHERE email = $1',
-          [acct.email]
-        );
-        const userId = userRes.rows[0].id;
 
         // Mark onboarding complete so login goes straight to dashboard
         await client.query(
