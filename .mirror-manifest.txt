@@ -49,6 +49,7 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
+.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -308,6 +309,7 @@ controlweave/backend/migrations/120_control_implementations_updated_at.sql
 controlweave/backend/migrations/121_audit_log_immutability.sql
 controlweave/backend/migrations/122_cmmc_2_0_comprehensive.sql
 controlweave/backend/migrations/123_nist_800_53_comprehensive.sql
+controlweave/backend/migrations/124_pending_control_assessments.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -491,6 +493,7 @@ controlweave/backend/src/routes/organizations/multiOrg.js
 controlweave/backend/src/routes/organizations/profile.js
 controlweave/backend/src/routes/organizations/systems.js
 controlweave/backend/src/routes/passkeys.js
+controlweave/backend/src/routes/pendingControlAssessments.js
 controlweave/backend/src/routes/pendingEvidence.js
 controlweave/backend/src/routes/performance.js
 controlweave/backend/src/routes/phase6.js
@@ -648,6 +651,7 @@ controlweave/docs/doc-review-log/PR-576.md
 controlweave/docs/doc-review-log/PR-581.md
 controlweave/docs/doc-review-log/PR-586.md
 controlweave/docs/doc-review-log/PR-594.md
+controlweave/docs/doc-review-log/PR-612.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md
@@ -865,6 +869,7 @@ controlweave/frontend/src/app/dashboard/cmdb/service-accounts/page.tsx
 controlweave/frontend/src/app/dashboard/cmdb/software/page.tsx
 controlweave/frontend/src/app/dashboard/controls/[id]/page.tsx
 controlweave/frontend/src/app/dashboard/controls/page.tsx
+controlweave/frontend/src/app/dashboard/controls/pending-assessments/page.tsx
 controlweave/frontend/src/app/dashboard/data-governance/page.tsx
 controlweave/frontend/src/app/dashboard/error.tsx
 controlweave/frontend/src/app/dashboard/evidence/auto/page.tsx

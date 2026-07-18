@@ -368,6 +368,27 @@ Export control implementation data for offline work and bulk updates, then impor
 
 ---
 
+## AI Control Assessments (Connector-Driven Suggestions)
+
+### What It Does
+
+When a connector (e.g., Splunk, via an evidence collection rule) gathers new evidence for a control, ControlWeave can ask AI whether that evidence supports changing the control's implementation status — either forward progress (e.g., Implemented → Verified) or a regression (e.g., Verified → In Progress) if the evidence suggests the control is no longer being met. AI never changes a control's status directly; every suggestion requires human review.
+
+### Review Suggestions
+
+1. Click **AI Control Assessments** in the left sidebar (under Compliance)
+2. Click **Scan** to check controls with enabled evidence collection rules for new suggestions
+3. Each suggestion shows the current status, the AI-suggested status, the AI's confidence and reasoning, and the linked evidence
+4. Click **Approve** to apply the suggested status to the control (this is audit-logged), or **Reject** to dismiss it — optionally add a note either way
+
+> **Note**: Approving a suggestion that sets a control to "Verified" requires the Admin or Auditor role, same as the manual status-update workflow. Unlike the manual workflow, AI-suggested regressions are allowed — flagging a possible regression for human review is the point of this feature.
+
+### View Stats
+
+The AI Control Assessments page also shows counts of pending, approved, and rejected suggestions for quick triage.
+
+---
+
 ## Assessment Procedures
 
 ### View Procedures
