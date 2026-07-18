@@ -1,5 +1,20 @@
 # 📋 Release Notes
 
+## Version 4.5.1 — Improvements
+
+### Overview
+
+This release includes 3 improvements.
+
+### Changed
+- Fix stale controls count and paid-tier language in FRAMEWORK_COVERAGE.md (#610)
+- Auto-fix stale content in docs [skip ci]
+- Reconcile controls count and Wave 1 status after #576/#586 (#607)
+
+
+
+---
+
 ## Version 4.5.0 — New Features, Improvements, & Bug Fixes
 
 ### Overview

@@ -1,5 +1,23 @@
 # Release Notes
 
+## v4.5.1 — Improvements
+
+> **Release Date**: 2026-07-17  
+> **Version**: 4.5.1
+
+### Overview
+
+This release includes 3 improvements.
+
+### Changed
+- Fix stale controls count and paid-tier language in FRAMEWORK_COVERAGE.md (#610)
+- Auto-fix stale content in docs [skip ci]
+- Reconcile controls count and Wave 1 status after #576/#586 (#607)
+
+
+
+---
+
 ## v4.5.0 — New Features, Improvements, & Bug Fixes
 
 > **Release Date**: 2026-07-17  
