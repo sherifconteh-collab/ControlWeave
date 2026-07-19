@@ -1067,6 +1067,7 @@ docs/HOW_CROSSWALKS_WORK.md
 docs/OPEN_SOURCE_BUSINESS_MODEL.md
 docs/PERPETUAL_LICENSE_GUIDE.md
 docs/README.md
+docs/ROADMAP_PHASE_5.md
 nixpacks.toml
 railway.json
 schema_updates.sql
