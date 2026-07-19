@@ -21,6 +21,45 @@
 
 ---
 
+## [Unreleased]
+
+> | Field | Value |
+> |-------|-------|
+> | **Status** | Unreleased — changes staged for next release |
+> | **Built from** | `a2807774` |
+> | **Ref** | `refs/heads/main` |
+
+
+### Added
+
+- **GitHub Evidence Connector**: `services/githubService.js` and `routes/github.js` add a real GitHub REST API client — org-scoped token settings (`Settings → Integrations → GitHub`), a test-connection check, a one-time import endpoint, and a full `code_scanning_alerts` / `dependabot_alerts` / `audit_log` / `pull_requests` source for Auto-Evidence Collection Rules. GitHub now performs genuine live data retrieval (like Splunk), not just configuration-record evidence.
+- Dynamic per-source-type configuration fields in the Auto-Evidence rule creation form (`dashboard/evidence/auto/page.tsx`), including a GitHub event-type dropdown, replacing free-text inputs.
+
+### Fixed
+
+- **`evidence_collection_rules` accepted only `splunk`/`connector`**: migration `088`'s `source_type` CHECK constraint never matched the app's own `ALLOWED_SOURCE_TYPES` allowlist (`microsoft_sentinel`, `aws_cloudtrail`, `crowdstrike`, `jira`, `servicenow`, `github`) — creating a rule with any of those source types threw a raw Postgres constraint violation. Fixed in migration `125`.
+- **Auto-Evidence rule creation form silently discarded its configuration**: `RuleForm`'s submit handler always sent `source_config: {}` regardless of source type, so no rule created through the UI (Splunk included) was ever actually functional. Fixed generically using the already-fetched `/auto-evidence/sources` `configFields` metadata.
+
+### Security
+
+- **GitHub and Splunk connector tokens were stored in plaintext**: both `githubService.js` and the pre-existing `splunkService.js` set `organization_settings.is_encrypted = true` on save but never actually called `encrypt()`/`decrypt()` from `utils/encrypt.js` — the stored value was plain text despite the flag. Both now encrypt at rest (AES-256-GCM); `decrypt()` transparently falls back to legacy plaintext rows, so no migration is required.
+
+---
+
+
+### 📊 Tier Availability Summary
+
+| Tier | New/Changed Sections |
+|------|---------------------|
+| 🟢 Community | 0 |
+| 🟡 Pro | 0 |
+| 🔵 Enterprise | 0 |
+| ⚙️ Gov Cloud | 0 |
+| ⚙️ Internal/Infra | 0 |
+
+
+---
+
 ## v4.3.0 — 2026-07-10
 
 > | Field | Value |
@@ -29,7 +68,7 @@
 > | **Release date** | 2026-07-10 |
 > | **Tag** | `v4.3.0` |
 > | **Release branch** | `release/4.3.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 ### ⚠️ Breaking Changes
@@ -112,7 +151,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-18 |
 > | **Tag** | `v3.5.0` |
 > | **Release branch** | `release/3.5.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -152,7 +191,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-16 |
 > | **Tag** | `v3.4.0` |
 > | **Release branch** | `release/3.4.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -202,7 +241,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -235,7 +274,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -268,7 +307,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -301,7 +340,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -334,7 +373,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -367,7 +406,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -400,7 +439,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -433,7 +472,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -466,7 +505,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -499,7 +538,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -532,7 +571,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -572,7 +611,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -603,7 +642,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -636,7 +675,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -679,7 +718,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -717,7 +756,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -753,7 +792,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -799,7 +838,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -838,7 +877,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -869,7 +908,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1100,7 +1139,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Community tier.
+> Not available on the Free tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
@@ -1235,7 +1274,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1279,7 +1318,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1312,7 +1351,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1363,7 +1402,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `2fa4f01a` |
+> | **Built from** | `a2807774` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1391,5 +1430,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-07-19T12:32:59.502Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-07-19T14:33:57.383Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->

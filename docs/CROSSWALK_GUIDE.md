@@ -2,7 +2,7 @@
 
 ## Overview
 
-ControlWeaver-Pro includes **97 cross-framework control mappings** across **40 compliance frameworks**, covering **675+ individual controls**. These mappings — called "crosswalks" — identify when controls in different frameworks address the same or closely related requirements.
+ControlWeaver-Pro includes **673 cross-framework control mappings** across **36 compliance frameworks** — every framework in the catalog has at least one crosswalk mapping to another framework; none are isolated. These mappings — called "crosswalks" — identify when controls in different frameworks address the same or closely related requirements.
 
 The platform's **auto-crosswalk engine** automatically credits related controls as satisfied when you implement a source control with a ≥90% similarity match. For 70–89% matches, the platform surfaces a recommendation for human review rather than auto-crediting — keeping your compliance posture defensible for auditors.
 
@@ -27,9 +27,9 @@ One implementation, four frameworks credited. The ISO 27001 match surfaces for y
 
 ---
 
-## Supported Framework Pairs (97 Mappings)
+## Supported Framework Pairs (673 Mappings)
 
-ControlWeaver-Pro includes crosswalk mappings across these primary framework pairs:
+The original 97 mappings covered the 12 primary pairs below, each traceable to a published authoritative source:
 
 | From | To | Mapping Basis |
 |------|----|---------------|
@@ -45,6 +45,8 @@ ControlWeaver-Pro includes crosswalk mappings across these primary framework pai
 | NIST AI RMF | EU AI Act | NIST / ENISA mapping guidance |
 | NIST AI RMF | ISO 42001 | ISO/IEC JTC 1/SC 42 |
 | ISO 27001 | SOC 2 | AICPA + community |
+
+A later completion pass (`backend/scripts/seed-iso27001-2022-crosswalks.js`, `seed-hipaa-crosswalks.js`, `seed-crosswalk-completion.js`) closed every framework that previously had zero crosswalk mappings — HITECH, five ISO 27000-family standards (27002/27005/27017/27018/31000), ISO 42005, FISCAM, FFIEC, SR 11-7, SEC AI Risk Management, FINRA Supervisory Controls for AI, and the International/State AI Governance Law catalogs — bringing the total to 51+ distinct framework pairs across three hub clusters: a security/general-controls hub anchored on NIST 800-53/ISO 27001/NIST CSF 2.0, an AI-governance hub anchored on NIST AI RMF/EU AI Act, and a privacy hub anchored on GDPR/NIST Privacy Framework/ISO 27701. See the "Mapping Sources" section below for how this newer batch is sourced differently from the original 97.
 
 ---
 
@@ -246,6 +248,7 @@ Response:
 | ISO/IEC published mappings | ISO 27001 ↔ CSF, AI RMF ↔ ISO 42001 | Authoritative |
 | ENISA / EU guidance | AI RMF ↔ EU AI Act | Regulatory |
 | Community-validated | ISO 27001 ↔ SOC 2, AI RMF ↔ ISO 27001 | Reviewed |
+| Direct control-text comparison (single best match per control, not exhaustive) | HITECH ↔ HIPAA, ISO 27002/27005/27017/27018/31000/42005 ↔ their nearest hub framework, FISCAM/FFIEC ↔ NIST 800-53/CSF, SR 11-7/SEC AI Risk/FINRA Supervisory AI ↔ NIST AI RMF, International/State AI Governance Law catalogs ↔ NIST AI RMF/EU AI Act | Platform-reasoned — not traceable to a single published external crosswalk; weak/generic-overlap candidates were deliberately omitted rather than forced. Treat as a starting point for review, same as any "related"/"subset" match above. |
 
 ### Accuracy and Updates
 - Mapping accuracy is reviewed when source frameworks publish new versions
@@ -259,8 +262,8 @@ Control mappings are guidance to support professional compliance judgment, not l
 
 ## Roadmap
 
-### Current State (v2.2)
-- ✅ 97 crosswalk mappings across 40 frameworks
+### Current State
+- ✅ 673 crosswalk mappings across 36 frameworks — every framework has at least one mapping
 - ✅ Auto-satisfaction engine (≥90% threshold)
 - ✅ AI Crosswalk Optimizer (AI feature: finds highest-leverage controls to implement next)
 - ✅ Crosswalk inheritance trigger (recalculates all impacted controls when framework updates)

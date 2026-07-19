@@ -139,13 +139,13 @@ const ISO_27001_TO_NIST_CSF = [
 // ISO 27001:2022 → GDPR Additional Mappings
 // ============================================================
 const ISO_27001_TO_GDPR = [
-  { source: 'A.5.34', source_fw: 'iso_27001', target: 'Art-5',   target_fw: 'gdpr', score: 95, type: 'equivalent' },
-  { source: 'A.5.12', source_fw: 'iso_27001', target: 'Art-5',   target_fw: 'gdpr', score: 85, type: 'related' },
-  { source: 'A.8.10', source_fw: 'iso_27001', target: 'Art-17',  target_fw: 'gdpr', score: 90, type: 'equivalent' },
-  { source: 'A.8.12', source_fw: 'iso_27001', target: 'Art-32',  target_fw: 'gdpr', score: 90, type: 'equivalent' },
-  { source: 'A.5.31', source_fw: 'iso_27001', target: 'Art-5',   target_fw: 'gdpr', score: 90, type: 'equivalent' },
-  { source: 'A.5.33', source_fw: 'iso_27001', target: 'Art-5',   target_fw: 'gdpr', score: 85, type: 'related' },
-  { source: 'A.6.5',  source_fw: 'iso_27001', target: 'Art-32',  target_fw: 'gdpr', score: 80, type: 'related' },
+  { source: 'A.5.34', source_fw: 'iso_27001', target: 'GDPR-5',   target_fw: 'gdpr', score: 95, type: 'equivalent' },
+  { source: 'A.5.12', source_fw: 'iso_27001', target: 'GDPR-5',   target_fw: 'gdpr', score: 85, type: 'related' },
+  { source: 'A.8.10', source_fw: 'iso_27001', target: 'GDPR-17',  target_fw: 'gdpr', score: 90, type: 'equivalent' },
+  { source: 'A.8.12', source_fw: 'iso_27001', target: 'GDPR-32',  target_fw: 'gdpr', score: 90, type: 'equivalent' },
+  { source: 'A.5.31', source_fw: 'iso_27001', target: 'GDPR-5',   target_fw: 'gdpr', score: 90, type: 'equivalent' },
+  { source: 'A.5.33', source_fw: 'iso_27001', target: 'GDPR-5',   target_fw: 'gdpr', score: 85, type: 'related' },
+  { source: 'A.6.5',  source_fw: 'iso_27001', target: 'GDPR-32',  target_fw: 'gdpr', score: 80, type: 'related' },
 ];
 
 // ============================================================

@@ -49,7 +49,6 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
-.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -365,6 +364,7 @@ controlweave/backend/scripts/reset-demo-org-tiers.js
 controlweave/backend/scripts/run-migration.js
 controlweave/backend/scripts/seed-admin-demo-workspace.js
 controlweave/backend/scripts/seed-aiuc1-framework.js
+controlweave/backend/scripts/seed-all-crosswalks.js
 controlweave/backend/scripts/seed-assessment-procedures-ai-governance.js
 controlweave/backend/scripts/seed-assessment-procedures-expansion.js
 controlweave/backend/scripts/seed-assessment-procedures-remaining.js
@@ -376,6 +376,7 @@ controlweave/backend/scripts/seed-cmdb-data.js
 controlweave/backend/scripts/seed-community-test-data.js
 controlweave/backend/scripts/seed-config-management-frameworks.js
 controlweave/backend/scripts/seed-controlweave-self-assessment.js
+controlweave/backend/scripts/seed-crosswalk-completion.js
 controlweave/backend/scripts/seed-cyber-ai-profile.js
 controlweave/backend/scripts/seed-demo-accounts-full-test-data.js
 controlweave/backend/scripts/seed-demo-accounts.js
