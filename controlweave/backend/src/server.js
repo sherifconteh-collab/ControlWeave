@@ -387,6 +387,7 @@ const reportsRoutes = safeRequire('./routes/reports');
 const scheduledReportsRoutes = require('./routes/scheduledReports');
 const notificationsRoutes = require('./routes/notifications');
 const splunkRoutes = safeRequire('./routes/splunk');
+const githubIntegrationRoutes = safeRequire('./routes/github');
 const vulnerabilitiesRoutes = safeRequire('./routes/vulnerabilities');
 const sbomRoutes = safeRequire('./routes/sbom');
 const dynamicConfigRoutes = require('./routes/dynamicConfig');
@@ -463,6 +464,7 @@ const _absentPaidRoutes = [
   ['orgSettings',      orgSettingsRoutes],
   ['reports',          reportsRoutes],
   ['splunk',           splunkRoutes],
+  ['githubIntegration', githubIntegrationRoutes],
   ['vulnerabilities',  vulnerabilitiesRoutes],
   ['sbom',             sbomRoutes],
   ['integrationsHub',  integrationsHubRoutes],
@@ -521,6 +523,7 @@ app.use('/api/v1/reports/scheduled', scheduledReportsRoutes);
 app.use('/api/v1/notifications', notificationsRoutes);
 if (integrationsHubRoutes) app.use('/api/v1/integrations-hub', integrationsHubRoutes);
 if (splunkRoutes) app.use('/api/v1/integrations', splunkRoutes);
+if (githubIntegrationRoutes) app.use('/api/v1/integrations', githubIntegrationRoutes);
 if (vulnerabilitiesRoutes) app.use('/api/v1/vulnerabilities', vulnerabilitiesRoutes);
 if (sbomRoutes) app.use('/api/v1/sbom', sbomRoutes);
 app.use('/api/v1/config', dynamicConfigRoutes);

@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.6.0-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.6.1-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -212,6 +212,8 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 - **Download** — Retrieve evidence files for audit preparation
 - **Retention policy** — Configurable evidence retention (default 365 days)
 - **Splunk Import Plugin** — Pull SIEM search results into Evidence as integrity-tracked JSON artifacts
+- **GitHub Evidence Connector** — Import code scanning alerts, Dependabot alerts, org audit log events, or pull request history as live, integrity-tracked evidence
+- **Auto-Evidence Collection Rules** — Schedule (or run on demand) automated evidence pulls from Splunk, GitHub, Microsoft Sentinel, CrowdStrike, AWS CloudTrail, Jira, ServiceNow, or a custom connector
 
 ### Data Governance
 - **Data classification** — Track data types (PII, PHI, PCI, CUI, FCI, etc.) per asset and organization
@@ -265,6 +267,7 @@ See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SE
 - **Outbound webhooks** — Trigger HTTP callbacks on platform events (control updates, assessment completions, evidence uploads)
 - **Webhook delivery queue** — Async delivery with retry logic and delivery history
 - **Splunk connector** — Pull SIEM search results as integrity-tracked evidence artifacts
+- **GitHub connector** — Pull code scanning alerts, Dependabot alerts, org audit log events, or pull requests as integrity-tracked evidence artifacts
 - **AWS Security Hub** — Poll findings and map AWS severity labels to ControlWeaver control status
 - **Qualys VMDR** — Pull vulnerability detections and map QID severity (1–5) to control findings
 - **ITSM / Change Management** — Sync incident and change records and link closed changes to control implementation evidence
@@ -853,13 +856,18 @@ The endpoints below back the AI Insights page and the inline assists scattered a
 
 Types: `hardware`, `software`, `ai-agents`, `service-accounts`, `environments`, `password-vaults`
 
-### Integrations (Splunk)
+### Integrations (Splunk, GitHub)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | /integrations/splunk | Get Splunk connector settings |
 | PUT | /integrations/splunk | Save Splunk connector settings |
 | POST | /integrations/splunk/test | Validate Splunk connection |
 | POST | /integrations/splunk/import-evidence | Import Splunk search results as evidence |
+| GET | /integrations/github | Get GitHub connector settings |
+| PUT | /integrations/github | Save GitHub connector settings |
+| DELETE | /integrations/github | Remove GitHub connector settings |
+| POST | /integrations/github/test | Validate GitHub connection |
+| POST | /integrations/github/import-evidence | Import code scanning alerts, Dependabot alerts, org audit log events, or pull requests as evidence |
 
 ### Webhooks
 | Method | Endpoint | Description |

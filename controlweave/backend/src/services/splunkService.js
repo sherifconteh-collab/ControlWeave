@@ -1,5 +1,6 @@
 // @tier: pro
 const pool = require('../config/database');
+const { encrypt, decrypt } = require('../utils/encrypt');
 
 const SPLUNK_SETTING_KEYS = {
   baseUrl: 'splunk_base_url',
@@ -53,7 +54,7 @@ async function getOrgSplunkSettings(organizationId) {
 
   for (const row of result.rows) {
     if (row.setting_key === SPLUNK_SETTING_KEYS.baseUrl) data.baseUrl = row.setting_value;
-    if (row.setting_key === SPLUNK_SETTING_KEYS.apiToken) data.apiToken = row.setting_value;
+    if (row.setting_key === SPLUNK_SETTING_KEYS.apiToken) data.apiToken = decrypt(row.setting_value);
     if (row.setting_key === SPLUNK_SETTING_KEYS.defaultIndex) data.defaultIndex = row.setting_value;
     if (!data.updatedAt || row.updated_at > data.updatedAt) data.updatedAt = row.updated_at;
   }
@@ -70,12 +71,13 @@ async function upsertOrgSetting(organizationId, key, value, encrypted = false) {
     );
     return;
   }
+  const storedValue = encrypted ? encrypt(String(value)) : String(value);
   await pool.query(
     `INSERT INTO organization_settings (organization_id, setting_key, setting_value, is_encrypted, updated_at)
      VALUES ($1, $2, $3, $4, NOW())
      ON CONFLICT (organization_id, setting_key)
      DO UPDATE SET setting_value = $3, is_encrypted = $4, updated_at = NOW()`,
-    [organizationId, key, String(value), encrypted]
+    [organizationId, key, storedValue, encrypted]
   );
 }
 

@@ -1,5 +1,22 @@
 # 📋 Release Notes
 
+## Version 4.6.1 — Improvements & Bug Fixes
+
+### Overview
+
+This release includes 1 improvement and 2 bug fixes.
+
+### Changed
+- Auto-fix stale content in docs [skip ci]
+
+### Fixed
+- Correct evidence column name in pending assessment scan (#619)
+- Remove tier/pricing gating from registration page (#616)
+
+
+
+---
+
 ## Version 4.6.0 — New Features, Improvements, & Bug Fixes
 
 ### Overview

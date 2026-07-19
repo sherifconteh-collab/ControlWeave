@@ -9,6 +9,7 @@ const { authenticate, requireTier, requirePermission } = require('../middleware/
 const { createRateLimiter } = require('../middleware/rateLimit');
 const { validateBody, isUuid } = require('../middleware/validate');
 const splunk = require('../services/splunkService');
+const github = require('../services/githubService');
 
 router.use(authenticate);
 router.use(requireTier('pro'));
@@ -248,7 +249,91 @@ async function executeCollectionRule(rule, orgId, triggeredByUserId) {
     return { evidence_id: evidenceRecord.id, result_count: searchResult.results.length };
   }
 
-  // Non-Splunk source types: create an evidence record with the rule configuration.
+  if (rule.source_type === 'github') {
+    const githubSettings = await github.getOrgGithubSettings(orgId);
+    if (!githubSettings.apiToken) {
+      throw new Error('GitHub is not configured for this organization');
+    }
+    const sc = rule.source_config || {};
+    const evidenceResult = await github.fetchEvidence({ apiToken: githubSettings.apiToken }, {
+      repository: sc.repository,
+      event_type: sc.event_type,
+      time_range: sc.time_range,
+      max_results: sc.max_results
+    });
+
+    const importedAt = new Date().toISOString();
+    const evidencePayload = {
+      auto_collected: true,
+      rule_id: rule.id,
+      rule_name: rule.name,
+      source: 'github',
+      imported_at: importedAt,
+      query: {
+        repository: sc.repository,
+        event_type: evidenceResult.event_type,
+        time_range: sc.time_range || '-7d'
+      },
+      summary: { result_count: evidenceResult.results.length },
+      results: evidenceResult.results
+    };
+
+    const fileBody = Buffer.from(JSON.stringify(evidencePayload, null, 2), 'utf8');
+    const fileHash = createHash('sha256').update(fileBody).digest('hex');
+    const safeName = sanitizeRuleName(rule.name);
+    const fileName = `${safeName}-${new Date().toISOString().split('T')[0]}.json`;
+    const diskName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-auto.json`;
+    const filePath = path.join(uploadsDir, diskName);
+    await fs.promises.writeFile(filePath, fileBody);
+
+    const description = `Auto-collected from GitHub by rule "${rule.name}" (${evidenceResult.results.length} ${evidenceResult.event_type.replace(/_/g, ' ')})`;
+    const tags = Array.isArray(rule.tags) ? rule.tags : [];
+    const retentionUntil = getDefaultRetentionDate();
+
+    const ins = await pool.query(
+      `INSERT INTO evidence (
+         organization_id, uploaded_by, file_name, file_path, file_size, mime_type,
+         description, tags, integrity_hash_sha256, evidence_version, retention_until,
+         integrity_verified_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1, $10, NOW())
+       RETURNING id, file_name, file_size, created_at`,
+      [
+        orgId,
+        triggeredByUserId,
+        fileName,
+        filePath,
+        fileBody.length,
+        'application/json',
+        description,
+        tags,
+        fileHash,
+        retentionUntil
+      ]
+    );
+    const evidenceRecord = ins.rows[0];
+
+    const controlIds = Array.isArray(rule.control_ids) ? rule.control_ids : [];
+    if (controlIds.length > 0) {
+      const validRows = await pool.query(
+        'SELECT id FROM framework_controls WHERE id = ANY($1::uuid[])',
+        [controlIds]
+      );
+      const validControlIds = validRows.rows.map((row) => row.id);
+      if (validControlIds.length > 0) {
+        await pool.query(
+          `INSERT INTO evidence_control_links (evidence_id, control_id, notes)
+           SELECT $1, unnest($2::uuid[]), $3
+           ON CONFLICT DO NOTHING`,
+          [evidenceRecord.id, validControlIds, `Auto-linked by rule "${rule.name}"`]
+        );
+      }
+    }
+
+    return { evidence_id: evidenceRecord.id, result_count: evidenceResult.results.length };
+  }
+
+  // Non-Splunk/GitHub source types: create an evidence record with the rule configuration.
   // Source metadata provides category context and evidence descriptions.
   const meta = SOURCE_TYPE_META[rule.source_type] || { label: rule.source_type, category: 'custom' };
   const sourceLabel = meta.label;

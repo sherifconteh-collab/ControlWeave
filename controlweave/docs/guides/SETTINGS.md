@@ -272,6 +272,17 @@ Connect to your Security Information and Event Management (SIEM) platform:
 | HEC Token | HTTP Event Collector token | `abc123-def456-...` |
 | Default Index | Splunk index for events | `controlweave` |
 
+### GitHub Evidence Connector
+
+Connect GitHub to pull code scanning alerts, Dependabot alerts, organization audit log events, or pull request history directly into your evidence library:
+
+1. Go to **Settings** → **Integrations**
+2. Under **GitHub Evidence Connector**, enter a **Personal Access Token** (classic or fine-grained — needs read access to the repositories or organization you plan to query)
+3. Click **Test Connection** to verify the token
+4. Click **Save**
+
+Once saved, GitHub becomes available as a source type for **Auto-Evidence Collection Rules** (see the Evidence guide's Auto-Evidence Collection section). Click **Remove** next to the masked token to delete the stored credential.
+
 ### Webhooks
 
 Configure webhook notifications for external systems:

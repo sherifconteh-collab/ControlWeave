@@ -1,6 +1,6 @@
 # ControlWeave
 
-[![Release](https://img.shields.io/badge/Release-v4.6.0-green.svg)](./docs/RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.6.1-green.svg)](./docs/RELEASE_NOTES.md)
 
 > **Documentation consolidated.** All feature documentation, API reference, MCP server setup, environment variables, QA runner commands, and technical reference have been merged into the [root README](../README.md).
 

@@ -310,6 +310,7 @@ controlweave/backend/migrations/121_audit_log_immutability.sql
 controlweave/backend/migrations/122_cmmc_2_0_comprehensive.sql
 controlweave/backend/migrations/123_nist_800_53_comprehensive.sql
 controlweave/backend/migrations/124_pending_control_assessments.sql
+controlweave/backend/migrations/125_evidence_collection_source_types.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -472,6 +473,7 @@ controlweave/backend/src/routes/exceptions.js
 controlweave/backend/src/routes/externalAi.js
 controlweave/backend/src/routes/externalAiKeys.js
 controlweave/backend/src/routes/frameworks.js
+controlweave/backend/src/routes/github.js
 controlweave/backend/src/routes/help.js
 controlweave/backend/src/routes/implementations.js
 controlweave/backend/src/routes/integrationsHub.js
@@ -567,6 +569,7 @@ controlweave/backend/src/services/emailService.js
 controlweave/backend/src/services/frameworkPoamService.js
 controlweave/backend/src/services/frameworkService.js
 controlweave/backend/src/services/geolocationService.js
+controlweave/backend/src/services/githubService.js
 controlweave/backend/src/services/jobService.js
 controlweave/backend/src/services/licenseService.js
 controlweave/backend/src/services/llmSchemas.js
@@ -654,6 +657,7 @@ controlweave/docs/doc-review-log/PR-594.md
 controlweave/docs/doc-review-log/PR-612.md
 controlweave/docs/doc-review-log/PR-616.md
 controlweave/docs/doc-review-log/PR-619.md
+controlweave/docs/doc-review-log/PR-624.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md

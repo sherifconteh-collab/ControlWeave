@@ -290,7 +290,7 @@ ControlWeave supports automated evidence collection through configurable **Colle
 
 ### 10.1 Supported Source Types
 
-Auto-Evidence Collection supports eight source types organized into categories. **Only Splunk performs full live data retrieval** — querying the external system and importing real event data into ControlWeave. All other sources create evidence records that document the configuration and connectivity of your integration (useful for demonstrating that security tools are connected and in use), but do not pull live log data.
+Auto-Evidence Collection supports eight source types organized into categories. **Splunk and GitHub perform full live data retrieval** — querying the external system and importing real event data into ControlWeave. All other sources create evidence records that document the configuration and connectivity of your integration (useful for demonstrating that security tools are connected and in use), but do not pull live log data.
 
 | Category | Source Type | Description |
 |----------|-------------|-------------|
@@ -299,11 +299,11 @@ Auto-Evidence Collection supports eight source types organized into categories. 
 | **SIEM** | **CrowdStrike Falcon** | Creates an evidence record documenting your CrowdStrike Falcon integration configuration (filters, time range, etc.). |
 | **Cloud** | **AWS CloudTrail** | Creates an evidence record documenting your AWS CloudTrail integration configuration (region, event filters, etc.). |
 | **DevOps** | **Jira** | Creates an evidence record documenting your Jira integration configuration (JQL query, project key, etc.). |
-| **DevOps** | **GitHub** | Creates an evidence record documenting your GitHub integration configuration (repository, event types, etc.). |
+| **DevOps** | **GitHub** | Performs live data retrieval — imports real code scanning alerts, Dependabot alerts, org audit log events, or pull requests from a repository (or org, for audit log). Requires a GitHub token configured in **Settings → Integrations → GitHub**. |
 | **ITSM** | **ServiceNow (ITSM)** <!-- ip-hygiene:ignore --> | Creates an evidence record documenting your ITSM platform integration configuration (table, query filter, etc.). |
 | **Custom** | **Connector** | Creates an evidence record documenting your custom connector configuration (endpoint URL, payload format, etc.). |
 
-> **💡 Tip**: Use Splunk for live log and event data collection. Use the other source types to create configuration evidence records that demonstrate your security and DevOps tools are integrated and actively used in your compliance program.
+> **💡 Tip**: Use Splunk or GitHub for live log and event data collection. Use the other source types to create configuration evidence records that demonstrate your security and DevOps tools are integrated and actively used in your compliance program.
 
 ### 10.2 Create a Collection Rule
 
@@ -321,6 +321,12 @@ Auto-Evidence Collection supports eight source types organized into categories. 
    - **Earliest Time**: Start of the time range (e.g., `-24h@h`)
    - **Latest Time**: End of the time range (e.g., `now`)
    - **Max Events**: Maximum number of log events to import per run
+
+   For **GitHub** rules, configure:
+   - **Repository**: `owner/repo` (or an org login, when **Event Type** is Audit Log)
+   - **Event Type**: Code Scanning Alerts, Dependabot Alerts, Audit Log, or Pull Requests
+   - **Time Range**: Relative window (e.g., `-7d`)
+   - **Max Results**: Maximum number of results to import per run
 
 5. Click **Save Rule**
 
@@ -340,6 +346,8 @@ For an ad-hoc Splunk import without creating a rule:
 3. Click **Import**
 
 Imported logs are stored as evidence records and can be linked to controls like any other file.
+
+> **💡 Note**: GitHub does not yet have an equivalent one-time import button on the Evidence page — use an **Auto-Evidence Collection Rule** (10.2) with a `Manual only` schedule and **Run** it on demand (10.3) to get the same ad-hoc behavior.
 
 ---
 

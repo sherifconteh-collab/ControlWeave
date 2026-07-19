@@ -46,6 +46,44 @@ const SCHEDULE_LABELS: Record<Schedule, string> = {
   monthly: 'Monthly'
 };
 
+interface SourceMeta {
+  key: string;
+  label: string;
+  configFields: string[];
+}
+
+const GITHUB_EVENT_TYPE_OPTIONS = [
+  { value: 'pull_requests', label: 'Pull Requests (Code Review)' },
+  { value: 'code_scanning_alerts', label: 'Code Scanning Alerts' },
+  { value: 'dependabot_alerts', label: 'Dependabot Alerts' },
+  { value: 'audit_log', label: 'Audit Log' }
+];
+
+const CONFIG_FIELD_LABELS: Record<string, string> = {
+  search: 'Search Query',
+  earliest_time: 'Earliest Time (e.g. -24h@h)',
+  latest_time: 'Latest Time (e.g. now)',
+  max_events: 'Max Events',
+  workspace_id: 'Workspace ID',
+  query: 'Query',
+  time_range: 'Time Range (e.g. -7d)',
+  region: 'AWS Region',
+  event_name: 'Event Name',
+  filter: 'Filter',
+  jql_query: 'JQL Query',
+  project_key: 'Project Key',
+  issue_type: 'Issue Type',
+  max_results: 'Max Results',
+  table_name: 'Table Name',
+  query_filter: 'Query Filter',
+  max_records: 'Max Records',
+  repository: 'Repository (owner/repo, or org login for Audit Log)',
+  event_type: 'Event Type (code_scanning_alerts, dependabot_alerts, audit_log, pull_requests)',
+  endpoint_url: 'Endpoint URL',
+  auth_header: 'Auth Header',
+  payload_format: 'Payload Format'
+};
+
 function StatusDot({ status }: { status: string | null }) {
   if (!status) return <span className="inline-block w-2 h-2 rounded-full bg-gray-300" />;
   const color = status === 'success' ? 'bg-green-500' : status === 'error' ? 'bg-red-500' : 'bg-amber-400 animate-pulse';
@@ -54,10 +92,12 @@ function StatusDot({ status }: { status: string | null }) {
 
 function RuleForm({
   initial,
+  sources,
   onSave,
   onCancel,
 }: {
   initial?: Partial<CollectionRule>;
+  sources: SourceMeta[];
   onSave: (data: Omit<CollectionRule, 'id' | 'last_run_at' | 'last_run_status' | 'last_run_error' | 'next_run_at' | 'created_at'>) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -66,8 +106,18 @@ function RuleForm({
   const [sourceType, setSourceType] = useState<SourceType>(initial?.source_type || 'splunk');
   const [schedule, setSchedule] = useState<Schedule>(initial?.schedule || 'manual');
   const [enabled, setEnabled] = useState(initial?.enabled !== false);
+  const [configValues, setConfigValues] = useState<Record<string, string>>(() => {
+    const initialConfig = initial?.source_config || {};
+    const stringified: Record<string, string> = {};
+    for (const [key, value] of Object.entries(initialConfig)) {
+      stringified[key] = value === undefined || value === null ? '' : String(value);
+    }
+    return stringified;
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const activeConfigFields = sources.find((s) => s.key === sourceType)?.configFields || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +125,16 @@ function RuleForm({
     setSaving(true);
     setErr(null);
     try {
+      const sourceConfig: Record<string, string> = {};
+      for (const field of activeConfigFields) {
+        const value = (configValues[field] || '').trim();
+        if (value) sourceConfig[field] = value;
+      }
       await onSave({
         name: name.trim(),
         description: description.trim() || null,
         source_type: sourceType,
-        source_config: {},
+        source_config: sourceConfig,
         schedule,
         control_ids: initial?.control_ids || [],
         tags: initial?.tags || [],
@@ -151,6 +206,39 @@ function RuleForm({
           placeholder="Optional description"
         />
       </div>
+      {activeConfigFields.length > 0 && (
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-medium text-gray-600 mb-2">{SOURCE_LABELS[sourceType]} Configuration</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {activeConfigFields.map((field) => (
+              <div key={field}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {CONFIG_FIELD_LABELS[field] || field}
+                </label>
+                {field === 'event_type' ? (
+                  <select
+                    value={configValues[field] || ''}
+                    onChange={(e) => setConfigValues((prev) => ({ ...prev, [field]: e.target.value }))}
+                    className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Select Event Type...</option>
+                    {GITHUB_EVENT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={configValues[field] || ''}
+                    onChange={(e) => setConfigValues((prev) => ({ ...prev, [field]: e.target.value }))}
+                    className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder={CONFIG_FIELD_LABELS[field] || field}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50">
           Cancel
@@ -172,6 +260,7 @@ export default function AutoEvidencePage() {
   const canManage = hasPermission(user, 'evidence.write');
 
   const [rules, setRules] = useState<CollectionRule[]>([]);
+  const [sources, setSources] = useState<SourceMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -192,7 +281,17 @@ export default function AutoEvidencePage() {
     }
   }, []);
 
-  useEffect(() => { loadRules(); }, [loadRules]);
+  const loadSources = useCallback(async () => {
+    try {
+      const res = await autoEvidenceAPI.getSources();
+      const data = res.data?.data || res.data;
+      setSources(Array.isArray(data?.sources) ? data.sources : []);
+    } catch {
+      setSources([]);
+    }
+  }, []);
+
+  useEffect(() => { loadRules(); loadSources(); }, [loadRules, loadSources]);
 
   const handleSave = async (data: Omit<CollectionRule, 'id' | 'last_run_at' | 'last_run_status' | 'last_run_error' | 'next_run_at' | 'created_at'>) => {
     // Normalize `description: string | null` (our CollectionRule shape) to
@@ -266,6 +365,7 @@ export default function AutoEvidencePage() {
           <div className="mb-6">
             <RuleForm
               initial={editingRule || undefined}
+              sources={sources}
               onSave={handleSave}
               onCancel={() => { setShowForm(false); setEditingRule(null); }}
             />

@@ -1371,6 +1371,25 @@ export const integrationsAPI = {
     control_ids?: string[];
     retention_until?: string;
   }) => api.post('/integrations/splunk/import-evidence', data),
+
+  getGithubConfig: () => api.get('/integrations/github'),
+  updateGithubConfig: (data: { api_token?: string | null }) =>
+    api.put('/integrations/github', data),
+  removeGithubConfig: () =>
+    api.delete('/integrations/github'),
+  testGithubConfig: (data?: { api_token?: string }) =>
+    api.post('/integrations/github/test', data || {}),
+  importGithubEvidence: (data: {
+    repository: string;
+    event_type?: 'code_scanning_alerts' | 'dependabot_alerts' | 'audit_log' | 'pull_requests';
+    time_range?: string;
+    max_results?: number;
+    title?: string;
+    description?: string;
+    tags?: string[] | string;
+    control_ids?: string[];
+    retention_until?: string;
+  }) => api.post('/integrations/github/import-evidence', data),
 };
 
 // Auto Evidence Collection APIs

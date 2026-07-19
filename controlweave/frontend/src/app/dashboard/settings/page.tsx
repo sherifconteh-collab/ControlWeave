@@ -61,6 +61,11 @@ interface SplunkSettings {
   token_masked: string | null;
 }
 
+interface GithubSettings {
+  configured: boolean;
+  token_masked: string | null;
+}
+
 interface TrustCenterConfig {
   id: string;
   organization_id: string;
@@ -290,8 +295,9 @@ function SettingsPageInner() {
   const canManageSettings = hasPermission(user, 'settings.manage');
   const canAccessPlatformAdmin = canManageSettings && isPlatformAdmin(user);
   const canUseSplunk = canManageSettings;
+  const canUseGithub = canManageSettings;
   const canUseSiem = canManageSettings;
-  const canUseIntegrations = canUseSplunk || canUseSiem;
+  const canUseIntegrations = canUseSplunk || canUseGithub || canUseSiem;
   const canUsePasskeys = true;
   const canUseSso = canManageSettings;
   const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
@@ -383,6 +389,12 @@ function SettingsPageInner() {
   const [splunkDefaultIndex, setSplunkDefaultIndex] = useState('');
   const [splunkTesting, setSplunkTesting] = useState(false);
   const [splunkSaving, setSplunkSaving] = useState(false);
+
+  // GitHub integration state
+  const [githubSettings, setGithubSettings] = useState<GithubSettings | null>(null);
+  const [githubApiToken, setGithubApiToken] = useState('');
+  const [githubTesting, setGithubTesting] = useState(false);
+  const [githubSaving, setGithubSaving] = useState(false);
   const [contentPacks, setContentPacks] = useState<ContentPack[]>([]);
   const [contentPackDrafts, setContentPackDrafts] = useState<ContentPackDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
@@ -1073,6 +1085,11 @@ function SettingsPageInner() {
       } else {
         setSplunkSettings(null);
       }
+      if (canUseGithub) {
+        loadGithubSettings();
+      } else {
+        setGithubSettings(null);
+      }
     } else {
       setLlmLoading(false);
     }
@@ -1126,7 +1143,7 @@ function SettingsPageInner() {
 
   useEffect(() => {
     syncInitialSettingsState();
-  }, [defaultTab, canManageRoles, canManageSettings, canUseSplunk, canUseIntegrations, canAccessPlatformAdmin, searchParams]);
+  }, [defaultTab, canManageRoles, canManageSettings, canUseSplunk, canUseGithub, canUseIntegrations, canAccessPlatformAdmin, searchParams]);
 
   // Load data when tabs are first opened
   useEffect(() => {
@@ -1849,6 +1866,61 @@ function SettingsPageInner() {
       await loadSplunkSettings();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to remove Splunk settings');
+    }
+  };
+
+  const loadGithubSettings = async () => {
+    if (!canUseGithub) {
+      setGithubSettings(null);
+      return;
+    }
+    try {
+      const res = await integrationsAPI.getGithubConfig();
+      setGithubSettings(res.data?.data);
+    } catch (err: any) {
+      // Silent fallback in case endpoint is unavailable in older deployments.
+    }
+  };
+
+  const saveGithubSettings = async () => {
+    if (!canUseGithub) return;
+    try {
+      setGithubSaving(true);
+      const payload: { api_token?: string | null } = {};
+      if (githubApiToken) payload.api_token = githubApiToken;
+      await integrationsAPI.updateGithubConfig(payload);
+      setGithubApiToken('');
+      showToast('GitHub settings saved');
+      await loadGithubSettings();
+    } catch (err: any) {
+      setError(err.response?.data?.details || err.response?.data?.error || 'Failed to save GitHub settings');
+    } finally {
+      setGithubSaving(false);
+    }
+  };
+
+  const testGithubSettings = async () => {
+    if (!canUseGithub) return;
+    try {
+      setGithubTesting(true);
+      await integrationsAPI.testGithubConfig({ api_token: githubApiToken || undefined });
+      showToast('GitHub connection verified');
+    } catch (err: any) {
+      setError(err.response?.data?.details || err.response?.data?.error || 'GitHub connection test failed');
+    } finally {
+      setGithubTesting(false);
+    }
+  };
+
+  const removeGithubSettings = async () => {
+    if (!canUseGithub) return;
+    try {
+      await integrationsAPI.removeGithubConfig();
+      setGithubApiToken('');
+      showToast('GitHub settings removed');
+      await loadGithubSettings();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to remove GitHub settings');
     }
   };
 
@@ -2923,6 +2995,67 @@ function SettingsPageInner() {
                         className="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
                       >
                         {splunkSaving ? 'Saving...' : 'Save Splunk Settings'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {canUseGithub && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-gray-900 mb-1">GitHub Evidence Connector</h2>
+                  <p className="text-sm text-gray-500">
+                    Connect GitHub to pull code scanning alerts, Dependabot alerts, organization audit log events, or pull request history directly into your evidence library.
+                  </p>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Connection</h3>
+                      <p className="text-xs text-gray-500">Uses the GitHub REST API with a personal access token or GitHub App token</p>
+                    </div>
+                    {githubSettings?.configured ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Configured</span>
+                        {githubSettings?.token_masked && (
+                          <span className="text-xs text-gray-400">{githubSettings.token_masked}</span>
+                        )}
+                        <button onClick={removeGithubSettings} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      </div>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Not configured</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Personal Access Token</label>
+                      <input
+                        type="password"
+                        value={githubApiToken}
+                        onChange={(e) => setGithubApiToken(e.target.value)}
+                        placeholder="ghp_... or fine-grained token"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={testGithubSettings}
+                        disabled={githubTesting || (!githubApiToken && !githubSettings?.configured)}
+                        className="px-4 py-2 text-sm border border-purple-600 text-purple-600 rounded-md hover:bg-purple-50 disabled:opacity-50"
+                      >
+                        {githubTesting ? 'Testing...' : 'Test Connection'}
+                      </button>
+                      <button
+                        onClick={saveGithubSettings}
+                        disabled={githubSaving || !githubApiToken.trim()}
+                        className="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        {githubSaving ? 'Saving...' : 'Save GitHub Settings'}
                       </button>
                     </div>
                   </div>
