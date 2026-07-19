@@ -1,5 +1,27 @@
 # Release Notes
 
+## v4.6.0 — New Features, Improvements, & Bug Fixes
+
+> **Release Date**: 2026-07-18  
+> **Version**: 4.6.0
+
+### Overview
+
+This release includes 1 new feature, 1 improvement, and 1 bug fix.
+
+### Added
+- Connector-to-control AI auto-assessment with approval workflow (#612)
+
+### Changed
+- Auto-fix stale content in docs [skip ci]
+
+### Fixed
+- Address two real bugs in #568's scheduled report delivery (#611)
+
+
+
+---
+
 ## v4.5.1 — Improvements
 
 > **Release Date**: 2026-07-17  

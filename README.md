@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.5.1-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.6.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)

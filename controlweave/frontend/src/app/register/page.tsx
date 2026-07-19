@@ -3,86 +3,72 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { APP_POSITIONING_SHORT } from '@/lib/branding';
 import BrandLogo from '@/components/BrandLogo';
-
-type TierKey = 'community' | 'pro' | 'enterprise' | 'govcloud';
-type BillingCadence = 'monthly' | 'annual';
-
-const TIER_OPTIONS: Array<{
-  key: TierKey;
-  label: string;
-  description: string;
-  frameworkLimit: number;
-}> = [
-  { key: 'community', label: 'Community (Free)', description: 'Self-hosted, up to 2 frameworks. AGPL v3.', frameworkLimit: 2 },
-  { key: 'pro', label: 'Pro ($499/mo)', description: 'Hosted SaaS. Unlimited frameworks, SSO, 48h SLA.', frameworkLimit: -1 },
-  { key: 'enterprise', label: 'Enterprise', description: 'Unlimited frameworks. Advanced AI governance and impact assessment.', frameworkLimit: -1 },
-  { key: 'govcloud', label: 'Gov Cloud & Advisory (Custom)', description: 'Regulated platform + hands-on consulting. FedRAMP, IL4/IL5, ITAR-aligned hosting.', frameworkLimit: -1 },
-];
-
-const TIER_ORDER: Record<TierKey, number> = { community: 0, pro: 1, enterprise: 2, govcloud: 3 };
 
 interface FrameworkOption {
   code: string;
   label: string;
   description: string;
   controlCount: number;
-  tierRequired: TierKey;
   group?: string;
 }
 
-// Framework groups: all standards in a group count as 1 toward the tier limit
+// Framework groups: all standards in a group count as 1 toward the selected count
 const FRAMEWORK_GROUP_METADATA: Record<string, { label: string; description: string }> = { // ip-hygiene:ignore
-  iso_27000: { label: 'ISO 27000 Series', description: 'Information security management standards — 27001, 27002, 27005, 27017, 27018, 27701, and 31000. Counts as 1 framework.' }, // ip-hygiene:ignore
-  iso_ai: { label: 'ISO AI Suite', description: 'AI governance standards — 42001, 42005, 23894, 38507, 22989, 23053, 5259, and TRs on bias, trust, and ethics. Counts as 1 framework.' }, // ip-hygiene:ignore
-  csf_2_profiles: { label: 'NIST CSF 2.0 — Cyber AI Profiles', description: 'NIST IR 8596 profiles for AI cybersecurity: Secure (SEC), Defend (DEF), and Thwart (THW). Counts as 1 framework.' },
-  owasp_ai: { label: 'OWASP AI Security', description: 'OWASP Top 10 for LLM Applications and Agentic AI risks. Counts as 1 framework.' },
+  iso_27000: { label: 'ISO 27000 Series', description: 'Information security management standards — 27001, 27002, 27005, 27017, 27018, 27701, and 31000.' }, // ip-hygiene:ignore
+  iso_ai: { label: 'ISO AI Suite', description: 'AI governance standards — 42001, 42005, 23894, 38507, 22989, 23053, 5259, and TRs on bias, trust, and ethics.' }, // ip-hygiene:ignore
+  csf_2_profiles: { label: 'NIST CSF 2.0 — Cyber AI Profiles', description: 'NIST IR 8596 profiles for AI cybersecurity: Secure (SEC), Defend (DEF), and Thwart (THW).' },
+  owasp_ai: { label: 'OWASP AI Security', description: 'OWASP Top 10 for LLM Applications and Agentic AI risks.' },
 };
 
+// Frameworks covered by the AI-powered regulatory monitoring feature (privacy/regional law trackers)
+const REGULATORY_MONITORING_CODES = new Set([
+  'nist_privacy', 'gdpr', 'nerc_cip', 'eu_ai_act', 'ccpa_cpra', 'state_ai_governance', 'international_ai_governance',
+]);
+
 const FRAMEWORK_OPTIONS: FrameworkOption[] = [
-  { code: 'nist_csf_2.0', label: 'NIST Cybersecurity Framework 2.0', description: 'Comprehensive cybersecurity risk management framework with 6 core functions aligned to the system lifecycle.', controlCount: 43, tierRequired: 'community' },
-  { code: 'nist_800_53', label: 'NIST SP 800-53 Rev 5', description: 'Federal-grade security and privacy control catalog. Requires RMF workflow and information type selection.', controlCount: 47, tierRequired: 'community' },
-  { code: 'iso_27001', label: 'ISO/IEC 27001:2022', description: 'Information security management system (ISMS) standard with Annex A controls.', controlCount: 39, tierRequired: 'community', group: 'iso_27000' }, // ip-hygiene:ignore
-  { code: 'soc2', label: 'SOC 2 Type II', description: 'Trust Service Criteria for service organizations. Mapped to trustworthiness objectives.', controlCount: 26, tierRequired: 'community' }, // ip-hygiene:ignore
-  { code: 'nist_ai_rmf', label: 'NIST AI Risk Management Framework', description: 'AI risk management aligned with trustworthiness properties for responsible AI deployment.', controlCount: 18, tierRequired: 'community' },
-  { code: 'nist_800_171', label: 'NIST SP 800-171 Rev 3', description: 'Protecting Controlled Unclassified Information (CUI) in non-federal systems. Required for DoD supply-chain programs.', controlCount: 23, tierRequired: 'pro' },
-  { code: 'cmmc_2.0', label: 'CMMC 2.0 (Level 2)', description: 'Cybersecurity Maturity Model Certification — 110 practices for DoD contractor CUI protection.', controlCount: 50, tierRequired: 'pro' }, // ip-hygiene:ignore
-  { code: 'nist_privacy', label: 'NIST Privacy Framework', description: 'Privacy risk management framework integrated with system lifecycle stages.', controlCount: 11, tierRequired: 'govcloud' },
-  { code: 'fiscam', label: 'FISCAM', description: 'Federal Information System Controls Audit Manual for financial statement audits.', controlCount: 12, tierRequired: 'pro' },
-  { code: 'gdpr', label: 'GDPR', description: 'EU General Data Protection Regulation requirements for data privacy and protection.', controlCount: 16, tierRequired: 'govcloud' },
-  { code: 'hipaa', label: 'HIPAA Security Rule', description: 'Health Insurance Portability and Accountability Act security requirements for protected health information.', controlCount: 17, tierRequired: 'enterprise' }, // ip-hygiene:ignore
-  { code: 'hitech', label: 'HITECH Act', description: 'Health Information Technology for Economic and Clinical Health Act — breach notification, enforcement, business associate requirements, and EHR security extending HIPAA.', controlCount: 28, tierRequired: 'enterprise' }, // ip-hygiene:ignore
-  { code: 'ffiec', label: 'FFIEC IT Examination Handbook', description: 'Federal Financial Institutions Examination Council IT standards for banking and finance.', controlCount: 12, tierRequired: 'enterprise' },
-  { code: 'nerc_cip', label: 'NERC CIP', description: 'North American Electric Reliability Corporation Critical Infrastructure Protection standards.', controlCount: 12, tierRequired: 'govcloud' },
-  { code: 'owasp_llm_top10', label: 'OWASP LLM Top 10 (2025)', description: 'Critical security risks for Large Language Model deployments including prompt injection and data poisoning.', controlCount: 10, tierRequired: 'enterprise', group: 'owasp_ai' },
-  { code: 'owasp_agentic_top10', label: 'OWASP Agentic AI Top 10 (2026)', description: 'Security risks for agentic and autonomous AI applications that act independently and chain actions.', controlCount: 10, tierRequired: 'enterprise', group: 'owasp_ai' },
-  { code: 'eu_ai_act', label: 'EU AI Act', description: 'European Union Artificial Intelligence Act. Full lifecycle governance for AI systems.', controlCount: 15, tierRequired: 'govcloud' },
-  { code: 'iso_42001', label: 'ISO/IEC 42001:2023', description: 'AI Management System standard. Lifecycle-aligned governance for AI organizations.', controlCount: 16, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_42005', label: 'ISO/IEC 42005:2025', description: 'AI system impact assessment guidance. Plan, document, and monitor AI impact assessments.', controlCount: 10, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_23894', label: 'ISO/IEC 23894:2023', description: 'AI risk management guidance aligned with ISO 31000.', controlCount: 13, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_38507', label: 'ISO/IEC 38507:2022', description: 'Corporate governance of AI systems.', controlCount: 10, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_22989', label: 'ISO/IEC 22989:2022', description: 'AI concepts, terminology, and reference architecture.', controlCount: 10, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_23053', label: 'ISO/IEC 23053:2022', description: 'Framework for AI systems using machine learning.', controlCount: 12, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_5259', label: 'ISO/IEC 5259 Series', description: 'Data quality for analytics and machine learning.', controlCount: 12, tierRequired: 'enterprise', group: 'iso_ai' }, // ip-hygiene:ignore
-  { code: 'iso_tr_24027', label: 'ISO/IEC TR 24027:2021', description: 'Bias in AI and AI-assisted decision making.', controlCount: 12, tierRequired: 'enterprise', group: 'iso_ai' },
-  { code: 'iso_tr_24028', label: 'ISO/IEC TR 24028:2020', description: 'Trustworthiness in AI systems.', controlCount: 13, tierRequired: 'enterprise', group: 'iso_ai' },
-  { code: 'iso_tr_24368', label: 'ISO/IEC TR 24368:2022', description: 'Ethical and societal concerns in AI.', controlCount: 13, tierRequired: 'enterprise', group: 'iso_ai' },
-  { code: 'iso_27002', label: 'ISO/IEC 27002:2022', description: 'Security controls guidance — companion to ISO 27001.', controlCount: 15, tierRequired: 'enterprise', group: 'iso_27000' }, // ip-hygiene:ignore
-  { code: 'iso_27005', label: 'ISO/IEC 27005:2022', description: 'Information security risk management methodology.', controlCount: 12, tierRequired: 'enterprise', group: 'iso_27000' }, // ip-hygiene:ignore
-  { code: 'iso_27017', label: 'ISO/IEC 27017:2015', description: 'Cloud security controls based on ISO 27002.', controlCount: 12, tierRequired: 'enterprise', group: 'iso_27000' }, // ip-hygiene:ignore
-  { code: 'iso_27018', label: 'ISO/IEC 27018:2019', description: 'PII protection in public cloud environments.', controlCount: 11, tierRequired: 'enterprise', group: 'iso_27000' }, // ip-hygiene:ignore
-  { code: 'iso_27701', label: 'ISO/IEC 27701:2019', description: 'Privacy information management system extending ISO 27001.', controlCount: 14, tierRequired: 'enterprise', group: 'iso_27000' }, // ip-hygiene:ignore
-  { code: 'iso_31000', label: 'ISO 31000:2018', description: 'Risk management principles and guidelines.', controlCount: 11, tierRequired: 'enterprise', group: 'iso_27000' },
-  { code: 'nist_800_207', label: 'NIST SP 800-207 Zero Trust Architecture', description: 'Zero Trust Architecture reference model and design principles for modern network security.', controlCount: 18, tierRequired: 'enterprise' },
-  { code: 'ccpa_cpra', label: 'CCPA / CPRA', description: 'California Consumer Privacy Act and California Privacy Rights Act. Consumer data rights, opt-out requirements, and privacy risk assessments for California operations.', controlCount: 14, tierRequired: 'govcloud' },
-  { code: 'state_ai_governance', label: 'State AI Governance Laws', description: 'Consolidated state-level AI regulations including Colorado AI Act, Illinois AI Video Interview Act, and emerging state AI transparency and impact assessment laws.', controlCount: 47, tierRequired: 'govcloud' },
-  { code: 'international_ai_governance', label: 'International AI Laws', description: 'International AI law, privacy, and policy packs covering the EU, UK, Canada proposal tracking, Brazil, Singapore, Japan, South Korea, China, Australia, and India.', controlCount: 49, tierRequired: 'govcloud' },
+  { code: 'nist_csf_2.0', label: 'NIST Cybersecurity Framework 2.0', description: 'Comprehensive cybersecurity risk management framework with 6 core functions aligned to the system lifecycle.', controlCount: 43 },
+  { code: 'nist_800_53', label: 'NIST SP 800-53 Rev 5', description: 'Federal-grade security and privacy control catalog. Requires RMF workflow and information type selection.', controlCount: 300 },
+  { code: 'iso_27001', label: 'ISO/IEC 27001:2022', description: 'Information security management system (ISMS) standard with Annex A controls.', controlCount: 39, group: 'iso_27000' }, // ip-hygiene:ignore
+  { code: 'soc2', label: 'SOC 2 Type II', description: 'Trust Service Criteria for service organizations. Mapped to trustworthiness objectives.', controlCount: 26 }, // ip-hygiene:ignore
+  { code: 'nist_ai_rmf', label: 'NIST AI Risk Management Framework', description: 'AI risk management aligned with trustworthiness properties for responsible AI deployment.', controlCount: 18 },
+  { code: 'nist_800_171', label: 'NIST SP 800-171 Rev 3', description: 'Protecting Controlled Unclassified Information (CUI) in non-federal systems. Required for DoD supply-chain programs.', controlCount: 23 },
+  { code: 'cmmc_2.0', label: 'CMMC 2.0 (Level 2)', description: 'Cybersecurity Maturity Model Certification — 110 practices for DoD contractor CUI protection.', controlCount: 110 }, // ip-hygiene:ignore
+  { code: 'nist_privacy', label: 'NIST Privacy Framework', description: 'Privacy risk management framework integrated with system lifecycle stages.', controlCount: 11 },
+  { code: 'fiscam', label: 'FISCAM', description: 'Federal Information System Controls Audit Manual for financial statement audits.', controlCount: 12 },
+  { code: 'gdpr', label: 'GDPR', description: 'EU General Data Protection Regulation requirements for data privacy and protection.', controlCount: 16 },
+  { code: 'hipaa', label: 'HIPAA Security Rule', description: 'Health Insurance Portability and Accountability Act security requirements for protected health information.', controlCount: 17 }, // ip-hygiene:ignore
+  { code: 'hitech', label: 'HITECH Act', description: 'Health Information Technology for Economic and Clinical Health Act — breach notification, enforcement, business associate requirements, and EHR security extending HIPAA.', controlCount: 28 }, // ip-hygiene:ignore
+  { code: 'ffiec', label: 'FFIEC IT Examination Handbook', description: 'Federal Financial Institutions Examination Council IT standards for banking and finance.', controlCount: 12 },
+  { code: 'nerc_cip', label: 'NERC CIP', description: 'North American Electric Reliability Corporation Critical Infrastructure Protection standards.', controlCount: 12 },
+  { code: 'owasp_llm_top10', label: 'OWASP LLM Top 10 (2025)', description: 'Critical security risks for Large Language Model deployments including prompt injection and data poisoning.', controlCount: 10, group: 'owasp_ai' },
+  { code: 'owasp_agentic_top10', label: 'OWASP Agentic AI Top 10 (2026)', description: 'Security risks for agentic and autonomous AI applications that act independently and chain actions.', controlCount: 10, group: 'owasp_ai' },
+  { code: 'eu_ai_act', label: 'EU AI Act', description: 'European Union Artificial Intelligence Act. Full lifecycle governance for AI systems.', controlCount: 15 },
+  { code: 'iso_42001', label: 'ISO/IEC 42001:2023', description: 'AI Management System standard. Lifecycle-aligned governance for AI organizations.', controlCount: 16, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_42005', label: 'ISO/IEC 42005:2025', description: 'AI system impact assessment guidance. Plan, document, and monitor AI impact assessments.', controlCount: 10, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_23894', label: 'ISO/IEC 23894:2023', description: 'AI risk management guidance aligned with ISO 31000.', controlCount: 13, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_38507', label: 'ISO/IEC 38507:2022', description: 'Corporate governance of AI systems.', controlCount: 10, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_22989', label: 'ISO/IEC 22989:2022', description: 'AI concepts, terminology, and reference architecture.', controlCount: 10, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_23053', label: 'ISO/IEC 23053:2022', description: 'Framework for AI systems using machine learning.', controlCount: 12, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_5259', label: 'ISO/IEC 5259 Series', description: 'Data quality for analytics and machine learning.', controlCount: 12, group: 'iso_ai' }, // ip-hygiene:ignore
+  { code: 'iso_tr_24027', label: 'ISO/IEC TR 24027:2021', description: 'Bias in AI and AI-assisted decision making.', controlCount: 12, group: 'iso_ai' },
+  { code: 'iso_tr_24028', label: 'ISO/IEC TR 24028:2020', description: 'Trustworthiness in AI systems.', controlCount: 13, group: 'iso_ai' },
+  { code: 'iso_tr_24368', label: 'ISO/IEC TR 24368:2022', description: 'Ethical and societal concerns in AI.', controlCount: 13, group: 'iso_ai' },
+  { code: 'iso_27002', label: 'ISO/IEC 27002:2022', description: 'Security controls guidance — companion to ISO 27001.', controlCount: 15, group: 'iso_27000' }, // ip-hygiene:ignore
+  { code: 'iso_27005', label: 'ISO/IEC 27005:2022', description: 'Information security risk management methodology.', controlCount: 12, group: 'iso_27000' }, // ip-hygiene:ignore
+  { code: 'iso_27017', label: 'ISO/IEC 27017:2015', description: 'Cloud security controls based on ISO 27002.', controlCount: 12, group: 'iso_27000' }, // ip-hygiene:ignore
+  { code: 'iso_27018', label: 'ISO/IEC 27018:2019', description: 'PII protection in public cloud environments.', controlCount: 11, group: 'iso_27000' }, // ip-hygiene:ignore
+  { code: 'iso_27701', label: 'ISO/IEC 27701:2019', description: 'Privacy information management system extending ISO 27001.', controlCount: 14, group: 'iso_27000' }, // ip-hygiene:ignore
+  { code: 'iso_31000', label: 'ISO 31000:2018', description: 'Risk management principles and guidelines.', controlCount: 11, group: 'iso_27000' },
+  { code: 'nist_800_207', label: 'NIST SP 800-207 Zero Trust Architecture', description: 'Zero Trust Architecture reference model and design principles for modern network security.', controlCount: 18 },
+  { code: 'ccpa_cpra', label: 'CCPA / CPRA', description: 'California Consumer Privacy Act and California Privacy Rights Act. Consumer data rights, opt-out requirements, and privacy risk assessments for California operations.', controlCount: 14 },
+  { code: 'state_ai_governance', label: 'State AI Governance Laws', description: 'Consolidated state-level AI regulations including Colorado AI Act, Illinois AI Video Interview Act, and emerging state AI transparency and impact assessment laws.', controlCount: 47 },
+  { code: 'international_ai_governance', label: 'International AI Laws', description: 'International AI law, privacy, and policy packs covering the EU, UK, Canada proposal tracking, Brazil, Singapore, Japan, South Korea, China, Australia, and India.', controlCount: 49 },
   // Backend: scripts/seed-cyber-ai-profile.js
-  { code: 'nist_ir_8596_sec', label: 'NIST IR 8596 — Secure (SEC)', description: 'CSF 2.0 Cyber AI Profile: Secure AI System Components. Covers GV/ID/PR/DE/RS/RC for AI asset protection.', controlCount: 25, tierRequired: 'enterprise', group: 'csf_2_profiles' },
-  { code: 'nist_ir_8596_def', label: 'NIST IR 8596 — Defend (DEF)', description: 'CSF 2.0 Cyber AI Profile: AI-Enabled Cyber Defense. Covers AI-augmented detection and response.', controlCount: 17, tierRequired: 'enterprise', group: 'csf_2_profiles' },
-  { code: 'nist_ir_8596_thw', label: 'NIST IR 8596 — Thwart (THW)', description: 'CSF 2.0 Cyber AI Profile: Thwart AI-Enabled Attacks. Covers countering adversarial AI threats.', controlCount: 20, tierRequired: 'enterprise', group: 'csf_2_profiles' },
+  { code: 'nist_ir_8596_sec', label: 'NIST IR 8596 — Secure (SEC)', description: 'CSF 2.0 Cyber AI Profile: Secure AI System Components. Covers GV/ID/PR/DE/RS/RC for AI asset protection.', controlCount: 25, group: 'csf_2_profiles' },
+  { code: 'nist_ir_8596_def', label: 'NIST IR 8596 — Defend (DEF)', description: 'CSF 2.0 Cyber AI Profile: AI-Enabled Cyber Defense. Covers AI-augmented detection and response.', controlCount: 17, group: 'csf_2_profiles' },
+  { code: 'nist_ir_8596_thw', label: 'NIST IR 8596 — Thwart (THW)', description: 'CSF 2.0 Cyber AI Profile: Thwart AI-Enabled Attacks. Covers countering adversarial AI threats.', controlCount: 20, group: 'csf_2_profiles' },
 ];
 
 const NIST_800_53_DETAIL_OPTIONS = [
@@ -117,15 +103,6 @@ function toggleArrayValue(current: string[], value: string) {
   return [...current, value];
 }
 
-function tierLabel(tier: TierKey): string {
-  switch (tier) {
-    case 'community': return 'Community';
-    case 'pro': return 'Pro';
-    case 'enterprise': return 'Enterprise';
-    case 'govcloud': return 'Gov Cloud & Advisory';
-  }
-}
-
 export default function RegisterPage() {
   return (
     <Suspense fallback={
@@ -139,13 +116,10 @@ export default function RegisterPage() {
 }
 
 function RegisterPageInner() {
-  const searchParams = useSearchParams();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [initialRole, setInitialRole] = useState<'admin' | 'auditor' | 'user'>('admin');
-  const [selectedTier, setSelectedTier] = useState<TierKey>('community');
-  const [billingCadence, setBillingCadence] = useState<BillingCadence>('monthly');
   const [frameworkCodes, setFrameworkCodes] = useState<string[]>([]);
   const [informationTypes, setInformationTypes] = useState<string[]>([]);
   const [password, setPassword] = useState('');
@@ -156,22 +130,10 @@ function RegisterPageInner() {
   const { register } = useAuth();
   const organizationIsRequired = initialRole === 'admin';
 
-  const selectedTierMeta = TIER_OPTIONS.find((t) => t.key === selectedTier) || TIER_OPTIONS[0];
-  const frameworkLimit = selectedTierMeta.frameworkLimit;
-
   const requiresNist80053Details = frameworkCodes.includes('nist_800_53');
   const requiresNist800171Details = frameworkCodes.includes('nist_800_171');
 
-  const hasGovcloudFrameworks = frameworkCodes.some((code) =>
-    FRAMEWORK_OPTIONS.some((fw) => fw.code === code && fw.tierRequired === 'govcloud')
-  );
-
-  const availableFrameworks = FRAMEWORK_OPTIONS.filter(
-    (fw) => (TIER_ORDER as Record<string, number>)[fw.tierRequired] <= (TIER_ORDER as Record<string, number>)[selectedTier]
-  );
-  const lockedFrameworks = FRAMEWORK_OPTIONS.filter(
-    (fw) => (TIER_ORDER as Record<string, number>)[fw.tierRequired] > (TIER_ORDER as Record<string, number>)[selectedTier]
-  );
+  const hasRegulatoryMonitoringFrameworks = frameworkCodes.some((code) => REGULATORY_MONITORING_CODES.has(code));
 
   useEffect(() => {
     if (!requiresNist80053Details && !requiresNist800171Details && informationTypes.length > 0) {
@@ -179,46 +141,7 @@ function RegisterPageInner() {
     }
   }, [requiresNist80053Details, requiresNist800171Details, informationTypes.length]);
 
-  useEffect(() => {
-    const rawPlan = String(searchParams.get('plan') || '').toLowerCase().trim();
-    const rawBilling = String(searchParams.get('billing') || '').toLowerCase().trim();
-
-    let tierFromQuery: TierKey | null = null;
-    let cadenceFromQuery: BillingCadence | null = null;
-
-    if (['community', 'pro', 'enterprise', 'govcloud'].includes(rawPlan)) {
-      tierFromQuery = rawPlan as TierKey;
-    } else {
-      const [tierPart, cadencePart] = rawPlan.split('_');
-      if (['community', 'pro', 'enterprise', 'govcloud'].includes(tierPart)) {
-        tierFromQuery = tierPart as TierKey;
-      }
-      if (cadencePart === 'monthly' || cadencePart === 'annual') {
-        cadenceFromQuery = cadencePart as BillingCadence;
-      }
-    }
-
-    if (rawBilling === 'monthly' || rawBilling === 'annual') {
-      cadenceFromQuery = rawBilling as BillingCadence;
-    }
-
-    if (tierFromQuery) {
-      setSelectedTier(tierFromQuery);
-    }
-    if (cadenceFromQuery) {
-      setBillingCadence(cadenceFromQuery);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    setFrameworkCodes((current) =>
-      current.filter((code) =>
-        FRAMEWORK_OPTIONS.some((fw) => fw.code === code && (TIER_ORDER as Record<string, number>)[fw.tierRequired] <= (TIER_ORDER as Record<string, number>)[selectedTier])
-      )
-    );
-  }, [selectedTier]);
-
-  // Count effective frameworks: each framework_group counts as 1, ungrouped count individually
+  // Count effective frameworks: each framework group counts as 1, ungrouped count individually
   const getEffectiveCount = (codes: string[]) => {
     const seen = new Set<string>();
     for (const code of codes) {
@@ -231,18 +154,7 @@ function RegisterPageInner() {
   const effectiveCount = getEffectiveCount(frameworkCodes);
 
   const toggleFramework = (code: string) => {
-    setFrameworkCodes((current) => {
-      if (current.includes(code)) {
-        return current.filter((entry) => entry !== code);
-      }
-      const nextCodes = [...current, code];
-      const nextEffective = getEffectiveCount(nextCodes);
-      if (frameworkLimit !== -1 && nextEffective > frameworkLimit) {
-        setError(`${tierLabel(selectedTier)} tier allows up to ${frameworkLimit} framework selection${frameworkLimit === 1 ? '' : 's'} (bundled ISO standards count as 1). Deselect one first or choose a higher tier.`);
-        return current;
-      }
-      return nextCodes;
-    });
+    setFrameworkCodes((current) => toggleArrayValue(current, code));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -278,12 +190,6 @@ function RegisterPageInner() {
     setLoading(true);
 
     try {
-      if (organizationIsRequired && selectedTier !== 'community') {
-        localStorage.setItem('pendingPlan', `${selectedTier}_${billingCadence}`);
-      } else {
-        localStorage.removeItem('pendingPlan');
-      }
-
       await register(
         email,
         password,
@@ -312,7 +218,7 @@ function RegisterPageInner() {
           />
           <h1 className="text-3xl font-bold text-gray-900 mt-4">Create Account</h1>
           <p className="text-xs text-purple-700 mt-2 font-medium">
-            Includes a 14-day full-feature trial. After trial end, your org moves to Free tier unless upgraded.
+            Every framework and feature is included — no paid tiers, no upgrade required.
           </p>
         </div>
 
@@ -398,70 +304,6 @@ function RegisterPageInner() {
 
           {organizationIsRequired && (
             <>
-              {/* Tier Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Your Tier
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-                  {TIER_OPTIONS.map((tier) => (
-                    <button
-                      key={tier.key}
-                      type="button"
-                      onClick={() => setSelectedTier(tier.key)}
-                      className={`text-left rounded-lg border p-3 transition ${
-                        selectedTier === tier.key
-                          ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-500'
-                          : 'border-gray-200 bg-white hover:border-purple-400'
-                      }`}
-                    >
-                      <p className="text-sm font-semibold text-gray-900">{tier.label}</p>
-                      <p className="text-xs text-gray-500 mt-1">{tier.description}</p>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Your trial starts on the selected tier. You can change tiers anytime in Settings.
-                </p>
-
-                {selectedTier !== 'community' && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Billing Cycle
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setBillingCadence('monthly')}
-                        className={`text-left rounded-lg border p-3 transition ${
-                          billingCadence === 'monthly'
-                            ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-500'
-                            : 'border-gray-200 bg-white hover:border-purple-400'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-gray-900">Monthly</p>
-                        <p className="text-xs text-gray-500 mt-1">Pay month-to-month</p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBillingCadence('annual')}
-                        className={`text-left rounded-lg border p-3 transition ${
-                          billingCadence === 'annual'
-                            ? 'border-purple-600 bg-purple-50 ring-2 ring-purple-500'
-                            : 'border-gray-200 bg-white hover:border-purple-400'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-gray-900">Annual</p>
-                        <p className="text-xs text-gray-500 mt-1">Billed yearly</p>
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      After setup, you&apos;ll continue to Stripe with: {`${selectedTier}_${billingCadence}`}
-                    </p>
-                  </div>
-                )}
-              </div>
-
               {/* Framework Selection */}
               <div>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1 mb-2">
@@ -469,28 +311,26 @@ function RegisterPageInner() {
                     Available Frameworks
                   </label>
                   <span className="text-xs text-gray-500">
-                    {frameworkCodes.length} selected{frameworkLimit !== -1 ? ` (${effectiveCount} counting toward limit of ${frameworkLimit})` : ''}
+                    {frameworkCodes.length} selected{effectiveCount !== frameworkCodes.length ? ` (${effectiveCount} distinct)` : ''}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  Select the frameworks for your organization. Bundled groups (ISO series, OWASP, CSF Profiles) count as 1 toward your limit.
+                  Select the frameworks for your organization. All frameworks are available — bundled groups (ISO series, OWASP, CSF Profiles) are shown together for convenience.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[28rem] overflow-y-auto pr-1">
                   {(() => {
                     const renderedGroups = new Set<string>();
-                    return availableFrameworks.map((fw) => {
+                    return FRAMEWORK_OPTIONS.map((fw) => {
                       // Grouped framework — render once as a collapsible card
                       if (fw.group) {
                         if (renderedGroups.has(fw.group)) return null;
                         renderedGroups.add(fw.group);
                         const groupMeta = FRAMEWORK_GROUP_METADATA[fw.group];
-                        const groupMembers = availableFrameworks.filter((f) => f.group === fw.group);
+                        const groupMembers = FRAMEWORK_OPTIONS.filter((f) => f.group === fw.group);
                         const selectedCount = groupMembers.filter((f) => frameworkCodes.includes(f.code)).length;
                         const totalControls = groupMembers.reduce((sum, f) => sum + f.controlCount, 0);
                         const isExpanded = expandedGroups.has(fw.group);
-                        const groupAlreadySelected = frameworkCodes.some((c) => FRAMEWORK_OPTIONS.find((f) => f.code === c)?.group === fw.group);
-                        const isAtLimit = frameworkLimit !== -1 && effectiveCount >= frameworkLimit && !groupAlreadySelected;
                         return (
                           <div key={`group-${fw.group}`} className={`rounded-lg border p-3 transition ${selectedCount > 0 ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-white'}`}>
                             <button
@@ -522,19 +362,15 @@ function RegisterPageInner() {
                               <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
                                 {groupMembers.map((child) => {
                                   const isChildSelected = frameworkCodes.includes(child.code);
-                                  const isChildLocked = !isChildSelected && isAtLimit;
                                   return (
                                     <button
                                       key={child.code}
                                       type="button"
                                       onClick={() => toggleFramework(child.code)}
-                                      disabled={isChildLocked}
                                       className={`w-full text-left rounded-md border p-2 transition text-xs ${
                                         isChildSelected
                                           ? 'border-purple-500 bg-purple-100'
-                                          : isChildLocked
-                                            ? 'border-gray-200 bg-gray-100 opacity-60 cursor-not-allowed'
-                                            : 'border-gray-200 bg-white hover:border-purple-300'
+                                          : 'border-gray-200 bg-white hover:border-purple-300'
                                       }`}
                                     >
                                       <div className="flex items-center justify-between gap-2">
@@ -546,7 +382,7 @@ function RegisterPageInner() {
                                         </span>
                                       </div>
                                       <p className="text-gray-500 mt-1 line-clamp-1">{child.description}</p>
-                                      <p className="text-gray-400 mt-0.5">{child.controlCount} controls · Tier: {tierLabel(child.tierRequired)}</p>
+                                      <p className="text-gray-400 mt-0.5">{child.controlCount} controls</p>
                                     </button>
                                   );
                                 })}
@@ -558,20 +394,15 @@ function RegisterPageInner() {
 
                       // Ungrouped framework — render as individual card
                       const isSelected = frameworkCodes.includes(fw.code);
-                      const isAtLimit = frameworkLimit !== -1 && effectiveCount >= frameworkLimit;
-                      const isLocked = !isSelected && isAtLimit;
                       return (
                         <button
                           key={fw.code}
                           type="button"
                           onClick={() => toggleFramework(fw.code)}
-                          disabled={isLocked}
                           className={`text-left rounded-lg border p-3 transition ${
                             isSelected
                               ? 'border-purple-600 bg-purple-50'
-                              : isLocked
-                                ? 'border-gray-200 bg-gray-100 opacity-60 cursor-not-allowed'
-                                : 'border-gray-200 bg-white hover:border-purple-400'
+                              : 'border-gray-200 bg-white hover:border-purple-400'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -590,84 +421,22 @@ function RegisterPageInner() {
                           <p className="text-xs text-gray-600 mt-2 line-clamp-2">{fw.description}</p>
                           <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                             <span>{fw.controlCount} controls</span>
-                            <span>Tier: {tierLabel(fw.tierRequired)}</span>
                           </div>
                         </button>
                       );
                     });
                   })()}
                 </div>
-
-                {lockedFrameworks.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-xs font-medium text-gray-500 mb-2">
-                      Requires a higher tier
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {(() => {
-                        const renderedLockedGroups = new Set<string>();
-                        return lockedFrameworks.map((fw) => {
-                          if (fw.group) {
-                            if (renderedLockedGroups.has(fw.group)) return null;
-                            renderedLockedGroups.add(fw.group);
-                            const groupMeta = FRAMEWORK_GROUP_METADATA[fw.group];
-                            const groupMembers = lockedFrameworks.filter((f) => f.group === fw.group);
-                            const totalControls = groupMembers.reduce((sum, f) => sum + f.controlCount, 0);
-                            const lowestTier = groupMembers.reduce((t, f) => TIER_ORDER[f.tierRequired] < TIER_ORDER[t] ? f.tierRequired : t, groupMembers[0].tierRequired);
-                            return (
-                              <div key={`locked-group-${fw.group}`} className="text-left rounded-lg border border-gray-200 bg-gray-50 p-3 opacity-60">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-gray-500">{groupMeta?.label ?? fw.group}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5">{groupMembers.length} standards · {totalControls} controls</p>
-                                  </div>
-                                  <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
-                                    {tierLabel(lowestTier)}+
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-2 line-clamp-2">{groupMeta?.description}</p>
-                              </div>
-                            );
-                          }
-                          return (
-                            <div
-                              key={fw.code}
-                              className="text-left rounded-lg border border-gray-200 bg-gray-50 p-3 opacity-60"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-gray-500">{fw.label}</p>
-                                  <p className="text-xs text-gray-400 mt-0.5">{fw.code}</p>
-                                </div>
-                                <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
-                                  {tierLabel(fw.tierRequired)}+
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-400 mt-2 line-clamp-2">{fw.description}</p>
-                              <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
-                                <span>{fw.controlCount} controls</span>
-                                <span>Tier: {tierLabel(fw.tierRequired)}</span>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* AI Regulatory Monitoring — shown when Gov Cloud-tier frameworks selected */}
-              {hasGovcloudFrameworks && (
+              {/* AI Regulatory Monitoring — shown when a privacy/regional-law framework is selected */}
+              {hasRegulatoryMonitoringFrameworks && (
                 <div className="border border-teal-200 bg-teal-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-base">🤖</span>
                     <p className="text-sm font-semibold text-teal-900">
                       AI-Powered Regulatory Monitoring
                     </p>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 font-medium">
-                      Included with Gov Cloud &amp; Advisory
-                    </span>
                   </div>
                   <p className="text-xs text-teal-800 mt-1">
                     Your selected privacy and regional frameworks are automatically monitored for regulatory changes.
