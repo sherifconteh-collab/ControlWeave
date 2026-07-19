@@ -1100,7 +1100,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Free tier.
+> Not available on the Community tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
