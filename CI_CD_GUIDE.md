@@ -70,7 +70,7 @@ but **only a subset are actually mandatory** for its own final gate job
 | `codeql-analysis` | **No — non-blocking** | Runs CodeQL (`security-extended,security-and-quality` queries) but `upload: never`; results are saved as a workflow artifact (SARIF), not uploaded to the GitHub Security tab, because **GitHub Advanced Security / Code Scanning is not enabled on this repository** |
 | `secrets-scan` | **No — non-blocking** | TruffleHog (`--only-verified`) + Gitleaks |
 | `container-security` | Not in the gate at all | Builds backend/frontend Docker images, scans with Trivy; SARIF upload to GitHub Security is conditionally attempted only if a runtime check confirms the Code Scanning API is enabled (it currently isn't, so this step no-ops) — results still land as a workflow artifact either way |
-| `dast-scan` | Not in the gate at all | OWASP ZAP baseline scan against `https://demo.controlweave.com` — only runs on push to `main`, never on PRs |
+| `dast-scan` | Not in the gate at all | OWASP ZAP baseline scan against `https://demo.controlweave.com` — only runs on push to `main`, never on PRs; a reachability pre-check skips the scan (with a workflow notice) when the demo environment is offline |
 | `vulnerability-analysis` | **No — non-blocking (best-effort)** | Runs `scripts/analyze-vulnerabilities.js` with `FAIL_ON_SEVERITY=high` against all downloaded scan artifacts; see §1.3 |
 | `security-report` | Yes (or skipped) | Consolidates all findings into an HTML report + PR comment |
 

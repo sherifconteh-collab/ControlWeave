@@ -49,6 +49,7 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
+.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -659,6 +660,7 @@ controlweave/docs/doc-review-log/PR-612.md
 controlweave/docs/doc-review-log/PR-616.md
 controlweave/docs/doc-review-log/PR-619.md
 controlweave/docs/doc-review-log/PR-624.md
+controlweave/docs/doc-review-log/PR-632.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md
