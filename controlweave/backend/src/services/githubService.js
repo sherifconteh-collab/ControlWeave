@@ -114,6 +114,12 @@ async function fetchEvidence(config, { repository, event_type, time_range, max_r
     }
   } else if (!/^[a-zA-Z0-9-_.]+\/[a-zA-Z0-9-_.]+$/.test(trimmedRepository)) {
     throw new Error('Invalid repository format. Expected "owner/repo"');
+  } else if (trimmedRepository.split('/').some((segment) => /^\.+$/.test(segment))) {
+    // The pattern above has to allow '.' -- real repo names contain dots, and
+    // '.github' is a legitimate repo -- but a segment that is *only* dots turns
+    // the interpolated path into a traversal: `new URL('/repos/../user/...')`
+    // resolves to a different GitHub API endpoint. Reject those specifically.
+    throw new Error('Invalid repository format. Expected "owner/repo"');
   }
   const perPage = Math.max(1, Math.min(100, Number(max_results) || 30));
   const cutoff = parseRelativeTime(time_range);

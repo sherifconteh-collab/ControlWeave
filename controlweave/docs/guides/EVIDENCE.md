@@ -117,6 +117,47 @@ A SHA256 integrity hash is computed automatically on upload to support later ver
 
 ---
 
+## Evidence Types
+
+Every uploaded artifact can carry an **evidence type** — what kind of thing it
+is, chosen from a shared vocabulary:
+
+| Code | Label | Use for |
+|---|---|---|
+| `policy` | Policy or Standard | Approved policy, standard, or written procedure |
+| `configuration` | Configuration Export | System or tool configuration showing how a control is set |
+| `log` | Log or Audit Trail | System, application, or audit log export covering a period |
+| `ticket` | Ticket or Change Record | Change, incident, or service ticket showing a process ran |
+| `report` | Assessment or Scan Report | Vulnerability scan, penetration test, or audit report |
+| `attestation` | Attestation or Certificate | Signed attestation, management assertion, certificate |
+| `training_record` | Training Record | Awareness or role-specific training completions |
+| `contract` | Contract or Agreement | Vendor agreement, DPA, BAA, or other commitment |
+| `diagram` | Diagram | Architecture, network, or data-flow diagram |
+| `inventory` | Inventory or Register | Asset, data, system, vendor, or processing-activity inventory |
+| `approval` | Approval or Sign-off | Documented approval, authorization, or review sign-off |
+| `screenshot` | Screenshot | Captured UI state — weaker than a system-generated export |
+| `interview_notes` | Interview or Walkthrough Notes | Record of a walkthrough with control owners |
+| `other` | Other | Anything the vocabulary does not describe |
+
+The vocabulary is **framework-neutral by design**. These are artifact shapes,
+not SOC 2 or HIPAA or PCI concepts, so one artifact can satisfy procedures
+across several frameworks at once — which is what makes it work alongside
+crosswalks.
+
+Assessment procedures declare the types they expect (`expected_evidence_types`),
+so you can see what a procedure is asking for before you go looking for it.
+Every assessment procedure in the catalog carries these, across all frameworks.
+
+Evidence uploaded before this feature shipped is shown as **Untyped** — the
+type was not guessed retroactively, because a wrong label is worse than an
+absent one. Set it when you next edit the item.
+
+The type list is served from the API (`GET /evidence/types`), so a new type
+becomes available in the picker without a frontend release.
+
+Filter the evidence list by type with `?evidence_type=log` (comma-separate for
+several).
+
 ## Step 3: View Evidence Details
 
 ### 3.1 Open an Evidence Record
@@ -236,6 +277,25 @@ ControlWeave uses SHA256 hashing to verify that evidence files have not been alt
 - ❌ **Modified** – File hash does not match; investigate immediately
 
 > **⚠️ Important**: A "Modified" result may indicate tampering or data corruption. Preserve the record and investigate before relying on the evidence in an audit.
+
+---
+
+## Rate Limits on Evidence Operations
+
+Evidence files may contain PII, so the routes that read or destroy them are rate limited per user. You will not notice these during normal work — they exist so a compromised account cannot drain an organization's evidence library, and so nobody can hammer the hashing endpoint.
+
+| Operation | Limit |
+|---|---|
+| Download a file | 30 / minute |
+| Verify integrity (re-hashes the stored file) | 30 / minute |
+| Delete evidence | 30 / minute |
+| Edit metadata, link to a control, unlink | 60 / minute each |
+| View an evidence record | 120 / minute |
+| Browse the evidence list | 120 / minute |
+| Upload (single) | 20 / minute |
+| Upload (bulk) | 5 / minute |
+
+Exceeding a limit returns **429 Too Many Requests**; wait for the window to roll over and retry. If you are pulling a large evidence set for an auditor, expect to pace downloads rather than scripting them in a tight loop.
 
 ---
 

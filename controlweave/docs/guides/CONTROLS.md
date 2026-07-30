@@ -71,7 +71,7 @@ Status options:
 - **Needs Review**: Implementation complete, pending internal review
 - **Verified**: Implemented and independently assessed
 - **Not Applicable**: Control does not apply to this system/org
-- **Auto-Crosswalked**: Automatically satisfied via crosswalk from another implemented control
+- **Auto-Crosswalked**: Automatically satisfied via crosswalk from another implemented control. The control details show which control granted the credit, in which framework, at what similarity score — and if that source control later stops being implemented, the credit is withdrawn automatically and the control returns to the status it held before.
 
 > **💡 Fixed in v2.3.0**: Status badges on the Controls list page now display consistently across all browsers and control sets. If you previously saw missing or miscolored badges, this has been resolved.
 
@@ -99,6 +99,40 @@ Search by:
 - Use control IDs: `AC-2 AC-3 AC-6`
 
 ---
+
+## Control Function (Preventive / Detective / Corrective)
+
+Separate from **control type** (technical, organizational, policy, physical —
+the NIST/ISO control-family axis), each control can carry one or more
+**control functions** describing what it actually does:
+
+- **Preventive** — stops the event, or directs behavior so it does not occur
+  (access control, encryption, segregation of duties, policies, training)
+- **Detective** — notices that something happened or is out of tolerance
+  (logging, monitoring, scanning, reviews, assessments, testing)
+- **Corrective** — restores, repairs, or resolves after the fact
+  (incident response, recovery, backup, remediation, disposal)
+
+A control can be more than one. "Monitor access and revoke inappropriate
+entitlements" is genuinely detective *and* corrective, so the field holds a
+list rather than a single value, and filtering matches on overlap — asking for
+`detective` returns controls labeled `detective, corrective` too.
+
+Filter with `?control_function=detective` on the controls list, or
+comma-separate for several. The function is also included in control exports
+(CSV and XLSX).
+
+### Coverage and accuracy
+
+Functions were classified across every framework in the catalog from control
+titles, using conservative rules: about 500 of 1,200 catalog controls carry a
+function today, and the rest are deliberately left blank.
+
+That is on purpose. A wrong function label in a GRC tool is worse than an
+absent one — it would misrepresent control design during an assessment — so
+only unambiguous signals were classified. Blank means "not yet classified",
+not "has no function". The field is editable, so refine it for your own control
+set; your edits are never overwritten by platform updates.
 
 ## Control Implementation
 
@@ -318,6 +352,12 @@ Implementing **NIST 800-53 AC-2** also satisfies:
 - SOC 2 CC6.1 (Partial Coverage)
 - HIPAA 164.308(a)(3)(i) (Direct Equivalent)
 
+### What Auto-Crediting Will Not Touch
+
+Automatic credit only ever writes to controls sitting at **Not Started**, and only in frameworks your organization has activated. A control anyone has already moved to In Progress, Implemented, Verified, Needs Review, or Not Applicable is left alone — the engine does not overwrite human work, and it will not restore a control someone has since implemented themselves when a credit is withdrawn.
+
+A control can be credited by more than one source. It stays satisfied until the last crediting source stops being implemented.
+
 ### Leverage Crosswalks
 
 **Strategy**:
@@ -336,6 +376,8 @@ After implementing a control, you can immediately propagate its implementation t
 4. A confirmation message shows how many related controls were auto-satisfied
 
 > **💡 Tip**: The crosswalk is also triggered automatically when you set a control to "Implemented" or "Verified". The manual trigger is useful if you want to re-run crosswalk propagation after adjusting mapping settings.
+
+> **⏱️ Rate limit**: The manual trigger is capped at **20 per minute** per user, because each one runs several queries for every control the source is mapped to — and a control can carry dozens of mappings. Setting a control's status (which propagates automatically) is capped at 60 per minute. If you are re-running propagation across a large control set after changing mapping settings, pace it rather than clicking straight down the list; exceeding the cap returns **429 Too Many Requests** until the window rolls over.
 
 ---
 

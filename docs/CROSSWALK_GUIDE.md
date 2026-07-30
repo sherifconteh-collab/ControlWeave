@@ -6,6 +6,8 @@ ControlWeaver-Pro includes **673 cross-framework control mappings** across **36 
 
 The platform's **auto-crosswalk engine** automatically credits related controls as satisfied when you implement a source control with a ≥90% similarity match. For 70–89% matches, the platform surfaces a recommendation for human review rather than auto-crediting — keeping your compliance posture defensible for auditors.
 
+Every credit is recorded with its source, so you can show an assessor exactly which implementation justifies a satisfied control — and so the credit can be withdrawn automatically if that source control stops being implemented. Credit is never applied over work someone has already started, and never to a framework you have not activated. See **[How the Auto-Crosswalk Engine Works](./HOW_CROSSWALKS_WORK.md)** for the full mechanics.
+
 ---
 
 ## What Crosswalks Actually Do

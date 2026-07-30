@@ -37,6 +37,7 @@ describe('llmservice-split: facade export list', () => {
     'analyzeAssetRisk',
     'analyzeControl',
     'analyzeQuestionnaireResponses',
+    'analyzeRbacDocument',
     'analyzeVendorEvidence',
     'assessAuditReadiness',
     'assessVendorRisk',
@@ -90,8 +91,8 @@ describe('llmservice-split: facade export list', () => {
     'withAITrackingContext',
   ];
 
-  test('exports exactly the original 58 symbols', () => {
-    expect(EXPECTED_EXPORTS).toHaveLength(58);
+  test('exports exactly the original 58 symbols plus analyzeRbacDocument (access governance)', () => {
+    expect(EXPECTED_EXPORTS).toHaveLength(59);
     expect(Object.keys(llm).sort()).toEqual(EXPECTED_EXPORTS);
   });
 
@@ -375,6 +376,7 @@ describe('llmservice-split: ai/features identity', () => {
   const analysisFeatures = require('../../src/services/ai/features/analysisFeatures');
   const remediationFeatures = require('../../src/services/ai/features/remediationFeatures');
   const auditVendorFeatures = require('../../src/services/ai/features/auditVendorFeatures');
+  const accessGovernanceFeatures = require('../../src/services/ai/features/accessGovernanceFeatures');
 
   test('analysisFeatures exports the expected symbols', () => {
     expect(Object.keys(analysisFeatures).sort()).toEqual([
@@ -419,6 +421,12 @@ describe('llmservice-split: ai/features identity', () => {
     ]);
   });
 
+  test('accessGovernanceFeatures exports the expected symbols', () => {
+    expect(Object.keys(accessGovernanceFeatures).sort()).toEqual([
+      'analyzeRbacDocument',
+    ]);
+  });
+
   test('facade re-exports every feature function by identity', () => {
     for (const [name, fn] of Object.entries(analysisFeatures)) {
       expect(llm[name]).toBe(fn);
@@ -427,6 +435,9 @@ describe('llmservice-split: ai/features identity', () => {
       expect(llm[name]).toBe(fn);
     }
     for (const [name, fn] of Object.entries(auditVendorFeatures)) {
+      expect(llm[name]).toBe(fn);
+    }
+    for (const [name, fn] of Object.entries(accessGovernanceFeatures)) {
       expect(llm[name]).toBe(fn);
     }
   });

@@ -196,6 +196,12 @@ Good starter controls:
 5. Add tags: "policy", "access-control", "approved"
 6. Click **Upload**
 
+> **Tip**: On the main **Evidence** page, the upload form also asks for an
+> **Evidence Type** (Policy or Standard, Log or Audit Trail, Configuration
+> Export, and so on). Setting it lets you filter your evidence library by
+> artifact type and match uploads against what an assessment procedure expects.
+> See [Evidence Management](EVIDENCE.md#evidence-types).
+
 ![Successfully uploaded evidence confirmation message](../screenshots/evidence-uploaded-success-01.png)
 *Figure 4.5: Evidence uploaded successfully*
 

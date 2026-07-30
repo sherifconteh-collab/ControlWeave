@@ -35,6 +35,7 @@ process.on('uncaughtException', (error) => {
 });
 const { performanceTracker } = require('./middleware/performanceMonitoring');
 const { DEMO_ADMIN_ACCOUNTS } = require('../scripts/lib/demo-account-config');
+const { hashForLookup } = require('./utils/encrypt');
 // safeRequire is defined here (before any conditional imports) so it can be used
 // for services and routes that are absent in the community/public-mirror build.
 function safeRequire(modulePath) {
@@ -375,6 +376,7 @@ const evidenceRoutes = safeRequire('./routes/evidence');
 const auditRoutes = require('./routes/audit');
 const auditFieldsRoutes = require('./routes/auditFields');
 const rolesRoutes = require('./routes/roles');
+const accessGovernanceRoutes = require('./routes/accessGovernance');
 const usersRoutes = require('./routes/users');
 const cmdbRoutes = safeRequire('./routes/cmdb');
 const assetsRoutes = safeRequire('./routes/assets');
@@ -507,6 +509,7 @@ if (evidenceRoutes) app.use('/api/v1/evidence', evidenceRoutes);
 app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/audit', auditFieldsRoutes); // Dynamic fields management under same base path
 app.use('/api/v1/roles', rolesRoutes);
+app.use('/api/v1/access-governance', accessGovernanceRoutes);
 app.use('/api/v1/users', usersRoutes);
 if (cmdbRoutes) app.use('/api/v1/cmdb', cmdbRoutes);
 if (assetsRoutes) app.use('/api/v1/assets', assetsRoutes);
@@ -764,19 +767,30 @@ async function ensureDemoAccountsSeeded() {
     return;
   }
 
+  // users.email is field-level encrypted, so it can never be matched by its
+  // plaintext value here — email_hash is the deterministic lookup key. Getting
+  // this wrong made every demo account look missing and re-ran the full demo
+  // seed on every server boot.
+  const emailHashes = demoEmails.map((email) => hashForLookup(email));
+
   const status = await pool.query(
     `SELECT
-        lower(u.email) AS email,
+        u.email_hash,
         u.organization_id,
         COUNT(ci.id)::int AS impl_count
      FROM users u
      LEFT JOIN control_implementations ci ON ci.organization_id = u.organization_id
-     WHERE lower(u.email) = ANY($1::text[])
-     GROUP BY lower(u.email), u.organization_id`,
-    [demoEmails]
+     WHERE u.email_hash = ANY($1::text[])
+     GROUP BY u.email_hash, u.organization_id`,
+    [emailHashes]
   );
 
-  const byEmail = new Map(status.rows.map((row) => [row.email, row]));
+  const byHash = new Map(status.rows.map((row) => [row.email_hash, row]));
+  const byEmail = new Map(
+    demoEmails
+      .map((email, index) => [email, byHash.get(emailHashes[index])])
+      .filter(([, row]) => Boolean(row))
+  );
   const missingAccounts = [];
   const emptyAccounts = [];
 

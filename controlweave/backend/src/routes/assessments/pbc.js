@@ -75,6 +75,7 @@ router.post('/engagements/:id/pbc/auto-create', requirePermission('assessments.w
         ap.title,
         ap.description,
         ap.expected_evidence,
+        ap.expected_evidence_types,
         fc.control_id,
         fc.title AS control_title,
         f.code AS framework_code

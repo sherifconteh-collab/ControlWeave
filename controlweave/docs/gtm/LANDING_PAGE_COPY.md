@@ -38,7 +38,7 @@ What teams get done with ControlWeave MCP
 - Find controls by framework and update implementation status
 - Locate and link evidence to controls for audit readiness
 - Let AI scan connected integrations and suggest evidence mapped to your framework controls — approve with one click
-- Trigger auto-crosswalk to propagate a control's status across all related frameworks in one call
+- Trigger auto-crosswalk to propagate a control's status across all related frameworks in one call — each credit recorded with the source that justifies it, and withdrawn automatically if that source stops being implemented
 - Query third-party AI vendor risk, open incidents, and unapproved supply-chain components
 - Surface live threat intelligence (CVEs, CISA KEV, MITRE ATT&CK) linked to your controls
 - Review AI and monitoring signals in context, without manual reporting loops

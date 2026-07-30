@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.7.0-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.7.1-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -41,8 +41,13 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ Cyber Resilience module — BC/DR, incident-response, and ransomware-playbook plan tracking with tabletop/functional/full-scale exercise logging, RTO/RPO attainment, and a computed Cyber Resilience Score
 - ✅ JWT + OAuth 2.0 authentication with TOTP 2FA and account lockout
 - ✅ RBAC with Admin, ISSE, Auditor, Read-Only, and custom roles
+- ✅ Access Governance — entitlement reporting with over-privileged and dormant-access flags, separation-of-duties toxic-combination rules with a live violations report, access review certification campaigns that generate an AC-2 evidence record on completion, and a role/permission simulator for testing access before you grant it
+- ✅ AI-assisted RBAC document import — upload your existing role matrix, SoD matrix, or roles & responsibilities document and have AI map it onto the permission catalog, flag conflicts, and propose roles and rules (every suggestion requires an explicit click to apply)
 - ✅ 44 compliance frameworks, 1,190+ controls, 360+ crosswalk mappings
-- ✅ Auto-crosswalk engine (≥90% similarity auto-satisfies controls across frameworks)
+- ✅ SOC 2 across all five Trust Services Criteria — Security, Availability, Confidentiality, Processing Integrity, and Privacy, each with an examine/interview/test audit program
+- ✅ Control function classification — preventive / detective / corrective, filterable across every framework
+- ✅ Framework-neutral evidence types — a 14-value vocabulary (policy, procedure, configuration, log, screenshot, attestation, scan result, and more) that labels evidence consistently no matter which framework you are working against
+- ✅ Auto-crosswalk engine (≥90% similarity auto-satisfies controls across frameworks, with per-source provenance and automatic withdrawal when the source control is no longer implemented)
 - ✅ Custom Framework Builder — create, publish, and clone org-scoped frameworks with full control editor
 - ✅ Executive Analytics Dashboard — cross-framework compliance trends with period selector and SVG sparklines
 - ✅ Scheduled report delivery — configure daily/weekly/monthly/quarterly PDF/CSV report jobs with email recipients
@@ -517,7 +522,14 @@ cp .env.example .env.local
 npm run dev              # port 3000
 ```
 
-**Demo login** (after seeding): `admin@enterprise.com` / `ControlWeave!2026`
+**Demo login** (after seeding): `admin@financial.com` / `ControlWeave!2026`
+
+Seeding creates one demo organization per industry — financial services,
+healthcare, defense, technology, energy, retail, pharma, higher education —
+plus an audit firm (`admin@auditfirm.com`) whose audit workbench comes
+pre-populated with engagements, PBC requests, workpapers, findings, and
+signoffs. Each organization also has an `auditor@<industry>.com` login. See
+[`DEMO_CREDENTIALS.md`](./DEMO_CREDENTIALS.md) for the full roster.
 
 > For full setup including database configuration and Railway deployment, see [`controlweave/QUICK_START.md`](./controlweave/QUICK_START.md).
 

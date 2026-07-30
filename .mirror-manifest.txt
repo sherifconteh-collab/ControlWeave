@@ -49,7 +49,6 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
-.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -156,6 +155,7 @@ controlweave/backend/__tests__/ai/aiBudget.test.js
 controlweave/backend/__tests__/ai/llmSchemas.test.js
 controlweave/backend/__tests__/ai/llmService.test.js
 controlweave/backend/__tests__/ai/orgRagService.test.js
+controlweave/backend/__tests__/ai/promptSafety.test.js
 controlweave/backend/__tests__/middleware/auth.test.js
 controlweave/backend/__tests__/refactor/llmservice-split.test.js
 controlweave/backend/__tests__/refactor/monolith-split.test.js
@@ -166,6 +166,8 @@ controlweave/backend/__tests__/routes/cyberResilience.test.js
 controlweave/backend/__tests__/routes/rmfInheritance.test.js
 controlweave/backend/__tests__/routes/training.test.js
 controlweave/backend/__tests__/routes/trustCenter.test.js
+controlweave/backend/__tests__/services/accessGovernanceService.test.js
+controlweave/backend/__tests__/services/crosswalkCreditService.test.js
 controlweave/backend/__tests__/services/oscalService.test.js
 controlweave/backend/__tests__/utils/consoleBridge.test.js
 controlweave/backend/__tests__/utils/keysetPagination.test.js
@@ -311,6 +313,13 @@ controlweave/backend/migrations/122_cmmc_2_0_comprehensive.sql
 controlweave/backend/migrations/123_nist_800_53_comprehensive.sql
 controlweave/backend/migrations/124_pending_control_assessments.sql
 controlweave/backend/migrations/125_evidence_collection_source_types.sql
+controlweave/backend/migrations/126_access_governance.sql
+controlweave/backend/migrations/127_rbac_document_import.sql
+controlweave/backend/migrations/128_access_governance_rls.sql
+controlweave/backend/migrations/129_soc2_trust_services_criteria.sql
+controlweave/backend/migrations/130_control_functions.sql
+controlweave/backend/migrations/131_evidence_type_taxonomy.sql
+controlweave/backend/migrations/132_crosswalk_auto_satisfaction.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -372,6 +381,7 @@ controlweave/backend/scripts/seed-assessment-procedures-remaining.js
 controlweave/backend/scripts/seed-assessment-procedures-rich-all.js
 controlweave/backend/scripts/seed-assessment-procedures-summary.js
 controlweave/backend/scripts/seed-assessment-procedures.js
+controlweave/backend/scripts/seed-audit-workbench.js
 controlweave/backend/scripts/seed-auditor-account.js
 controlweave/backend/scripts/seed-cmdb-data.js
 controlweave/backend/scripts/seed-community-test-data.js
@@ -395,6 +405,7 @@ controlweave/backend/scripts/seed-frameworks.js
 controlweave/backend/scripts/seed-govcloud-test-data.js
 controlweave/backend/scripts/seed-hf-demo-data.js
 controlweave/backend/scripts/seed-hipaa-crosswalks.js
+controlweave/backend/scripts/seed-industry-demo-data.js
 controlweave/backend/scripts/seed-iso-ai-standards.js
 controlweave/backend/scripts/seed-iso27001-2022-crosswalks.js
 controlweave/backend/scripts/seed-missing-controls.js
@@ -421,6 +432,7 @@ controlweave/backend/scripts/validate-phase6.js
 controlweave/backend/scripts/validate-runtime-linkage.js
 controlweave/backend/scripts/verify-demo-account-logins.js
 controlweave/backend/scripts/verify-live-crosswalk.js
+controlweave/backend/scripts/verify-rls-isolation.js
 controlweave/backend/scripts/verify-security-baseline.js
 controlweave/backend/src/config/database.js
 controlweave/backend/src/config/security.js
@@ -436,6 +448,7 @@ controlweave/backend/src/middleware/rateLimit.js
 controlweave/backend/src/middleware/requestContext.js
 controlweave/backend/src/middleware/sod.js
 controlweave/backend/src/middleware/validate.js
+controlweave/backend/src/routes/accessGovernance.js
 controlweave/backend/src/routes/ai.js
 controlweave/backend/src/routes/aiGovernance.js
 controlweave/backend/src/routes/aiMonitoring.js
@@ -532,13 +545,16 @@ controlweave/backend/src/routes/vendorSecurity.js
 controlweave/backend/src/routes/vulnerabilities.js
 controlweave/backend/src/routes/webhooks.js
 controlweave/backend/src/server.js
+controlweave/backend/src/services/accessGovernanceService.js
 controlweave/backend/src/services/ai/aiCache.js
 controlweave/backend/src/services/ai/chatCore.js
 controlweave/backend/src/services/ai/exemplarLoader.js
+controlweave/backend/src/services/ai/features/accessGovernanceFeatures.js
 controlweave/backend/src/services/ai/features/analysisFeatures.js
 controlweave/backend/src/services/ai/features/auditVendorFeatures.js
 controlweave/backend/src/services/ai/features/remediationFeatures.js
 controlweave/backend/src/services/ai/keyResolution.js
+controlweave/backend/src/services/ai/promptSafety.js
 controlweave/backend/src/services/ai/prompts.js
 controlweave/backend/src/services/ai/providerConfig.js
 controlweave/backend/src/services/ai/providerExec.js
@@ -548,6 +564,7 @@ controlweave/backend/src/services/aiBudget.js
 controlweave/backend/src/services/aiExemplars/evidence_suggestion.json
 controlweave/backend/src/services/aiExemplars/finding.json
 controlweave/backend/src/services/aiExemplars/gap_analysis.json
+controlweave/backend/src/services/aiExemplars/rbac_analysis.json
 controlweave/backend/src/services/aiExemplars/remediation_playbook.json
 controlweave/backend/src/services/aiExemplars/test_procedures.json
 controlweave/backend/src/services/aiQualityGate.js
@@ -565,6 +582,7 @@ controlweave/backend/src/services/ce-mcp/sandbox-manager.js
 controlweave/backend/src/services/ce-mcp/semantic-gate.js
 controlweave/backend/src/services/ce-mcp/static-validator.js
 controlweave/backend/src/services/cisaKevService.js
+controlweave/backend/src/services/crosswalkCreditService.js
 controlweave/backend/src/services/dynamicAuditFieldsService.js
 controlweave/backend/src/services/dynamicConfigService.js
 controlweave/backend/src/services/emailService.js
@@ -661,6 +679,7 @@ controlweave/docs/doc-review-log/PR-616.md
 controlweave/docs/doc-review-log/PR-619.md
 controlweave/docs/doc-review-log/PR-624.md
 controlweave/docs/doc-review-log/PR-632.md
+controlweave/docs/doc-review-log/PR-635.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md
@@ -673,6 +692,7 @@ controlweave/docs/gtm/LINKEDIN_MARKETING_PLAYBOOK.md
 controlweave/docs/gtm/MARKETPLACE_LISTING_PACK.md
 controlweave/docs/gtm/PILOT_PROPOSAL_2_WEEK.md
 controlweave/docs/gtm/PRICING_PAGE_STRUCTURE.md
+controlweave/docs/guides/ACCESS_GOVERNANCE.md
 controlweave/docs/guides/ACCOUNT_SETUP.md
 controlweave/docs/guides/AI_ANALYSIS.md
 controlweave/docs/guides/AI_COPILOT.md
@@ -859,6 +879,7 @@ controlweave/frontend/src/app/blog/how-to-comply-eu-ai-act-article-17/page.tsx
 controlweave/frontend/src/app/blog/how-to-comply-eu-ai-act/page.tsx
 controlweave/frontend/src/app/blog/page.tsx
 controlweave/frontend/src/app/contact/page.tsx
+controlweave/frontend/src/app/dashboard/access-governance/page.tsx
 controlweave/frontend/src/app/dashboard/ai-insights/page.tsx
 controlweave/frontend/src/app/dashboard/ai-laws/page.tsx
 controlweave/frontend/src/app/dashboard/ai-security/page.tsx
@@ -968,6 +989,7 @@ controlweave/frontend/src/components/Sidebar.tsx
 controlweave/frontend/src/components/VendorRiskCharts.tsx
 controlweave/frontend/src/components/VulnerabilityCharts.tsx
 controlweave/frontend/src/components/WebSocketStatusIndicator.tsx
+controlweave/frontend/src/components/accessGovernance/ImportAiTab.tsx
 controlweave/frontend/src/components/ai/MarkdownContent.tsx
 controlweave/frontend/src/components/ai/StructuredOutput.tsx
 controlweave/frontend/src/components/aiInsights/RegulatoryImpactWidget.tsx

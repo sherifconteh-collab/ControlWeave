@@ -84,6 +84,7 @@ const {
   analyzeQuestionnaireResponses,
   analyzeVendorEvidence,
 } = require('./ai/features/auditVendorFeatures');
+const { analyzeRbacDocument } = require('./ai/features/accessGovernanceFeatures');
 
 module.exports = {
   chat,
@@ -116,6 +117,7 @@ module.exports = {
   generateAuditPbcDraft,
   generateAuditWorkpaperDraft,
   generateAuditFindingDraft,
+  analyzeRbacDocument,
   logAIUsage,
   logAIDecision,
   getUsageCount,

@@ -371,6 +371,16 @@ router.post('/gap-analysis', checkAIUsage, aiHandler('gap_analysis', (req, param
   llm.generateGapAnalysis({ ...params, schemaRetryHint: req.schemaRetryHint || null })
 ));
 
+// ======================== RBAC DOCUMENT ANALYSIS ========================
+// Analyzes a customer-uploaded RBAC document (rbac_documents, see the
+// access-governance routes) against the org's permission catalog, roles, and
+// SoD rules. Gated on access_governance.read on top of the router-wide ai.use.
+router.post('/rbac-analysis', checkAIUsage, requirePermission('access_governance.read'),
+  aiHandler('rbac_analysis', (req, params) =>
+    llm.analyzeRbacDocument({ ...params, documentId: req.body.documentId, schemaRetryHint: req.schemaRetryHint || null }),
+  { resourceType: 'rbac_document', resourceId: (req) => req.body.documentId || null })
+);
+
 // ======================== 2. CROSSWALK OPTIMIZER ========================
 router.post('/crosswalk-optimizer', checkAIUsage, aiHandler('crosswalk_optimizer', (req, params) =>
   llm.optimizeCrosswalk(params)

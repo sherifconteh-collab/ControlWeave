@@ -13,15 +13,19 @@
 
 require('dotenv').config();
 const pool = require('../src/config/database');
+const { DEMO_ADMIN_ACCOUNTS } = require('./lib/demo-account-config');
+const { hashForLookup } = require('../src/utils/encrypt');
 const STRICT_DEMO_STATE = String(process.env.QA_STRICT_DEMO_STATE || 'false').toLowerCase() === 'true';
 
 // Demo account credentials
-const DEMO_ACCOUNTS = [
-  { email: 'admin@community.com', tier: 'community', org: 'NovaTech Solutions' },
-  { email: 'admin@pro.com', tier: 'pro', org: 'BrightPath Health' },
-  { email: 'admin@enterprise.com', tier: 'enterprise', org: 'Meridian Financial Group' },
-  { email: 'admin@govcloud.com', tier: 'govcloud', org: 'Vanguard Defense Systems' }
-];
+// Derived from the shared roster so a new industry is covered automatically,
+// rather than drifting from the accounts that actually get seeded.
+const DEMO_ACCOUNTS = DEMO_ADMIN_ACCOUNTS.map((account) => ({
+  email: account.email,
+  tier: account.tier,
+  org: account.orgName
+})
+);
 
 // Test scenarios
 const TEST_SCENARIOS = {
@@ -107,11 +111,14 @@ async function testDemoAccountsExist(client) {
   
   for (const account of DEMO_ACCOUNTS) {
     const result = await client.query(
-      `SELECT u.id, u.email, u.role, o.name as org_name, o.tier
+      // users.email is field-level encrypted; email_hash is the deterministic
+      // lookup key. Matching on plaintext here silently found nothing and made
+      // every assertion below meaningless.
+      `SELECT u.id, u.role, o.name as org_name, o.tier
        FROM users u
        JOIN organizations o ON u.organization_id = o.id
-       WHERE u.email = $1`,
-      [account.email]
+       WHERE u.email_hash = $1`,
+      [hashForLookup(account.email.trim().toLowerCase())]
     );
     
     assert(
@@ -122,10 +129,13 @@ async function testDemoAccountsExist(client) {
     
     if (result.rows.length > 0) {
       const user = result.rows[0];
+      // organizations.tier has been informational since migration 106 set every
+      // org to 'enterprise' (see .claude/rules/tier-system.md). Assert the
+      // organization instead, which is what actually identifies the account.
       assert(
-        user.tier === account.tier,
-        `Correct tier for ${account.email}`,
-        `expected=${account.tier}, actual=${user.tier}`
+        user.org_name === account.org,
+        `Correct organization for ${account.email}`,
+        `expected=${account.org}, actual=${user.org_name}`
       );
       
       assert(

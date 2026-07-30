@@ -18,6 +18,39 @@ You implement:  NIST CSF 2.0 — PR.AA-06 (Multi-Factor Authentication)
 
 **Result**: One implementation satisfies three frameworks. The 85% match surfaces as a recommendation, not an automatic credit — keeping your compliance posture defensible.
 
+### What the engine will not do
+
+Three limits are deliberate, because crediting a control as satisfied without its own evidence is a claim you may have to defend:
+
+- **It never overwrites your work.** Only controls sitting at *Not Started* can receive credit. A control anyone has moved to In Progress, Implemented, Verified, Needs Review, or Not Applicable is left exactly as it is.
+- **It only credits frameworks you have activated.** Crediting a control in a framework you are not pursuing would inflate the posture your dashboard reports, so targets are restricted to your active frameworks.
+- **It never crosses organizations.** Every query is scoped to your organization; a mapping can only ever satisfy a control within the same tenant.
+
+---
+
+## The Credit Ledger: Provenance and Reversal
+
+Every automatic credit is recorded in `control_crosswalk_credits` — one row per (organization, credited control, source control). The status flag alone would not be enough for two reasons.
+
+**An assessor will ask why.** A control marked satisfied with no evidence of its own needs an answer better than a status. The ledger gives you the source control, its framework, the similarity score, the mapping type, the timestamp, and whether that source is *still* implemented today. The control detail view returns this alongside the control, so the justification travels with the claim.
+
+**Credit has to be reversible.** If the source control stops being implemented, the credit it was holding up is withdrawn automatically and the credited control returns to the status it held before — not a hardcoded *Not Started*, but whatever the ledger recorded at credit time.
+
+Reversal is per source, which is why the ledger stores rows rather than a flag:
+
+```
+ISO 27001 A.5.15 is credited by two sources:
+    NIST CSF 2.0 PR.AA-01  [95% equivalent]
+    NIST 800-53  AC-2      [92% equivalent]
+
+You un-implement PR.AA-01  ->  A.5.15 stays satisfied; AC-2 still justifies it
+You un-implement AC-2 too  ->  A.5.15 returns to Not Started
+```
+
+If someone has meanwhile implemented the credited control themselves, withdrawal leaves their status alone — the ledger only ever rewrites controls still sitting on crosswalk credit.
+
+Both crediting and withdrawal are written to the audit log (`crosswalk_credit_applied` / `crosswalk_credit_withdrawn`) with the acting user, because each one changes your reported compliance posture.
+
 ---
 
 ## The Data Model
@@ -383,6 +416,10 @@ Both appear on the dashboard, but are clearly labeled:
 - **Needs Review** — Similarity 70–89%; platform surfaced the connection but requires your human judgment
 
 All three states are captured in the immutable audit log with the acting user, timestamp, and cross-reference to the source control implementation.
+
+### "Show me why this control is satisfied."
+
+Open the control. Every auto-satisfied control carries its credit ledger with it: which control justified it, in which framework, at what similarity score and mapping type, when the credit was applied, and what status that source control holds right now. If the source has since stopped being implemented, the credit has already been withdrawn — a control cannot sit satisfied on a justification that no longer holds.
 
 ### "Will an auditor accept crosswalk-based compliance?"
 

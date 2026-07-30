@@ -7,11 +7,19 @@ const fs = require('fs');
 const { createHash } = require('crypto');
 const pool = require('../config/database');
 const { authenticate, requireTier, requirePermission } = require('../middleware/auth');
+const rateLimit = require('express-rate-limit');
 const { createRateLimiter } = require('../middleware/rateLimit');
 const { decodeCursor, nextCursorFrom } = require('../utils/keysetPagination');
 const { evidenceUploaded } = require('../services/realtimeEventService');
 const ragService = require('../services/orgRagService');
 const aiSecurity = require('../utils/aiSecurity');
+const { log, serializeError } = require('../utils/logger');
+
+// express-rate-limit applied router-wide, ahead of authenticate, so a cheap
+// IP-based bound is in place before any DB/JWT work runs. Set above the
+// per-route caps below (download and integrity-check at 30/min, and the rest)
+// so those stay the binding constraint. Same pattern as accessGovernance.js.
+router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 2000 }));
 
 router.use(authenticate);
 router.use(requireTier('pro'));
@@ -83,6 +91,34 @@ async function getEvidenceColumns() {
     expiresAt: now + 60 * 1000
   };
   return columns;
+}
+
+let evidenceTypesCache = { codes: null, expiresAt: 0 };
+
+/**
+ * The evidence type vocabulary lives in the `evidence_types` table rather than
+ * a CHECK constraint so new types can be added without a migration. Cached the
+ * same way as the column list, since it changes about as often.
+ */
+async function getEvidenceTypeCodes() {
+  const now = Date.now();
+  if (evidenceTypesCache.codes && evidenceTypesCache.expiresAt > now) {
+    return evidenceTypesCache.codes;
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT code FROM evidence_types WHERE is_active = true'
+    );
+    const codes = new Set(result.rows.map((row) => row.code));
+    evidenceTypesCache = { codes, expiresAt: now + 60 * 1000 };
+    return codes;
+  } catch (error) {
+    // Table absent (migration 131 not yet applied) — treat as "no vocabulary",
+    // which makes evidence_type simply unusable rather than breaking uploads.
+    log('warn', 'evidence.types.unavailable', { error: serializeError(error) });
+    return new Set();
+  }
 }
 
 const ALLOWED_UPLOAD_TYPES = new Map([
@@ -234,10 +270,36 @@ function normalizeExpirationDate(input) {
 }
 
 // GET /evidence
-router.get('/', requirePermission('evidence.read'), async (req, res) => {
+// GET /evidence/types — the shared, framework-neutral evidence vocabulary.
+// Served from the database so the picker and the validation agree, and so a
+// new type never needs a frontend release. Declared before '/' so it is not
+// shadowed by any '/:id' route below.
+router.get('/types',
+  createRateLimiter({ label: 'evidence-types', windowMs: 60 * 1000, max: 60 }),
+  requirePermission('evidence.read'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT code, label, description
+       FROM evidence_types
+       WHERE is_active = true
+       ORDER BY sort_order, label`
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    log('error', 'evidence.types.list_failed', { error: serializeError(error) });
+    res.status(500).json({ success: false, error: 'Failed to load evidence types' });
+  }
+});
+
+// Read-heavy list endpoint; limiter added because the evidence router uses
+// per-route limiters rather than a router-level one, so a route without an
+// explicit one gets none.
+router.get('/',
+  createRateLimiter({ label: 'evidence-list', windowMs: 60 * 1000, max: 120 }),
+  requirePermission('evidence.read'), async (req, res) => {
   try {
     const orgId = req.user.organization_id;
-    const { search, tags, limit, offset, cursor } = req.query;
+    const { search, tags, limit, offset, cursor, evidence_type: evidenceTypeFilter } = req.query;
     const evidenceColumns = await getEvidenceColumns();
     // Keyset pagination: cursor=<next_cursor from a previous response> gives
     // O(1) page turns on large evidence stores. limit/offset still work.
@@ -254,7 +316,8 @@ router.get('/', requirePermission('evidence.read'), async (req, res) => {
       evidenceColumns.has('integrity_verified_at') ? 'e.integrity_verified_at' : 'NULL::timestamp AS integrity_verified_at',
       evidenceColumns.has('pii_classification') ? 'e.pii_classification' : "'none'::text AS pii_classification",
       evidenceColumns.has('pii_types') ? 'e.pii_types' : 'NULL::text[] AS pii_types',
-      evidenceColumns.has('data_sensitivity') ? 'e.data_sensitivity' : "'internal'::text AS data_sensitivity"
+      evidenceColumns.has('data_sensitivity') ? 'e.data_sensitivity' : "'internal'::text AS data_sensitivity",
+      evidenceColumns.has('evidence_type') ? 'e.evidence_type' : 'NULL::text AS evidence_type'
     ].join(',\n             ');
 
     let query = `
@@ -280,6 +343,17 @@ router.get('/', requirePermission('evidence.read'), async (req, res) => {
       query += ` AND e.tags && $${idx}::text[]`;
       params.push(`{${tags}}`);
       idx++;
+    }
+
+    if (evidenceTypeFilter && evidenceColumns.has('evidence_type')) {
+      const requested = String(evidenceTypeFilter).split(',').map((code) => code.trim()).filter(Boolean);
+      const typeCodes = await getEvidenceTypeCodes();
+      const valid = requested.filter((code) => typeCodes.has(code));
+      if (valid.length > 0) {
+        query += ` AND e.evidence_type = ANY($${idx}::text[])`;
+        params.push(valid);
+        idx++;
+      }
     }
 
     if (keyset) {
@@ -337,6 +411,13 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
 
     const rawDataSensitivity = req.body.data_sensitivity || 'internal';
     const dataSensitivity = ALLOWED_DATA_SENSITIVITIES.includes(rawDataSensitivity) ? rawDataSensitivity : 'internal';
+
+    // What kind of artifact this is, from the shared framework-neutral
+    // vocabulary. Unrecognized values are dropped rather than rejected so an
+    // upload never fails on a label; the artifact just stays untyped.
+    const evidenceTypeCodes = await getEvidenceTypeCodes();
+    const rawEvidenceType = String(req.body.evidence_type || req.body.evidenceType || '').trim();
+    const evidenceType = evidenceTypeCodes.has(rawEvidenceType) ? rawEvidenceType : null;
 
     const rawPiiTypes = req.body.pii_types
       ? (typeof req.body.pii_types === 'string' ? req.body.pii_types.split(',').map(t => t.trim()) : req.body.pii_types)
@@ -405,6 +486,10 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
     if (evidenceColumns.has('data_sensitivity')) {
       insertColumns.push('data_sensitivity');
       insertValues.push(finalDataSensitivity);
+    }
+    if (evidenceColumns.has('evidence_type')) {
+      insertColumns.push('evidence_type');
+      insertValues.push(evidenceType);
     }
 
     const placeholders = insertValues.map((_, idx) => `$${idx + 1}`).join(', ');
@@ -521,6 +606,13 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
   const piiClassification = ALLOWED_PII_CLASSIFICATIONS.includes(rawPiiClassification) ? rawPiiClassification : 'none';
   const rawDataSensitivity = req.body.data_sensitivity || 'internal';
   const dataSensitivity = ALLOWED_DATA_SENSITIVITIES.includes(rawDataSensitivity) ? rawDataSensitivity : 'internal';
+
+  // Same shared vocabulary as the single-file upload. The evidence page posts
+  // here, so omitting this silently dropped the type the user picked.
+  const bulkEvidenceTypeCodes = await getEvidenceTypeCodes();
+  const rawBulkEvidenceType = String(req.body.evidence_type || req.body.evidenceType || '').trim();
+  const bulkEvidenceType = bulkEvidenceTypeCodes.has(rawBulkEvidenceType) ? rawBulkEvidenceType : null;
+
   const rawPiiTypes = req.body.pii_types
     ? (typeof req.body.pii_types === 'string' ? req.body.pii_types.split(',').map(t => t.trim()) : req.body.pii_types)
     : [];
@@ -578,6 +670,7 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
       if (evidenceColumns.has('pii_classification'))     { insertColumns.push('pii_classification');     insertValues.push(filePiiClass); }
       if (evidenceColumns.has('pii_types'))              { insertColumns.push('pii_types');              insertValues.push(filePiiTypes); }
       if (evidenceColumns.has('data_sensitivity'))       { insertColumns.push('data_sensitivity');       insertValues.push(fileSensitivity); }
+      if (evidenceColumns.has('evidence_type'))          { insertColumns.push('evidence_type');          insertValues.push(bulkEvidenceType); }
 
       const placeholders = insertValues.map((_, idx) => `$${idx + 1}`).join(', ');
       const dbResult = await pool.query(
@@ -644,7 +737,11 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
 });
 
 // GET /evidence/:id/integrity-check
-router.get('/:id/integrity-check', requirePermission('evidence.read'), async (req, res) => {
+// Re-hashes the stored file on every call, so it is the most expensive read on
+// this router — limited well below the plain metadata reads.
+router.get('/:id/integrity-check',
+  createRateLimiter({ label: 'evidence-integrity-check', windowMs: 60 * 1000, max: 30 }),
+  requirePermission('evidence.read'), async (req, res) => {
   try {
     const evidenceColumns = await getEvidenceColumns();
     const hashSelect = evidenceColumns.has('integrity_hash_sha256')
@@ -698,7 +795,9 @@ router.get('/:id/integrity-check', requirePermission('evidence.read'), async (re
 });
 
 // GET /evidence/:id
-router.get('/:id', requirePermission('evidence.read'), async (req, res) => {
+router.get('/:id',
+  createRateLimiter({ label: 'evidence-detail', windowMs: 60 * 1000, max: 120 }),
+  requirePermission('evidence.read'), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT e.*, u.first_name || ' ' || u.last_name as uploaded_by_name
@@ -729,7 +828,12 @@ router.get('/:id', requirePermission('evidence.read'), async (req, res) => {
 });
 
 // GET /evidence/:id/download
-router.get('/:id/download', requirePermission('evidence.read'), async (req, res) => {
+// The bulk-exfiltration path: evidence files carry PII and an org's whole
+// evidence library is enumerable by id from the list endpoint. Tightest limit
+// on the router.
+router.get('/:id/download',
+  createRateLimiter({ label: 'evidence-download', windowMs: 60 * 1000, max: 30 }),
+  requirePermission('evidence.read'), async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT file_name, file_path, mime_type FROM evidence WHERE id = $1 AND organization_id = $2',
@@ -759,7 +863,9 @@ router.get('/:id/download', requirePermission('evidence.read'), async (req, res)
 });
 
 // PUT /evidence/:id
-router.put('/:id', requirePermission('evidence.write'), async (req, res) => {
+router.put('/:id',
+  createRateLimiter({ label: 'evidence-update', windowMs: 60 * 1000, max: 60 }),
+  requirePermission('evidence.write'), async (req, res) => {
   try {
     const { description, tags, retention_until, expires_at, pii_classification, pii_types, data_sensitivity } = req.body;
     const evidenceColumns = await getEvidenceColumns();
@@ -834,7 +940,10 @@ router.put('/:id', requirePermission('evidence.write'), async (req, res) => {
 });
 
 // DELETE /evidence/:id
-router.delete('/:id', requirePermission('evidence.write'), async (req, res) => {
+// Destructive and irreversible, so limited harder than the other mutations.
+router.delete('/:id',
+  createRateLimiter({ label: 'evidence-delete', windowMs: 60 * 1000, max: 30 }),
+  requirePermission('evidence.write'), async (req, res) => {
   try {
     const hold = await pool.query(
       `SELECT id, hold_name
@@ -879,7 +988,9 @@ router.delete('/:id', requirePermission('evidence.write'), async (req, res) => {
 });
 
 // POST /evidence/:id/link
-router.post('/:id/link', requirePermission('evidence.write'), async (req, res) => {
+router.post('/:id/link',
+  createRateLimiter({ label: 'evidence-link', windowMs: 60 * 1000, max: 60 }),
+  requirePermission('evidence.write'), async (req, res) => {
   try {
     const { controlIds, notes } = req.body;
 
@@ -909,7 +1020,9 @@ router.post('/:id/link', requirePermission('evidence.write'), async (req, res) =
 });
 
 // DELETE /evidence/:evidenceId/unlink/:controlId
-router.delete('/:evidenceId/unlink/:controlId', requirePermission('evidence.write'), async (req, res) => {
+router.delete('/:evidenceId/unlink/:controlId',
+  createRateLimiter({ label: 'evidence-unlink', windowMs: 60 * 1000, max: 60 }),
+  requirePermission('evidence.write'), async (req, res) => {
   try {
     await pool.query(
       'DELETE FROM evidence_control_links WHERE evidence_id = $1 AND control_id = $2',

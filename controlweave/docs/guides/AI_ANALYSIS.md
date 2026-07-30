@@ -271,7 +271,37 @@ Estimated time to ready: ~6 weeks
 - Recommended policies and procedures
 - Regulatory compliance status
 
-**Requires:** AI/ML framework activated (NIST AI RMF, ISO 42001, or EU AI Act)
+**Requires:** an AI/ML governance framework activated — NIST AI RMF, ISO 42001,
+ISO 42005, EU AI Act, or AIUC-1. These five are the frameworks the assessment
+reads controls from. Other AI-focused regulatory frameworks (State AI
+Governance, International AI Governance, FINRA Supervisory AI, SEC Markets AI
+Risk) are tracked like any other framework but do not feed this analysis.
+
+### 15. RBAC Document Analysis
+
+**What it does**: Reads an RBAC document you already maintain — a role definition
+spreadsheet, a separation-of-duties matrix, a roles & responsibilities document —
+alongside your live permission catalog, existing roles, and active SoD rules, and
+maps what the document describes onto the platform.
+
+**Access**: Dashboard → Access Governance → Import & AI
+
+**Output includes:**
+- The roles the document defines, with their duties mapped onto real platform permissions
+- Separation-of-duties conflicts the document reveals, including cases where the
+  document's own SoD matrix is being violated by a stated assignment
+- Suggested platform roles and SoD rules to formalize what the document already describes
+- Governance gaps and risks worth follow-up
+
+Nothing is applied automatically. Each suggestion has its own **Create role** /
+**Create SoD rule** button that makes an explicit call through the same guarded
+APIs used elsewhere, and disables itself once used.
+
+**Requires:** `access_governance.manage` to upload and analyze. Holders of
+`access_governance.read` (including auditors) can view previously uploaded
+documents and saved analyses but cannot upload, analyze, or apply suggestions.
+
+See [Access Governance](ACCESS_GOVERNANCE.md) for the rest of the module.
 
 ---
 

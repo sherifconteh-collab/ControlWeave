@@ -26,7 +26,7 @@
 > | Field | Value |
 > |-------|-------|
 > | **Status** | Unreleased — changes staged for next release |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -37,7 +37,7 @@
 
 ### Fixed
 
-- **`evidence_collection_rules` accepted only `splunk`/`connector`**: migration `088`'s `source_type` CHECK constraint never matched the app's own `ALLOWED_SOURCE_TYPES` allowlist (`microsoft_sentinel`, `aws_cloudtrail`, `crowdstrike`, `jira`, `servicenow`, `github`) — creating a rule with any of those source types threw a raw Postgres constraint violation. Fixed in migration `125`.
+- **`evidence_collection_rules` accepted only `splunk`/`connector`**: migration `088`'s `source_type` CHECK constraint never matched the app's own `ALLOWED_SOURCE_TYPES` allowlist (`microsoft_sentinel`, `aws_cloudtrail`, `crowdstrike`, `jira`, `servicenow`, `github`) <!-- ip-hygiene:ignore --> — creating a rule with any of those source types threw a raw Postgres constraint violation. Fixed in migration `125`.
 - **Auto-Evidence rule creation form silently discarded its configuration**: `RuleForm`'s submit handler always sent `source_config: {}` regardless of source type, so no rule created through the UI (Splunk included) was ever actually functional. Fixed generically using the already-fetched `/auto-evidence/sources` `configFields` metadata.
 
 ### Security
@@ -68,7 +68,7 @@
 > | **Release date** | 2026-07-10 |
 > | **Tag** | `v4.3.0` |
 > | **Release branch** | `release/4.3.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 ### ⚠️ Breaking Changes
@@ -151,7 +151,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-18 |
 > | **Tag** | `v3.5.0` |
 > | **Release branch** | `release/3.5.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -191,7 +191,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-16 |
 > | **Tag** | `v3.4.0` |
 > | **Release branch** | `release/3.4.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -241,7 +241,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -274,7 +274,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -307,7 +307,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -340,7 +340,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -373,7 +373,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -406,7 +406,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -439,7 +439,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -472,7 +472,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -505,7 +505,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -538,7 +538,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -571,7 +571,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -611,7 +611,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -642,7 +642,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -675,7 +675,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -718,7 +718,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -756,7 +756,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -792,7 +792,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -838,7 +838,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -877,7 +877,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -908,7 +908,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1274,7 +1274,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1318,7 +1318,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1351,7 +1351,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1402,7 +1402,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `a2807774` |
+> | **Built from** | `19b774e8` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1430,5 +1430,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-07-19T14:33:57.383Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-07-22T13:54:33.245Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->

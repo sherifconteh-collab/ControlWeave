@@ -113,6 +113,27 @@ function buildSteps() {
     steps.push(TIER_STEP_MAP[tier]);
   }
 
+  // Industries added after the original four tier orgs have no tier-specific
+  // seeder, so this fills their frameworks and control implementations. It
+  // only inserts where no implementation row exists, leaving the richer
+  // tier-seeded data above untouched.
+  steps.push({
+    name: 'Seed per-industry frameworks and control implementations',
+    script: 'seed-industry-demo-data.js'
+  });
+
+  // Auditor logins must exist before the audit workbench seed, which assigns
+  // the lead-auditor and preparer roles to them.
+  steps.push({
+    name: 'Seed auditor-role logins for every demo organization',
+    script: 'seed-auditor-account.js'
+  });
+
+  steps.push({
+    name: 'Seed audit workbench (engagements, PBC, workpapers, findings, signoffs)',
+    script: 'seed-audit-workbench.js'
+  });
+
   // Seed feature-tab data (TPRM, RMF, evidence rules, pending evidence,
   // AI compliance monitoring, organization contacts) for each demo account
   // based on tier. Runs once and handles all demo accounts internally.

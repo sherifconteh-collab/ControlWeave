@@ -42,6 +42,7 @@ Welcome to ControlWeave! This comprehensive guide will help you navigate and use
 ### Administration
 - [⚙️ Settings & Configuration](guides/SETTINGS.md) - Configure your organization, manage billing and plans
 - [👥 User Management](guides/USERS.md) - Manage team members and roles
+- [🔎 Access Governance](guides/ACCESS_GOVERNANCE.md) - Entitlement reporting, separation of duties, access review campaigns, and the role simulator
 - [🔑 API Keys & Integrations](guides/INTEGRATIONS.md) - Connect external systems
 - [📧 Notifications](guides/NOTIFICATIONS.md) - Configure alerts and reminders
 - [🔒 Security Settings](guides/SECURITY.md) - Passkeys, SSO, and security features
