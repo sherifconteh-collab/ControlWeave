@@ -102,7 +102,7 @@ Fill in the evidence details:
   - `Public`, `Internal`, `Confidential`, `Restricted`
 - **Retention Until**: Date after which the evidence may be archived or deleted
 
-![Evidence metadata fields showing description, tags, PII classification, and sensitivity](../screenshots/evidence-metadata-fields-01.png)
+![Upload Evidence form showing the description, tags, and classification fields](../screenshots/evidence-upload-form-01.png)
 *Figure 2.2: Evidence metadata fields*
 
 ### 2.4 Complete the Upload
@@ -110,7 +110,7 @@ Fill in the evidence details:
 1. Review the details
 2. Click **Upload Evidence**
 
-![Successfully uploaded evidence confirmation message](../screenshots/evidence-uploaded-success-01.png)
+![Evidence Library listing the uploaded file](../screenshots/evidence-list-01.png)
 *Figure 2.3: Upload success confirmation*
 
 A SHA256 integrity hash is computed automatically on upload to support later verification.
@@ -160,14 +160,18 @@ several).
 
 ## Step 3: View Evidence Details
 
-### 3.1 Open an Evidence Record
+### 3.1 Fetch an Evidence Record
 
-Click any file name or **View** to open the evidence detail page:
+The Evidence Library table shows the file name, type, size and upload date, and
+each row offers **Download** and **Link to Controls**. The full record — including
+everything below — is served by the API; there is no evidence detail page in the
+dashboard yet:
 
-![Evidence detail page showing file information, linked controls, and actions](../screenshots/evidence-detail-page-01.png)
-*Figure 3.1: Evidence detail page*
+```
+GET /api/v1/evidence/:id
+```
 
-**Details Shown**:
+**Details Returned**:
 - Full file metadata (name, size, MIME type, upload date, uploader)
 - SHA256 hash and last integrity verification timestamp
 - PII classification and data sensitivity level
@@ -221,14 +225,12 @@ Linking evidence to controls is essential for audit readiness — it shows audit
 
 To update the description, tags, classification, or retention date of existing evidence:
 
-1. Open the evidence record
-2. Click **Edit**
-3. Update the desired fields
+```
+PUT /api/v1/evidence/:id
+```
 
-![Evidence edit form with editable description, tags, and classification fields](../screenshots/evidence-edit-form-01.png)
-*Figure 5.1: Editing evidence metadata*
-
-4. Click **Save**
+Editing metadata is not yet exposed in the dashboard — send the changed fields to
+the endpoint above.
 
 > **Note**: The original file cannot be replaced. To update the file, upload a new version (see Step 6).
 
@@ -250,12 +252,40 @@ The version counter increments automatically (v1 → v2 → v3...).
 
 ### 6.2 View Version History
 
-1. Open the evidence record
-2. Click **Version History**
-3. View all prior versions with their upload dates and uploaders
+```
+GET  /api/v1/evidence/:id/versions
+POST /api/v1/evidence/:id/versions
+GET  /api/v1/evidence/:id/versions/:versionNumber/download
+```
 
-![Evidence version history panel showing v1 and v2 with dates](../screenshots/evidence-version-history-01.png)
-*Figure 6.1: Evidence version history*
+Lists every prior version with its upload date and uploader, and lets you add a
+new version or download an old one. Versioning has no UI yet.
+
+---
+
+## Version History
+
+Every change to an evidence record archives the previous version rather than overwriting it. The evidence record itself is always the current version; superseded versions are kept with their own file, hash, and metadata.
+
+### What a version preserves
+
+Each archived version keeps the file name, stored file, size, MIME type, and SHA256 hash **as they were**, plus the description, tags, evidence type, PII classification, PII types, and data sensitivity that applied at the time — along with who superseded it and an optional change note.
+
+That last part matters more than it sounds. If evidence is reclassified from PII "low" to "high", the record of what it was classified as *while it was being relied on* is preserved. Without that, a reclassification silently rewrites history.
+
+### Replacing a file
+
+Use **Upload new version** on the evidence record to replace the file. The superseded file stays on disk and its hash stays in the version history, so "this evidence has not been altered" remains demonstrable across a replacement rather than covering only whatever is current.
+
+Add a change note explaining why — "signed copy received from auditor", "redacted customer names" — since that note is what a reviewer reads first.
+
+### Reviewing prior versions
+
+The version history lists superseded versions newest first. Each can be downloaded individually, so an auditor examining a control at a point in time can retrieve the evidence as it stood then.
+
+> **📋 Audit note**: File replacement is recorded in the audit log as `evidence_version_created` with the archived and new version numbers. Version records are immutable — nothing in the application updates or deletes them, so history cannot be edited after the fact.
+
+Deleting an evidence record deletes its version history with it.
 
 ---
 
@@ -265,12 +295,12 @@ ControlWeave uses SHA256 hashing to verify that evidence files have not been alt
 
 ### 7.1 Run an Integrity Check
 
-1. Open the evidence record
-2. Click **Verify Integrity**
-3. ControlWeave recomputes the file hash and compares it to the stored value
+```
+GET /api/v1/evidence/:id/integrity-check
+```
 
-![Integrity check result showing verified status and hash value](../screenshots/evidence-integrity-check-01.png)
-*Figure 7.1: Integrity verification result*
+ControlWeave recomputes the file hash and compares it to the stored value. There
+is no **Verify Integrity** button in the dashboard yet.
 
 **Result States**:
 - ✅ **Verified** – File matches the original hash
@@ -286,7 +316,9 @@ Evidence files may contain PII, so the routes that read or destroy them are rate
 
 | Operation | Limit |
 |---|---|
-| Download a file | 30 / minute |
+| Download a file (current or a prior version) | 30 / minute each |
+| Upload a new version of a file | 20 / minute |
+| List version history | 120 / minute |
 | Verify integrity (re-hashes the stored file) | 30 / minute |
 | Delete evidence | 30 / minute |
 | Edit metadata, link to a control, unlink | 60 / minute each |

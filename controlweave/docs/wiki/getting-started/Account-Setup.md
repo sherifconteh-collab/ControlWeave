@@ -18,7 +18,7 @@ This guide covers setting up your ControlWeave account, configuring your organiz
 1. Click your profile icon (top-right corner)
 2. Select **Settings**
 
-![Profile dropdown menu with Settings option highlighted](../screenshots/settings-menu-01.png)
+![Profile dropdown menu with Settings option highlighted](../../screenshots/settings-menu-01.png)
 *Figure 1.1: Access Settings from your profile menu*
 
 ---
@@ -28,7 +28,7 @@ This guide covers setting up your ControlWeave account, configuring your organiz
 ### 2.1 Organization Information
 Navigate to **Organization Settings** tab:
 
-![Organization Settings page showing org details form](../screenshots/organization-settings-01.png)
+![Organization Settings page showing org details form](../../screenshots/organization-settings-01.png)
 *Figure 2.1: Organization Settings - Configure your organization profile*
 
 **Required Fields**:
@@ -87,7 +87,7 @@ Under **Data Classification**:
    - ☐ **Biometric Data**
    - ☐ **AI Training Data**
 
-![Data classification checkboxes showing various data types](../screenshots/data-classification-01.png)
+![Data classification checkboxes showing various data types](../../screenshots/data-classification-01.png)
 *Figure 3.1: Data Classification - Select the data types your organization handles*
 
 2. This helps ControlWeave:
@@ -194,8 +194,12 @@ Enable passwordless authentication with biometrics or a hardware security key:
 3. Click **+ Add Passkey**
 4. Follow browser prompts to create your passkey
 
-![Passkey registration interface](../screenshots/passkey-setup-01.png)
-*Figure 6.1: Passkey setup for secure authentication*
+![Settings Security tab showing Two-Factor Authentication, the Passkeys panel with a name field and Add Passkey button, and Linked Accounts](../../screenshots/passkey-setup-01.png)
+*Figure 6.1: Passkey setup on the Settings → Security tab*
+
+The same tab also holds **Two-Factor Authentication** (TOTP via an authenticator
+app) and **Linked Accounts** for social/OAuth sign-in. Note that signing in with
+a passkey or via SSO may bypass the TOTP challenge.
 
 > **💡 Security Tip**: Passkeys provide stronger security than passwords and are resistant to phishing attacks.
 
@@ -245,24 +249,18 @@ To enable AI features, configure your LLM provider:
 
 1. Navigate to **LLM Configuration** tab
 
-![LLM Configuration page showing provider selection and API key entry](../screenshots/settings-llm-config-01.png)
+![LLM Configuration page showing provider selection and API key entry](../../screenshots/settings-llm-config-01.png)
 *Figure 8.1: LLM Configuration page*
 
 2. Choose a provider:
 
-![Provider selection dropdown showing Anthropic, OpenAI, Gemini, Groq, Ollama options](../screenshots/llm-provider-select-01.png)
-*Figure 8.2: Select your LLM provider*
 
 3. Enter your API key:
 
-![API key input field with show/hide password toggle](../screenshots/llm-api-key-entry-01.png)
-*Figure 8.3: Enter your API key*
 
 4. Click **Test Connection** to verify
 5. Select default model:
 
-![Model selection dropdown showing available models for the chosen provider](../screenshots/llm-model-select-01.png)
-*Figure 8.4: Select your preferred model*
 
 6. Click **Save Configuration**
 
@@ -377,10 +375,10 @@ If you're short on time, complete these essential items:
 
 After completing account setup:
 
-1. **Select Frameworks**: [Choose compliance frameworks](FRAMEWORKS.md)
-2. **Invite Team**: [Add team members](../USER_GUIDE.md#user-management)
-3. **Start First Control**: [Implement a control](CONTROLS.md)
-4. **Configure AI**: [Set up AI features](AI_COPILOT.md)
+1. **Select Frameworks**: [Choose compliance frameworks](../../guides/FRAMEWORKS.md)
+2. **Invite Team**: [Add team members](../../USER_GUIDE.md#user-management)
+3. **Start First Control**: [Implement a control](../../guides/CONTROLS.md)
+4. **Configure AI**: [Set up AI features](../../guides/AI_COPILOT.md)
 
 ---
 

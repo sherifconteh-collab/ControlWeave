@@ -15,7 +15,7 @@ Monitor AI system usage, review high-risk decisions, and track compliance with A
 - Usage analytics and trend charts
 - High-risk decision identification
 
-[Learn more →](AI-Monitoring-Dashboard)
+[Learn more →](../../guides/AI_MONITORING.md)
 
 ### Data Governance Dashboard
 Manage data retention policies, legal holds, and compliance with GDPR/HIPAA requirements.
@@ -26,7 +26,7 @@ Manage data retention policies, legal holds, and compliance with GDPR/HIPAA requ
 - GDPR/HIPAA compliance monitoring
 - Policy and hold creation workflows
 
-[Learn more →](Data-Governance-Dashboard)
+[Learn more →](../../guides/DATA_GOVERNANCE.md)
 
 ### Vendor Risk Dashboard
 Track vendor contracts, assess security risks, and visualize your vendor risk landscape.
@@ -37,7 +37,7 @@ Track vendor contracts, assess security risks, and visualize your vendor risk la
 - Risk matrix visualization (scatter plot)
 - Contract expiration tracking (90-day alerts)
 
-[Learn more →](Vendor-Risk-Dashboard)
+[Learn more →](../../guides/VENDOR_RISK.md)
 
 ## Navigation
 

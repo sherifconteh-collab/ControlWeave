@@ -22,14 +22,14 @@ variables apply everywhere.
 
 ```bash
 cd controlweave/backend
-npm run mcp          # standard server
-npm run mcp:secure   # security-hardened server (recommended, see Security below)
+npm run mcp          # alias for mcp:secure
+npm run mcp:secure   # security-hardened server (see Security below)
 ```
 
-**Recommendation:** use `npm run mcp:secure` for every environment, including
-local development. It is the actively documented and tool-referenced server
-(`scripts/mcp-server-secure.js`); the plain `npm run mcp` entry point is kept
-for backward compatibility.
+Both scripts run the same binary, `scripts/mcp-server-secure.js` — `mcp` is kept
+as an alias so older setup notes keep working. The unhardened
+`scripts/mcp-server.js` is still on disk but no npm script points at it; treat
+it as deprecated and do not run it directly.
 
 ### Environment variables
 

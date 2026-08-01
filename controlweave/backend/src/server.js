@@ -377,6 +377,15 @@ const auditRoutes = require('./routes/audit');
 const auditFieldsRoutes = require('./routes/auditFields');
 const rolesRoutes = require('./routes/roles');
 const accessGovernanceRoutes = require('./routes/accessGovernance');
+// Risk and resilience registers. Ordered as they depend on one another:
+// departments and objectives are the organizational spine, risks hang off
+// them, incidents and indicators reference risks.
+const departmentsRoutes = require('./routes/departments');
+const objectivesRoutes = require('./routes/objectives');
+const risksRoutes = require('./routes/risks');
+const incidentsRoutes = require('./routes/incidents');
+const obligationsRoutes = require('./routes/obligations');
+const indicatorsRoutes = require('./routes/indicators');
 const usersRoutes = require('./routes/users');
 const cmdbRoutes = safeRequire('./routes/cmdb');
 const assetsRoutes = safeRequire('./routes/assets');
@@ -394,6 +403,7 @@ const vulnerabilitiesRoutes = safeRequire('./routes/vulnerabilities');
 const sbomRoutes = safeRequire('./routes/sbom');
 const dynamicConfigRoutes = require('./routes/dynamicConfig');
 const poamRoutes = require('./routes/poam');
+const poamMilestoneRoutes = require('./routes/poamMilestones');
 const exceptionsRoutes = require('./routes/exceptions');
 const controlHealthRoutes = require('./routes/controlHealth');
 const dashboardBuilderRoutes = require('./routes/dashboardBuilder');
@@ -510,6 +520,12 @@ app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/audit', auditFieldsRoutes); // Dynamic fields management under same base path
 app.use('/api/v1/roles', rolesRoutes);
 app.use('/api/v1/access-governance', accessGovernanceRoutes);
+app.use('/api/v1/departments', departmentsRoutes);
+app.use('/api/v1/objectives', objectivesRoutes);
+app.use('/api/v1/risks', risksRoutes);
+app.use('/api/v1/incidents', incidentsRoutes);
+app.use('/api/v1/obligations', obligationsRoutes);
+app.use('/api/v1/indicators', indicatorsRoutes);
 app.use('/api/v1/users', usersRoutes);
 if (cmdbRoutes) app.use('/api/v1/cmdb', cmdbRoutes);
 if (assetsRoutes) app.use('/api/v1/assets', assetsRoutes);
@@ -531,6 +547,9 @@ if (vulnerabilitiesRoutes) app.use('/api/v1/vulnerabilities', vulnerabilitiesRou
 if (sbomRoutes) app.use('/api/v1/sbom', sbomRoutes);
 app.use('/api/v1/config', dynamicConfigRoutes);
 app.use('/api/v1/poam', poamRoutes);
+// Milestones share the /poam base path; kept in their own router because
+// routes/poam.js is already past the 800-line guideline.
+app.use('/api/v1/poam', poamMilestoneRoutes);
 app.use('/api/v1/exceptions', exceptionsRoutes);
 app.use('/api/v1/control-health', controlHealthRoutes);
 app.use('/api/v1/dashboard-builder', dashboardBuilderRoutes);

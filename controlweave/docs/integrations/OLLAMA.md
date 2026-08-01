@@ -154,7 +154,7 @@ Ollama uses the **GGUF format** with multiple quantization levels:
 
 ## Related Guides
 
-- [AI Copilot](../guides/AI_COPILOT.md) - AI Copilot user guide
+- [Conversational AI](../guides/AI_COPILOT.md) - Asking questions over MCP or the API
 - [AI Analysis](../guides/AI_ANALYSIS.md) - AI analysis features
 - [Settings & LLM Configuration](../guides/SETTINGS.md) - Configure AI providers
 - [Model Quantization](../guides/MODEL_QUANTIZATION.md) - In-depth guide to quantized models

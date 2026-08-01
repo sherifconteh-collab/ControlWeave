@@ -200,16 +200,18 @@ flowchart TD
 
 Examples:
 - `dashboard-overview-01.png`
-- `controls-edit-implementation-01.png`
-- `ai-copilot-chat-interface-01.png`
+- `controls-list-01.png`
+- `poam-list-view-01.png`
 
 ### Quality Standards
 
-- **Resolution**: 1920x1080
+- **Viewport**: 1600x1000 (a handful of older captures are 1280x720, 1440x900,
+  or 3200x2000; new captures should use 1600x1000)
 - **Format**: PNG
 - **Size**: < 500KB (optimized)
-- **Content**: Realistic data, clean UI
-- **Annotations**: Red arrows/boxes for highlights
+- **Content**: Realistic data from a seeded organization, clean UI
+- **Accuracy**: capture only UI that exists — never a placeholder or a mock-up
+  standing in for an unbuilt screen
 
 ### Capture Process
 

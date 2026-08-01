@@ -2,9 +2,36 @@
 
 Welcome! This guide will walk you through your first steps with ControlWeave, from account creation to running your first compliance assessment.
 
+> This page and [`docs/guides/GETTING_STARTED.md`](../../guides/GETTING_STARTED.md)
+> are published to different places (the GitHub Wiki and the guides index) and
+> carry the same content. Change both together.
+
 ## ⏱️ Time Commitment
 - **Quick Setup**: 10 minutes
 - **Full Onboarding**: 30-45 minutes
+
+
+## Finding Your Way Around
+
+The left sidebar groups everything into collapsible sections rather than one long
+list. Only the section you are currently in is expanded, so when a step below
+says *"click **Frameworks** in the left sidebar"*, expand the section it lives
+under first:
+
+| Section | What is inside |
+|---|---|
+| **Compliance** | Controls, AI Control Assessments, Exceptions, Frameworks, Evidence, Assessments, Auditor Workspace, RMF Lifecycle, Cyber Resilience |
+| **Risk** | Risk Register, Indicators, Incidents, Third-Party Risk, Vendor Contracts |
+| **Regulatory** | Obligations, Regulatory News, AI Laws |
+| **Assets & Security** | Assets, SBOM, Financial Compliance, Vulnerabilities, Threat Intelligence, Security Posture, AI Threat Library |
+| **Insights & Reporting** | AI Insights, Reports, Dashboard Views |
+| **Organization** | Organization Profile, Structure (Departments + Business Objectives), My Organizations, Access Governance, Data Governance, Operations, Settings, Notifications |
+| **Learn & Support** | Knowledge Base, Training, Help Center, Report Issue |
+
+**Dashboard** sits above the sections and is always visible. Sections you expand
+stay expanded between visits, and navigating straight to a URL expands whichever
+section contains it. Items you lack permission for are hidden, so your sidebar
+may show fewer entries than the table above.
 
 ## 📋 Prerequisites
 - Web browser (Chrome, Firefox, Safari, or Edge recommended)
@@ -23,7 +50,7 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
    - **Full Name**: Your name as it should appear in the system
    - **Organization Name**: Your company or organization name
 
-![Registration form showing email, password, full name, and organization name fields](../screenshots/register-form-01.png)
+![Registration form showing email, password, full name, and organization name fields](../../screenshots/register-form-01.png)
 *Figure 1.1: Registration form - Enter your details to create your account*
 
 3. Click **Register**
@@ -34,7 +61,7 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 1. You'll be automatically logged in after registration
 2. You'll land on the Dashboard (mostly empty for now - that's normal!)
 
-![Empty dashboard on first login showing welcome message and setup prompts](../screenshots/dashboard-first-login-01.png)
+![Empty dashboard on first login showing welcome message and setup prompts](../../screenshots/dashboard-first-login-01.png)
 *Figure 1.2: Dashboard on first login - Don't worry, it will fill up as you add data*
 
 > **🔐 Login Options**: The login page (`/login`) supports:
@@ -55,13 +82,13 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 1. Click your profile icon (top-right corner)
 2. Select **Settings**
 
-![Profile dropdown menu with Settings option highlighted](../screenshots/settings-menu-01.png)
+![Profile dropdown menu with Settings option highlighted](../../screenshots/settings-menu-01.png)
 *Figure 2.1: Access Settings from your profile menu*
 
 ### 2.2 Organization Information
 Navigate to **Organization Settings** tab:
 
-![Organization Settings page showing org details form](../screenshots/organization-settings-01.png)
+![Organization Settings page showing org details form](../../screenshots/organization-settings-01.png)
 *Figure 2.2: Organization Settings - Configure your organization profile*
 
 **Required Fields**:
@@ -88,7 +115,7 @@ Under **Data Classification**:
    - ☐ Export-Controlled Data
    - ☐ Proprietary Business Data
 
-![Data classification checkboxes showing various data types](../screenshots/data-classification-01.png)
+![Data classification checkboxes showing various data types](../../screenshots/data-classification-01.png)
 *Figure 2.3: Data Classification - Select the data types your organization handles*
 
 2. This helps ControlWeave suggest relevant frameworks
@@ -103,7 +130,7 @@ Under **Data Classification**:
 1. Click **Frameworks** in the left sidebar
 2. You'll see a list of 15+ available frameworks
 
-![Frameworks list page showing all available compliance frameworks](../screenshots/frameworks-list-01.png)
+![Frameworks list page showing all available compliance frameworks](../../screenshots/frameworks-list-01.png)
 *Figure 3.1: Frameworks page - View all available compliance frameworks*
 
 ### 3.2 Choose Relevant Frameworks
@@ -139,15 +166,16 @@ Under **Data Classification**:
 - ✅ OWASP Agentic AI Top 10
 
 ### 3.3 Activate Frameworks
-1. Click **Activate** on each framework you need
-2. Framework status changes to "Active"
-3. Controls from that framework are now available
+1. Tick each framework you need in the list
+2. Click **Save Selection**
+3. Controls from those frameworks become available
 
-![Framework card with Activate button highlighted](../screenshots/frameworks-activate-button-01.png)
-*Figure 3.2: Click Activate to enable a framework*
+There is no per-framework "Activate" button — selection is a checklist you save
+in one action. **Show Library** reveals the full NIST publications library, and
+**Import CSV** / **Export CSV** move a selection between environments.
 
-![Framework showing Active badge after activation](../screenshots/frameworks-active-badge-01.png)
-*Figure 3.3: Active framework with green badge*
+![Frameworks page listing the selectable frameworks with the Save Selection action](../../screenshots/frameworks-list-01.png)
+*Figure 3.2: Selecting frameworks, then Save Selection*
 
 ---
 
@@ -159,7 +187,7 @@ Let's implement a simple control to get familiar with the process.
 1. Click **Controls** in the left sidebar
 2. You'll see all controls from your activated frameworks
 
-![Controls list page showing control IDs, titles, frameworks, and status](../screenshots/controls-list-01.png)
+![Controls list page showing control IDs, titles, frameworks, and status](../../screenshots/controls-list-01.png)
 *Figure 4.1: Controls list - All controls from your activated frameworks*
 
 ### 4.2 Choose a Control
@@ -172,12 +200,12 @@ Good starter controls:
 1. Click the control to open details
 2. Click **Edit Implementation**
 
-![Control detail page showing full description, status, and actions](../screenshots/control-detail-01.png)
+![Control detail page showing full description, status, and actions](../../screenshots/control-detail-01.png)
 *Figure 4.2: Control detail page with implementation options*
 
 3. Set **Status** to "In Progress"
 
-![Control status dropdown showing options: Not Started, In Progress, Implemented, etc.](../screenshots/control-status-dropdown-01.png)
+![Control status dropdown showing options: Not Started, In Progress, Implemented, etc.](../../screenshots/control-status-dropdown-01.png)
 *Figure 4.3: Control status options*
 4. Add **Owner**: Assign to yourself
 5. Set **Due Date**: Choose a reasonable deadline
@@ -188,7 +216,7 @@ Good starter controls:
 1. In the control details, click **Add Evidence**
 2. Click **Upload File** or drag-and-drop
 
-![Evidence upload modal with drag-drop area and file browser button](../screenshots/evidence-upload-form-01.png)
+![Evidence upload modal with drag-drop area and file browser button](../../screenshots/evidence-upload-form-01.png)
 *Figure 4.4: Evidence upload interface*
 
 3. Supported formats: PDF, DOCX, XLSX, JPG, PNG
@@ -196,7 +224,7 @@ Good starter controls:
 5. Add tags: "policy", "access-control", "approved"
 6. Click **Upload**
 
-![Successfully uploaded evidence confirmation message](../screenshots/evidence-uploaded-success-01.png)
+![Evidence Library listing the uploaded file](../../screenshots/evidence-list-01.png)
 *Figure 4.5: Evidence uploaded successfully*
 
 ### 4.5 Mark as Implemented
@@ -215,7 +243,7 @@ Good starter controls:
 1. Click **Assessments** in left sidebar
 2. Click **New Assessment**
 
-![Assessments page with New Assessment button highlighted](../screenshots/assessments-list-01.png)
+![Assessments page with New Assessment button highlighted](../../screenshots/assessments-list-01.png)
 *Figure 5.1: Assessments list page*
 
 ### 5.2 Create Assessment
@@ -226,7 +254,7 @@ Good starter controls:
 - **Assessor**: Select yourself
 - **Due Date**: Set for today or tomorrow
 
-![New assessment form with fields for control, type, depth, assessor, and due date](../screenshots/assessment-create-form-01.png)
+![New assessment form with fields for control, type, depth, assessor, and due date](../../screenshots/assessment-create-form-01.png)
 *Figure 5.2: Create new assessment form*
 
 Click **Create Assessment**
@@ -236,7 +264,7 @@ Click **Create Assessment**
 2. Review each procedure step
 3. Check evidence (click link to view uploaded evidence)
 
-![Assessment in progress showing procedure checklist and evidence links](../screenshots/assessment-conduct-01.png)
+![Assessment in progress showing procedure checklist and evidence links](../../screenshots/assessment-conduct-01.png)
 *Figure 5.3: Conducting an assessment*
 
 4. For each procedure:
@@ -244,7 +272,7 @@ Click **Create Assessment**
    - ⚠️ **Other Than Satisfied**: Partial compliance or issues found
    - ⊘ **Not Applicable**: Procedure doesn't apply
 
-![Assessment result options: Satisfied, Other Than Satisfied, Not Applicable](../screenshots/assessment-results-options-01.png)
+![Assessment result options: Satisfied, Other Than Satisfied, Not Applicable](../../screenshots/assessment-results-options-01.png)
 *Figure 5.4: Assessment outcome options*
 
 5. Add notes explaining your determination
@@ -257,7 +285,7 @@ Click **Create Assessment**
 ### 6.1 Dashboard Overview
 Navigate back to **Dashboard** to see:
 
-![Full dashboard view showing compliance overview, framework progress, priority actions, and recent activity](../screenshots/dashboard-overview-01.png)
+![Full dashboard view showing compliance overview, framework progress, priority actions, and recent activity](../../screenshots/dashboard-overview-01.png)
 *Figure 6.1: Dashboard overview - Your compliance command center*
 
 **Compliance Overview Panel**:
@@ -265,29 +293,23 @@ Navigate back to **Dashboard** to see:
 - Number of controls by status
 - Assessment completion rate
 
-![Compliance overview panel showing overall percentage and control status breakdown](../screenshots/dashboard-compliance-panel-01.png)
+![Compliance overview panel showing overall percentage and control status breakdown](../../screenshots/dashboard-compliance-panel-01.png)
 *Figure 6.2: Compliance overview panel*
 
-**Framework Progress**:
-- Pie charts showing compliance per framework
-- Percentage complete for each active framework
+**Framework Progress and Recent Activity**:
+- Per-framework completion, alongside the latest actions taken in the system
+- Both render together in one panel at the foot of the dashboard
 
-![Framework progress charts showing compliance percentage for each active framework](../screenshots/dashboard-framework-progress-01.png)
-*Figure 6.3: Framework progress visualization*
+![Framework progress and recent activity panel at the foot of the dashboard](../../screenshots/dashboard-recent-activity-01.png)
+*Figure 6.3: Framework progress and recent activity*
 
-**Priority Actions**:
-- Controls requiring attention
-- Overdue assessments
-- Missing evidence
+The dashboard also carries **Control Health Overview**, **Compliance Maturity
+Score**, **Control Status Distribution**, **Compliance Trend (Last 30 Days)** and
+a **Per-Framework Compliance Summary**, plus a **Customize Dashboard** action.
 
-![Priority actions widget showing overdue items and high-priority controls](../screenshots/dashboard-priority-actions-01.png)
-*Figure 6.4: Priority actions requiring attention*
-
-**Recent Activity**:
-- Latest actions taken in the system
-
-![Recent activity feed showing recent control updates, assessments, and evidence uploads](../screenshots/dashboard-recent-activity-01.png)
-*Figure 6.5: Recent activity feed*
+There is no separate "Priority Actions" widget. For work that needs attention,
+use the Controls page filters or the register pages (Risks, Incidents,
+Obligations), which carry their own due-date and status filters.
 
 ---
 
@@ -296,24 +318,18 @@ Navigate back to **Dashboard** to see:
 ### 7.1 Configure LLM Provider
 1. Go to **Settings** → **LLM Configuration**
 
-![LLM Configuration page showing provider selection and API key entry](../screenshots/settings-llm-config-01.png)
+![LLM Configuration page showing provider selection and API key entry](../../screenshots/settings-llm-config-01.png)
 *Figure 7.1: LLM Configuration page*
 
 2. Choose a provider
 
-![Provider selection dropdown showing Anthropic, OpenAI, Gemini, Groq, Ollama options](../screenshots/llm-provider-select-01.png)
-*Figure 7.2: Select your LLM provider*
 
 3. Enter your API key
 
-![API key input field with show/hide password toggle](../screenshots/llm-api-key-entry-01.png)
-*Figure 7.3: Enter your API key*
 
 4. Click **Test Connection**
 5. Select default model
 
-![Model selection dropdown showing available models for the chosen provider](../screenshots/llm-model-select-01.png)
-*Figure 7.4: Select your preferred model*
 
 6. Click **Save**
 
@@ -329,24 +345,21 @@ Navigate back to **Dashboard** to see:
 
 > **💡 Note**: ControlWeaver has no tier-based AI request limit. Any limit you hit comes from your configured provider's own rate limit or quota — use BYOK to control it directly.
 
-### 7.2 Try the AI Copilot
-1. Look for purple **Ask AI** button (bottom-right of any page)
+### 7.2 Use the AI features
 
-![Purple Ask AI button in bottom-right corner of the page](../screenshots/ai-copilot-button-01.png)
-*Figure 7.5: AI Copilot button - Available on every page*
+There is **no floating "Ask AI" chat button**. Earlier versions of this guide
+described a copilot widget in the bottom-right corner of every page; no such
+component exists in the product. AI is reached through the pages that use it:
 
-2. Click to open AI Copilot panel
+| Where | What it does |
+|---|---|
+| **Insights & Reporting → AI Insights** | Gap analysis, audit-readiness scoring, compliance forecast |
+| **Compliance → AI Control Assessments** | AI-assisted control assessment |
+| Vulnerability detail panel | Per-finding AI remediation plan |
+| Access Governance → Import & AI | Analyzes an uploaded RBAC document |
 
-![AI Copilot panel slid out from the right showing chat interface](../screenshots/ai-copilot-panel-open-01.png)
-*Figure 7.6: AI Copilot panel*
-
-3. Try asking:
-   - "What are my top compliance gaps?"
-   - "What controls should I prioritize?"
-   - "Explain NIST 800-53 AC-2 to me"
-
-![AI Copilot conversation showing user question and AI response](../screenshots/ai-copilot-chat-interface-01.png)
-*Figure 7.7: Conversing with the AI Copilot*
+Each requires a configured provider. Without one, these panels report **"No AI
+provider configured."** and offer a provider picker rather than failing.
 
 ---
 
@@ -356,7 +369,7 @@ Navigate back to **Dashboard** to see:
 1. Go to **Settings** → **Users**
 2. Click **Invite User**
 
-![Users list page with Invite User button highlighted](../screenshots/settings-users-list-01.png)
+![Users list page with Invite User button highlighted](../../screenshots/settings-users-list-01.png)
 *Figure 8.1: User management page*
 
 ### 8.2 Set Up User
@@ -370,10 +383,10 @@ Navigate back to **Dashboard** to see:
   - **Viewer**: Read-only access
   - **Auditor**: External auditor role
 
-![Invite user form with email, name, and role fields](../screenshots/users-invite-form-01.png)
+![Invite user form with email, name, and role fields](../../screenshots/users-invite-form-01.png)
 *Figure 8.2: Invite a new user*
 
-![Role selection dropdown showing all available roles](../screenshots/users-role-selection-01.png)
+![Role selection dropdown showing all available roles](../../screenshots/users-role-selection-01.png)
 *Figure 8.3: Select user role*
 
 3. Click **Send Invitation**
@@ -444,4 +457,4 @@ Navigate back to **Dashboard** to see:
 
 ---
 
-**Need Help?** Use the AI Copilot (purple button) or see [FAQ](FAQ.md)
+**Need Help?** Use the AI Copilot (purple button) or see [FAQ](../../guides/FAQ.md)

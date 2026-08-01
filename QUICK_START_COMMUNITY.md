@@ -472,8 +472,8 @@ documentation improvements. See [CONTRIBUTING.md](CONTRIBUTING.md) for the proce
 - **GitHub Issues** — report bugs
 - **GitHub Discussions** — ask questions
 - **Documentation** — read guides under `controlweave/docs/`
-- Explore [docs/MCP_SETUP.md](docs/MCP_SETUP.md) for LLM integration
-- Check [API Documentation](docs/openapi.yaml) for programmatic access
+- Explore [controlweave/docs/MCP_GUIDE.md](controlweave/docs/MCP_GUIDE.md#setup) for LLM integration
+- Check [API Documentation](controlweave/docs/openapi.yaml) for programmatic access
 
 ---
 

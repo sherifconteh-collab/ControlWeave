@@ -34,12 +34,19 @@ This guide focuses on high-impact, low-effort actions that deliver immediate com
 **Requires**: AI configured
 
 **Steps**:
-1. Go to **AI Analysis**
+1. Go to **Insights & Reporting → AI Insights**
 2. Click **Gap Analysis**
 3. Wait 30 seconds
 4. Review results
 
-![AI Gap Analysis results showing missing controls](../screenshots/ai-gap-analysis-quick-01.png)
+> **Screenshot pending:** AI Gap Analysis results showing missing controls. This
+> one needs a configured AI provider to produce real output, so it is not
+> captured here rather than shown with placeholder results.
+
+With no provider configured, AI panels read **"No AI provider configured."** and
+ControlWeave offers a provider picker listing the free options (Google Gemini,
+Groq, self-hosted Ollama) alongside the paid ones. Everything else in this guide
+works without AI.
 
 **Value**: Know exactly what you're missing and where to focus.
 
@@ -85,7 +92,7 @@ This guide focuses on high-impact, low-effort actions that deliver immediate com
 
 **If You Have Multiple Frameworks**:
 
-1. Go to **AI Analysis** → **Crosswalk Optimizer**
+1. Go to **Insights & Reporting → AI Insights** → **Crosswalk Optimizer**
 2. Click **Run Analysis**
 3. AI identifies overlapping controls
 4. Review recommendations
@@ -110,17 +117,27 @@ Result: 1 implementation = 4 controls satisfied!
 **Impact**: Validate your first control
 
 **Steps**:
-1. Go to **Assessments** → **New Assessment**
-2. Select a control you just implemented (AC-1, AT-1, or IR-1)
-3. Select **Self-Assessment**, **Basic** depth
-4. Set Due Date: Today
-5. Click **Create**
-6. Review assessment procedures
-7. Mark each as **Satisfied** (if your evidence supports it)
-8. Add notes: "Policy reviewed, approved by management, all staff notified"
-9. Click **Save Results**
+1. Go to **Assessments** and open the **Procedures** tab
+2. Narrow the list with the framework, control ID, type, and depth filters — e.g.
+   control ID `ACC-1`, depth **Focused**
+3. On a procedure, click **Record Result**
+4. Set **Assessment Result** to **Satisfied**
+5. Fill in **Finding / Notes** and **Evidence Collected**
+6. Click **Save Result**
 
-![Assessment completed showing Satisfied results](../screenshots/assessment-completed-quick-01.png)
+![Record Assessment Result dialog with result set to Satisfied and finding and evidence notes filled in](../screenshots/assessment-record-result-01.png)
+*Recording a result against a single procedure*
+
+The procedure now carries a green **Satisfied** badge, while procedures you have
+not assessed stay marked **Not Assessed**:
+
+![Assessment Procedures list showing one procedure marked Satisfied and another still Not Assessed](../screenshots/assessment-completed-quick-01.png)
+*A recorded Satisfied result*
+
+Results are recorded per procedure, against the pre-loaded NIST 800-53A
+procedure catalog. There is no separate "create an assessment" step — the
+procedures already exist for every framework you have activated. The
+**Results** tab lists everything you have recorded.
 
 **Value**:
 - First control verified
@@ -185,18 +202,28 @@ Result: 1 implementation = 4 controls satisfied!
 **Time**: 5 minutes  
 **Impact**: Instant executive visibility
 
-1. Go to **Custom Dashboards**
-2. Click **Create Dashboard**
-3. Name: "Executive Overview"
-4. Add widgets:
-   - Compliance Overview
-   - Framework Progress
-   - Priority Actions
-   - Compliance Trend
-5. **Save**
-6. Share link with executives
+1. Go to **Insights & Reporting** → **Dashboard Views**
+2. Click **+ New View**
+3. Name it "Executive Overview" and add a description
+4. Tick **Shared with organization** so leadership can see it — optionally
+   **Set as my default view**
+5. Click **Create View**
 
-![Custom executive dashboard](../screenshots/dashboard-custom-executive-01.png)
+![New View form with Name, Description, and the Shared with organization and Set as my default view checkboxes](../screenshots/dashboard-view-builder-01.png)
+*Creating a dashboard view*
+
+6. Click **Open**, then **+ Add Widget** for each panel. A widget needs a
+   **type** (`metric`, `chart`, `list`, or `text`), a title, a grid position and
+   size, and a JSON config — for example `{"metric": "compliance_percentage"}`
+   for a metric widget, or `{"text": "..."}` for a text panel.
+
+![Dashboard Views showing an Executive Overview view shared with the organization and its three configured widgets](../screenshots/dashboard-custom-executive-01.png)
+*The Executive Overview view and its widget list*
+
+Widgets are configured by JSON rather than picked from a gallery, and the
+Dashboard Views page lists the widget definitions — type, position, size — with
+**Edit** and **Remove** per widget. There is no separate share link; sharing is
+the **Shared with organization** flag.
 
 **Value**: Leadership visibility, stakeholder buy-in.
 
@@ -428,4 +455,4 @@ Once you've achieved quick wins:
 
 ---
 
-**Questions?** Ask the AI Copilot (purple button, bottom-right) for personalized quick win recommendations!
+**Questions?** Run **Compliance Gap Analysis** from the AI Insights page for personalized recommendations, or ask over [MCP](../MCP_GUIDE.md).

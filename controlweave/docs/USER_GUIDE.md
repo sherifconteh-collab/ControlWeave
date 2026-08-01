@@ -17,7 +17,7 @@ Welcome to ControlWeave! This comprehensive guide will help you navigate and use
 - [📊 Dashboard](guides/DASHBOARD.md) - Monitor your compliance posture
 
 ### Advanced Features
-- [🤖 AI Copilot](guides/AI_COPILOT.md) - Use the AI assistant for GRC tasks
+- [🤖 Conversational AI](guides/AI_COPILOT.md) - Ask questions over MCP or the /ai/query API
 - [🔍 AI Analysis](guides/AI_ANALYSIS.md) - Run AI-powered compliance analysis
 - [🗄️ CMDB (Asset Management)](guides/CMDB.md) - Track and manage assets
 - [🔐 Vulnerability Management](guides/VULNERABILITIES.md) - Track and remediate vulnerabilities
@@ -129,7 +129,7 @@ For leadership monitoring compliance status.
 - [Error Messages Explained](guides/ERROR_MESSAGES.md)
 
 ### Getting Help
-- **In-App Support**: Use the AI Copilot (purple button, bottom-right) to ask questions
+- **In-App Support**: Run an analysis from **AI Insights**, or ask questions over [MCP](MCP_GUIDE.md)
 - **Documentation**: Search this guide for how-to articles
 - **Email Support**: contehconsulting@gmail.com (Enterprise & Gov Cloud & Advisory)
 - **Dedicated CSM**: Available for Enterprise customers

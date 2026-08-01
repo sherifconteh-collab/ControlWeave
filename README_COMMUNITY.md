@@ -139,10 +139,10 @@ NEXT_PUBLIC_APP_NAME=Controlweave
 
 ## 📚 Documentation
 
-- [Community Edition Guide](COMMUNITY_EDITION.md) - Complete feature documentation
-- [Quick Start Guide](QUICK_START.md) - Detailed setup instructions
-- [MCP Setup](docs/MCP_SETUP.md) - Model Context Protocol integration
-- [API Documentation](docs/openapi.yaml) - OpenAPI specification
+- [User Guide](controlweave/docs/USER_GUIDE.md) - Complete feature documentation
+- [Quick Start Guide](controlweave/QUICK_START.md) - Detailed setup instructions
+- [MCP Setup](controlweave/docs/MCP_GUIDE.md#setup) - Model Context Protocol integration
+- [API Documentation](controlweave/docs/openapi.yaml) - OpenAPI specification
 
 ## 🤝 Contributing
 

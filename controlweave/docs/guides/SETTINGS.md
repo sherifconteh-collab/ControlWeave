@@ -129,13 +129,9 @@ Configure AI providers to power the AI Copilot and AI Analysis features.
 
 2. Select your **Provider** from the dropdown
 
-![Provider selection dropdown showing all available AI providers](../screenshots/llm-provider-select-01.png)
-*Figure 4: Select AI provider*
 
 3. Enter your **API Key** in the key field
 
-![API key entry field with masked display and show/hide toggle](../screenshots/llm-api-key-entry-01.png)
-*Figure 5: API key entry*
 
 4. Click **Test Connection** to verify the key works
 5. Select your **Default Model** from the available models for that provider
@@ -559,7 +555,7 @@ Not from the Settings page — there is no billing/invoice management UI. If you
 
 ## Related Guides
 
-- [🤖 AI Copilot](AI_COPILOT.md) - Using the AI assistant
+- [🤖 Conversational AI](AI_COPILOT.md) - Asking questions over MCP or the API
 - [🔍 AI Analysis](AI_ANALYSIS.md) - Running AI-powered analyses
 - [👥 User Management](ACCOUNT_SETUP.md) - Account and organization setup guide
 - [🔐 Vulnerabilities](VULNERABILITIES.md) - Vulnerability management guide

@@ -65,7 +65,7 @@ const PROVIDER_METADATA = {
     purl: 'pkg:npm/openai',
     supplier: 'OpenAI',
     description: 'OpenAI API SDK - GPT Language Models',
-    usage: 'AI Copilot, compliance Q&A, policy generation',
+    usage: 'Conversational compliance Q&A (MCP server, /ai/query), policy generation',
     dataAccess: 'Organization context, controls, evidence metadata',
     privacy: 'BYOK - customer manages API keys and data',
     architecture: 'Transformer',

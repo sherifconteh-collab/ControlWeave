@@ -268,10 +268,10 @@ Authorization: Bearer YOUR_JWT_TOKEN
 
 ## Related Documentation
 
-- [Phase 7 Implementation Guide](../../../PHASE_7_IMPLEMENTATION_SUMMARY.md)
-- [Threat Intelligence Guide](../../../PHASE_7_EXTERNAL_INTEGRATIONS.md)
-- [Vendor Risk Management](../dashboards/Vendor-Risk-Dashboard)
-- [Security Baseline](../security/Security-Baseline)
+- [Phase 7 Implementation Guide](../../../../PHASE_7_SUMMARY.md)
+- [Threat Intelligence Guide](../../guides/THREAT_INTELLIGENCE.md)
+- [Vendor Risk Management](../../guides/VENDOR_RISK.md)
+- [Security Baseline](../security/README.md)
 
 ---
 **Category**: Integrations  

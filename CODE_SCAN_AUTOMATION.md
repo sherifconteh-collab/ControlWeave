@@ -256,7 +256,7 @@ is:issue is:open label:code-scan-failure "CodeQL" in:body
 
 - [Security Pipeline](.github/workflows/security-pipeline.yml)
 - [NIST 800-160 Compliance](docs/)
-- [Security Best Practices](SECURITY.md)
+- [Security Best Practices](controlweave/docs/guides/SECURITY.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 
 ## Version History

@@ -135,6 +135,6 @@ npm run qa:crosswalk:live
 ## Related Documentation
 
 - [Quick Start Guide](../QUICK_START.md)
-- [Railway Deployment Guide](../RAILWAY_DEPLOYMENT_GUIDE.md)
+- [Railway Deployment Guide](../../RAILWAY_DEPLOYMENT_GUIDE.md)
 - [Security Guide](./wiki/security/DATA_ENCRYPTION.md)
-- [MCP Deployment Checklist](./MCP_DEPLOYMENT_CHECKLIST.md)
+- [MCP Deployment Checklist](./MCP_GUIDE.md#deployment)

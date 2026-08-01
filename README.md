@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.7.1-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.8.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -61,7 +61,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ SBOM / AIBOM management with CycloneDX support
 - ✅ Vulnerability management with CVSS scoring and AI remediation
 - ✅ POA&M tracking for federal and regulatory reporting
-- ✅ Evidence management with versioning, PII classification, and retention enforcement
+- ✅ Evidence management with real version history (every superseded version keeps its own file, SHA256 hash, and PII classification, so a prior version can be retrieved and integrity stays demonstrable across a replacement), PII classification, and retention enforcement
 - ✅ AES-256-GCM encryption at rest for user PII (email), HMAC-SHA-384 searchable hashes, CNSA Suite 1.0 compliant — runtime audit verifies encryption on every server start
 - ✅ TLS 1.2+ enforced on all API channels; MCP → REST API channel hardened against plaintext credential exposure
 - ✅ AU-2 compliant immutable audit logging
@@ -145,7 +145,7 @@ Next-generation AI capabilities for predictive analysis and automated compliance
 🎯 **Impact Levels:** Critical (90-100) • High (70-89) • Medium (40-69) • Low (20-39) • Minimal (0-19)
 ⚡ **Priority Levels:** Critical (80-100) • High (60-79) • Medium (40-59) • Low (0-39)
 
-See [PHASE_6_AI_POWERED_ANALYSIS.md](./PHASE_6_AI_POWERED_ANALYSIS.md) for complete documentation.
+See [PHASE_6_SUMMARY.md](./PHASE_6_SUMMARY.md) for the endpoint table, the scoring algorithm, and which parts of the original plan were never built.
 
 ### Supported LLM Providers
 
@@ -190,13 +190,46 @@ Four-layer defense for AI agent code execution:
 **MAESTRO Attack Class Coverage:** All 16 attack classes mitigated (exception-mediated injection, authorization corruption, sandbox escapes, resource exhaustion, data exfiltration, and 11 more).
 **Performance:** 40-60% faster than traditional MCP (-65% token usage, -75% interaction turns).
 
-See [`controlweave/docs/CE_MCP_SECURITY_GUIDE.md`](./controlweave/docs/CE_MCP_SECURITY_GUIDE.md) and [`controlweave/docs/MAESTRO_CEMCP_GUIDANCE.md`](./controlweave/docs/MAESTRO_CEMCP_GUIDANCE.md).
+See [`controlweave/docs/CE_MCP_GUIDE.md`](./controlweave/docs/CE_MCP_GUIDE.md) — [security architecture](./controlweave/docs/CE_MCP_GUIDE.md#security-architecture) and [the 16 MAESTRO attack classes](./controlweave/docs/CE_MCP_GUIDE.md#the-16-maestro-attack-classes).
 
 
 ### 📦 SBOM / AIBOM Management
 - **Software Bill of Materials (SBOM)** — Upload and manage SBOM files per software asset (CycloneDX)
 - **AI Bill of Materials (AIBOM)** — Track AI/ML system inventories with model metadata, training data provenance, and governance attributes
 - **Vulnerability cross-referencing** — Link SBOM components to CVEs and vulnerability findings
+
+### Risk Register
+- **Individual risk records** — ISO 31000 / ISO 27005 / NIST SP 800-30 register: threat source, vulnerability, owner, owning department, and review cadence
+- **Inherent and residual assessment** — likelihood × impact on 1–5 scales, both stored, so the reduction attributable to controls is visible rather than assumed
+- **5×5 residual heat map** — computed from the register, with the same severity bands used everywhere else in the product
+- **Four treatment strategies** — avoid / mitigate / transfer / accept, with treatment actions carrying a target residual score so effectiveness can be checked after completion
+- **Named risk acceptance** — who accepted it, when, why, and until when; a lapsed acceptance is flagged rather than left reading "accepted"
+- **Review history** — each periodic review snapshots the assessment as it stood, so the trail survives later edits
+- **Linked to the rest of the platform** — controls that treat the risk, assets exposed to it, business objectives threatened by it
+
+### Incident Management
+- **NIST SP 800-61 lifecycle** — new → triaged → investigating → contained → eradicated → recovered → closed, with transitions validated so an incident cannot be eradicated before it is contained
+- **Response metrics from phase timestamps** — dwell time, time to triage, time to contain, time to resolve, and organization-level averages over closed incidents
+- **Breach notification clock** — deadline tracking with hours remaining, whether a notification met its deadline, and how far past an overdue one is
+- **Response timeline** — chronological record of who did what, written on every transition and never rewritten
+- **Linked to risk and controls** — which risk materialized, and which control failed, detected, or contained the incident
+
+### Compliance Obligations
+- **Obligations register** — statute, regulation, contract, licence condition, certification requirement, or customer commitment, with citation and jurisdiction
+- **Recurring deadlines** — due dates advance from the due date rather than the attestation date, so a late attestation shows as late instead of quietly moving the schedule
+- **Per-period attestation history** — the artifact an auditor samples as evidence of operation over a period
+- **Control linkage** — which controls demonstrate the obligation is met, so a control failure can be read in regulatory terms
+
+### Indicators (KRI / KPI / KCI)
+- **Amber and red thresholds with an explicit direction** — "higher is worse" and "higher is better" indicators are both handled correctly
+- **Measurement time series** — breach level recorded at write time, so retuning a threshold does not rewrite historic breaches
+- **Trend and staleness** — improving / worsening relative to the indicator's direction, plus a flag when an indicator has stopped being measured
+- **Linked to a risk, objective, or control** — so a moving indicator points at what it is an indicator of
+
+### Organizational Structure
+One page (**Organization → Structure**) with a tab each for departments and objectives — they are read together, since you assign an objective to a department and a department's risk count only means something next to the objectives it owns.
+- **Departments** — hierarchical business units that own risks, incidents, obligations and objectives, with open-risk and open-incident roll-ups per unit
+- **Business objectives** — COSO's four categories (strategic, operational, reporting, compliance) with the risks recorded against each, since ISO 31000 defines risk as the effect of uncertainty on objectives
 
 ### Vulnerability Management
 - **Vulnerability tracking** — Log and manage security vulnerability findings
@@ -717,10 +750,12 @@ npm run mcp:secure
 MCP authentication policy: login-based only via `npm run mcp:login`. Applies to all users, including admins.
 
 **Documentation:**
-- Complete tool catalog: [`controlweave/docs/MCP_TOOLS_REFERENCE.md`](./controlweave/docs/MCP_TOOLS_REFERENCE.md)
-- Security guide: [`controlweave/docs/MCP_SECURITY_GUIDE.md`](./controlweave/docs/MCP_SECURITY_GUIDE.md)
-- Deployment checklist: [`controlweave/docs/MCP_DEPLOYMENT_CHECKLIST.md`](./controlweave/docs/MCP_DEPLOYMENT_CHECKLIST.md)
-- Detailed setup: [`controlweave/docs/MCP_SETUP.md`](./controlweave/docs/MCP_SETUP.md)
+All four topics live in one guide, [`controlweave/docs/MCP_GUIDE.md`](./controlweave/docs/MCP_GUIDE.md):
+
+- Complete tool catalog: [Tools Reference](./controlweave/docs/MCP_GUIDE.md#tools-reference)
+- Security guide: [Security](./controlweave/docs/MCP_GUIDE.md#security)
+- Deployment checklist: [Deployment](./controlweave/docs/MCP_GUIDE.md#deployment)
+- Detailed setup: [Setup](./controlweave/docs/MCP_GUIDE.md#setup)
 
 ---
 

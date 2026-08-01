@@ -37,7 +37,7 @@ ControlWeaver has no tier gating and no asset limit — CMDB, hardware/software 
 
 ### 1.1 Navigate to CMDB
 
-1. Click **CMDB** in the left sidebar
+1. Under **Assets & Security** in the left sidebar, click **Assets**
 2. The CMDB dashboard displays an overview of your asset inventory
 
 The CMDB is organized into six sections:
@@ -91,7 +91,7 @@ Define your deployment environments before adding assets. Assets are associated 
 
 ### 2.1 Add an Environment
 
-1. Click **CMDB** → **Environments** → **Add Environment**
+1. Go to **Assets & Security → Assets**, then **Environments** → **Add Environment**
 2. Fill in the environment details:
 
 **Required Fields**:
@@ -124,7 +124,7 @@ Define your deployment environments before adding assets. Assets are associated 
 
 ### 3.1 Add a Hardware Asset
 
-1. Click **CMDB** → **Hardware** → **Add Hardware**
+1. Go to **Assets & Security → Assets**, then **Hardware** → **Add Hardware**
 2. Fill in asset details:
 
 **Required Fields**:
@@ -177,7 +177,7 @@ For large inventories, use CSV import:
 
 ### 4.1 Add a Software Asset
 
-1. Click **CMDB** → **Software** → **Add Software**
+1. Go to **Assets & Security → Assets**, then **Software** → **Add Software**
 2. Fill in asset details:
 
 **Software-Specific Fields**:
@@ -214,7 +214,7 @@ AI Agent assets have additional fields to support AI governance and the NIST AI 
 
 ### 5.1 Add an AI Agent
 
-1. Click **CMDB** → **AI Agents** → **Add AI Agent**
+1. Go to **Assets & Security → Assets**, then **AI Agents** → **Add AI Agent**
 2. Fill in standard asset fields, plus:
 
 **AI Governance Fields**:
@@ -247,7 +247,7 @@ AI Agents support AI Bill of Materials (AIBOM) to document model components, tra
 
 Service accounts represent non-human identities such as API keys, CI/CD tokens, and database credentials.
 
-1. Click **CMDB** → **Service Accounts** → **Add Service Account**
+1. Go to **Assets & Security → Assets**, then **Service Accounts** → **Add Service Account**
 2. Fill in the details:
 
 **Required Fields**:
@@ -296,7 +296,7 @@ Register your organization's password vaults to link service account credentials
 
 ### 7.1 Add a Password Vault
 
-1. Click **CMDB** → **Password Vaults** → **Add Vault**
+1. Go to **Assets & Security → Assets**, then **Password Vaults** → **Add Vault**
 2. Fill in the details:
 
 **Fields**:
@@ -327,7 +327,7 @@ Link CMDB assets to compliance controls to demonstrate evidence coverage.
 
 ControlWeave AI can automatically suggest control-to-asset mappings:
 
-1. Click **AI Analysis** → **Asset-Control Mapping**
+1. Go to **Insights & Reporting → AI Insights** → **Asset-Control Mapping**
 2. Select the frameworks to analyze
 3. Click **Generate Mappings**
 4. Review AI suggestions
@@ -375,14 +375,15 @@ See how CMDB assets contribute to compliance:
 
 AI can detect assets that are active in your environment but not registered in the CMDB:
 
-1. Click **AI Analysis** → **Shadow IT Detection**
+1. Go to **Insights & Reporting → AI Insights** → **Shadow IT Detection**
 2. AI compares network data and integration feeds against registered assets
 3. Review unregistered assets
 4. Add to CMDB or mark as reviewed
 
-### 10.2 Ask AI Copilot
+### 10.2 Ask in natural language
 
-Use the AI Copilot for asset-related questions:
+There is no in-app chat box. Connect an MCP-compatible assistant (see the
+[MCP Guide](../MCP_GUIDE.md)) and ask asset questions there:
 
 **Example Questions**:
 - "Which assets are missing an assigned owner?"

@@ -212,7 +212,7 @@ For organizations deploying Claude Code to Windows endpoints via MDM, use the pr
 >
 > The legacy path `C:\ProgramData\ClaudeCode\` stops being read after March 12, 2026.
 
-See [`docs/templates/managed-settings.json`](docs/templates/managed-settings.json) for the ready-to-use template, and [`docs/MCP_DEPLOYMENT_CHECKLIST.md`](docs/MCP_DEPLOYMENT_CHECKLIST.md#windows-enterprise--managed-settings-mdmintune) for step-by-step deployment instructions.
+See [`docs/templates/managed-settings.json`](docs/templates/managed-settings.json) for the ready-to-use template, and [`docs/MCP_GUIDE.md`](docs/MCP_GUIDE.md#windows-enterprise--managed-settings-mdmintune) for step-by-step deployment instructions.
 
 ## 9. Configure Splunk Evidence Import (Optional)
 
@@ -286,7 +286,7 @@ For AI agent code execution with security:
 - Rate limiting: 10 executions/hour, 50/day
 - Docker isolation with read-only filesystem and no network access
 
-See [CE_MCP_SECURITY_GUIDE.md](../docs/CE_MCP_SECURITY_GUIDE.md) for details.
+See [CE_MCP_GUIDE.md](docs/CE_MCP_GUIDE.md#security-architecture) for details.
 
 AI features available:
 - Gap Analysis

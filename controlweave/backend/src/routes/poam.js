@@ -238,9 +238,15 @@ router.post('/', requirePermission('controls.write'), async (req, res) => {
     const itemResult = await pool.query(
       `INSERT INTO poam_items (
          organization_id, title, description, source_type, source_id, vulnerability_id, control_id,
-         owner_id, status, priority, due_date, remediation_plan, risk_acceptance_expires_at, created_by
+         owner_id, status, priority, due_date, remediation_plan, risk_acceptance_expires_at, created_by,
+         resources_required, scheduled_completion_date
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+         -- Default the original commitment to the first due_date given, so
+         -- slippage is measurable even when the caller does not set it. Both
+         -- operands are cast explicitly: COALESCE over two untyped parameters
+         -- does not resolve against the target column's type.
+         COALESCE($16::date, $11::date))
        RETURNING *`,
       [
         orgId,
@@ -256,7 +262,9 @@ router.post('/', requirePermission('controls.write'), async (req, res) => {
         parseDate(due_date),
         remediation_plan,
         parseDate(risk_acceptance_expires_at),
-        req.user.id
+        req.user.id,
+        typeof req.body.resources_required === 'string' ? req.body.resources_required : null,
+        parseDate(req.body.scheduled_completion_date)
       ]
     );
 
@@ -410,6 +418,11 @@ router.patch('/:id', requirePermission('controls.write'), async (req, res) => {
            remediation_plan = COALESCE($9, remediation_plan),
            closure_notes = COALESCE($10, closure_notes),
            risk_acceptance_expires_at = COALESCE($11, risk_acceptance_expires_at),
+           resources_required = COALESCE($13, resources_required),
+           -- Set once: this is the original commitment, and due_date carries the
+           -- current target. Overwriting it would erase the slippage federal
+           -- POA&M reporting exists to show (issue #569).
+           scheduled_completion_date = COALESCE(scheduled_completion_date, $14::date),
            closed_at = CASE WHEN $6 IN ('closed','risk_accepted') THEN COALESCE(closed_at, $12::timestamp) ELSE NULL END,
            updated_at = NOW()
        WHERE organization_id = $1 AND id = $2
@@ -426,7 +439,9 @@ router.patch('/:id', requirePermission('controls.write'), async (req, res) => {
         patch.remediation_plan || null,
         patch.closure_notes || null,
         parseDate(patch.risk_acceptance_expires_at),
-        closedAt
+        closedAt,
+        typeof patch.resources_required === 'string' ? patch.resources_required : null,
+        parseDate(patch.scheduled_completion_date)
       ]
     );
 

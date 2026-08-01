@@ -25,7 +25,7 @@ GET /api/v1/phase6/risk-trends/:organizationId
 POST /api/v1/phase6/risk-forecast/:organizationId
 ```
 
-[View Full Documentation](../../../PHASE_6_AI_POWERED_ANALYSIS.md)
+[View Full Documentation](../../../../PHASE_6_SUMMARY.md)
 
 ### Regulatory Impact Analysis (Phase 6)
 
@@ -80,7 +80,7 @@ POST /api/v1/realtime/broadcast
 WebSocket: ws://server/socket.io
 ```
 
-[View Full Documentation](../../../PHASE_5_REALTIME_FEATURES.md)
+[View Full Documentation](../../REALTIME_FEATURES.md)
 
 ## Getting Started
 
@@ -188,10 +188,10 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 ## Related Documentation
 
-- [Phase 6 Implementation Guide](../../../PHASE_6_IMPLEMENTATION_COMPLETE.md)
-- [Phase 5 Real-Time Features](../../../PHASE_5_COMPLETE.md)
-- [AI Copilot Guide](../../guides/AI_COPILOT.md)
-- [LLM Configuration](../operations/LLM-Configuration)
+- [Phase 6 Implementation Guide](../../../../PHASE_6_SUMMARY.md)
+- [Phase 5 Real-Time Features](../../REALTIME_FEATURES.md)
+- [Conversational AI Guide](../../guides/AI_COPILOT.md)
+- [LLM Configuration](../../guides/SETTINGS.md)
 
 ---
 **Category**: AI Features  

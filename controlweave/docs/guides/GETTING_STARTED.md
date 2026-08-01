@@ -2,9 +2,37 @@
 
 Welcome! This guide will walk you through your first steps with ControlWeave, from account creation to running your first compliance assessment.
 
+> This page and
+> [`wiki/getting-started/Getting-Started.md`](../wiki/getting-started/Getting-Started.md)
+> are published to different places (the guides index and the GitHub Wiki) and
+> carry the same content. Change both together.
+
 ## ⏱️ Time Commitment
 - **Quick Setup**: 10 minutes
 - **Full Onboarding**: 30-45 minutes
+
+
+## Finding Your Way Around
+
+The left sidebar groups everything into collapsible sections rather than one long
+list. Only the section you are currently in is expanded, so when a step below
+says *"click **Frameworks** in the left sidebar"*, expand the section it lives
+under first:
+
+| Section | What is inside |
+|---|---|
+| **Compliance** | Controls, AI Control Assessments, Exceptions, Frameworks, Evidence, Assessments, Auditor Workspace, RMF Lifecycle, Cyber Resilience |
+| **Risk** | Risk Register, Indicators, Incidents, Third-Party Risk, Vendor Contracts |
+| **Regulatory** | Obligations, Regulatory News, AI Laws |
+| **Assets & Security** | Assets, SBOM, Financial Compliance, Vulnerabilities, Threat Intelligence, Security Posture, AI Threat Library |
+| **Insights & Reporting** | AI Insights, Reports, Dashboard Views |
+| **Organization** | Organization Profile, Structure (Departments + Business Objectives), My Organizations, Access Governance, Data Governance, Operations, Settings, Notifications |
+| **Learn & Support** | Knowledge Base, Training, Help Center, Report Issue |
+
+**Dashboard** sits above the sections and is always visible. Sections you expand
+stay expanded between visits, and navigating straight to a URL expands whichever
+section contains it. Items you lack permission for are hidden, so your sidebar
+may show fewer entries than the table above.
 
 ## 📋 Prerequisites
 - Web browser (Chrome, Firefox, Safari, or Edge recommended)
@@ -19,7 +47,7 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 1. Navigate to ControlWeave: `http://yourinstance.com/register`
 2. Fill in the registration form:
    - **Email**: Your work email address
-   - **Password**: Strong password (min 15 characters, must include uppercase, lowercase, a number, and a special character)
+   - **Password**: Strong password (min 12 characters)
    - **Full Name**: Your name as it should appear in the system
    - **Organization Name**: Your company or organization name
 
@@ -139,15 +167,16 @@ Under **Data Classification**:
 - ✅ OWASP Agentic AI Top 10
 
 ### 3.3 Activate Frameworks
-1. Click **Activate** on each framework you need
-2. Framework status changes to "Active"
-3. Controls from that framework are now available
+1. Tick each framework you need in the list
+2. Click **Save Selection**
+3. Controls from those frameworks become available
 
-![Framework card with Activate button highlighted](../screenshots/frameworks-activate-button-01.png)
-*Figure 3.2: Click Activate to enable a framework*
+There is no per-framework "Activate" button — selection is a checklist you save
+in one action. **Show Library** reveals the full NIST publications library, and
+**Import CSV** / **Export CSV** move a selection between environments.
 
-![Framework showing Active badge after activation](../screenshots/frameworks-active-badge-01.png)
-*Figure 3.3: Active framework with green badge*
+![Frameworks page listing the selectable frameworks with the Save Selection action](../screenshots/frameworks-list-01.png)
+*Figure 3.2: Selecting frameworks, then Save Selection*
 
 ---
 
@@ -191,18 +220,12 @@ Good starter controls:
 ![Evidence upload modal with drag-drop area and file browser button](../screenshots/evidence-upload-form-01.png)
 *Figure 4.4: Evidence upload interface*
 
-3. Supported formats: PDF, DOCX, DOC, XLSX, XLS, JPG, JPEG, PNG, GIF, SARIF, NESSUS, CKL, FPR, XML, JSON, TXT, CSV, ZIP
+3. Supported formats: PDF, DOCX, XLSX, JPG, PNG
 4. Add description: "Information Security Policy v1.0"
 5. Add tags: "policy", "access-control", "approved"
 6. Click **Upload**
 
-> **Tip**: On the main **Evidence** page, the upload form also asks for an
-> **Evidence Type** (Policy or Standard, Log or Audit Trail, Configuration
-> Export, and so on). Setting it lets you filter your evidence library by
-> artifact type and match uploads against what an assessment procedure expects.
-> See [Evidence Management](EVIDENCE.md#evidence-types).
-
-![Successfully uploaded evidence confirmation message](../screenshots/evidence-uploaded-success-01.png)
+![Evidence Library listing the uploaded file](../screenshots/evidence-list-01.png)
 *Figure 4.5: Evidence uploaded successfully*
 
 ### 4.5 Mark as Implemented
@@ -274,26 +297,20 @@ Navigate back to **Dashboard** to see:
 ![Compliance overview panel showing overall percentage and control status breakdown](../screenshots/dashboard-compliance-panel-01.png)
 *Figure 6.2: Compliance overview panel*
 
-**Framework Progress**:
-- Pie charts showing compliance per framework
-- Percentage complete for each active framework
+**Framework Progress and Recent Activity**:
+- Per-framework completion, alongside the latest actions taken in the system
+- Both render together in one panel at the foot of the dashboard
 
-![Framework progress charts showing compliance percentage for each active framework](../screenshots/dashboard-framework-progress-01.png)
-*Figure 6.3: Framework progress visualization*
+![Framework progress and recent activity panel at the foot of the dashboard](../screenshots/dashboard-recent-activity-01.png)
+*Figure 6.3: Framework progress and recent activity*
 
-**Priority Actions**:
-- Controls requiring attention
-- Overdue assessments
-- Missing evidence
+The dashboard also carries **Control Health Overview**, **Compliance Maturity
+Score**, **Control Status Distribution**, **Compliance Trend (Last 30 Days)** and
+a **Per-Framework Compliance Summary**, plus a **Customize Dashboard** action.
 
-![Priority actions widget showing overdue items and high-priority controls](../screenshots/dashboard-priority-actions-01.png)
-*Figure 6.4: Priority actions requiring attention*
-
-**Recent Activity**:
-- Latest actions taken in the system
-
-![Recent activity feed showing recent control updates, assessments, and evidence uploads](../screenshots/dashboard-recent-activity-01.png)
-*Figure 6.5: Recent activity feed*
+There is no separate "Priority Actions" widget. For work that needs attention,
+use the Controls page filters or the register pages (Risks, Incidents,
+Obligations), which carry their own due-date and status filters.
 
 ---
 
@@ -307,19 +324,13 @@ Navigate back to **Dashboard** to see:
 
 2. Choose a provider
 
-![Provider selection dropdown showing Anthropic, OpenAI, Gemini, Groq, Ollama options](../screenshots/llm-provider-select-01.png)
-*Figure 7.2: Select your LLM provider*
 
 3. Enter your API key
 
-![API key input field with show/hide password toggle](../screenshots/llm-api-key-entry-01.png)
-*Figure 7.3: Enter your API key*
 
 4. Click **Test Connection**
 5. Select default model
 
-![Model selection dropdown showing available models for the chosen provider](../screenshots/llm-model-select-01.png)
-*Figure 7.4: Select your preferred model*
 
 6. Click **Save**
 
@@ -331,29 +342,25 @@ Navigate back to **Dashboard** to see:
 | **Groq** | console.groq.com | FREE tier available! |
 | **Anthropic Claude** | console.anthropic.com | Best for analysis |
 | **OpenAI** | platform.openai.com | Popular choice |
-| **xAI Grok** | console.x.ai | Fast, capable models |
 | **Ollama** | Local install | No key needed! |
 
 > **💡 Note**: ControlWeaver has no tier-based AI request limit. Any limit you hit comes from your configured provider's own rate limit or quota — use BYOK to control it directly.
 
-### 7.2 Try the AI Copilot
-1. Look for purple **Ask AI** button (bottom-right of any page)
+### 7.2 Use the AI features
 
-![Purple Ask AI button in bottom-right corner of the page](../screenshots/ai-copilot-button-01.png)
-*Figure 7.5: AI Copilot button - Available on every page*
+There is **no floating "Ask AI" chat button**. Earlier versions of this guide
+described a copilot widget in the bottom-right corner of every page; no such
+component exists in the product. AI is reached through the pages that use it:
 
-2. Click to open AI Copilot panel
+| Where | What it does |
+|---|---|
+| **Insights & Reporting → AI Insights** | Gap analysis, audit-readiness scoring, compliance forecast |
+| **Compliance → AI Control Assessments** | AI-assisted control assessment |
+| Vulnerability detail panel | Per-finding AI remediation plan |
+| Access Governance → Import & AI | Analyzes an uploaded RBAC document |
 
-![AI Copilot panel slid out from the right showing chat interface](../screenshots/ai-copilot-panel-open-01.png)
-*Figure 7.6: AI Copilot panel*
-
-3. Try asking:
-   - "What are my top compliance gaps?"
-   - "What controls should I prioritize?"
-   - "Explain NIST 800-53 AC-2 to me"
-
-![AI Copilot conversation showing user question and AI response](../screenshots/ai-copilot-chat-interface-01.png)
-*Figure 7.7: Conversing with the AI Copilot*
+Each requires a configured provider. Without one, these panels report **"No AI
+provider configured."** and offer a provider picker rather than failing.
 
 ---
 

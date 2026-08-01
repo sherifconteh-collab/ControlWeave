@@ -53,7 +53,7 @@ ControlWeave marks controls as Required or Addressable to guide implementation p
 ### Risk Analysis
 
 HIPAA requires a formal risk analysis:
-1. Go to **AI Analysis** → **Risk Assessment**
+1. Go to **Insights & Reporting → AI Insights** → **Risk Assessment**
 2. Run the HIPAA Risk Analysis report
 3. Document identified threats and vulnerabilities
 4. Implement controls to reduce risk to an acceptable level

@@ -87,8 +87,8 @@ const ARTICLE_CATALOG = [
   // ── AI Features ───────────────────────────────────────────────────────────
   {
     slug: 'ai-copilot',
-    title: 'AI Copilot',
-    description: 'Use the conversational AI assistant for GRC questions, guidance, and quick analysis.',
+    title: 'Conversational AI',
+    description: 'Ask ControlWeave questions in natural language over MCP or the /ai/query API.',
     icon: '🤖',
     category: 'AI Features',
     file: 'guides/AI_COPILOT.md',
@@ -402,12 +402,15 @@ View your current tier, usage limits, and upgrade options.
 - Set alert thresholds for compliance changes
 - Enable real-time notifications for control updates`,
 
-  'ai-copilot': `# 🤖 AI Copilot
+  'ai-copilot': `# 🤖 Conversational AI
 
-Use the conversational AI assistant for GRC questions, guidance, and quick analysis.
+Ask ControlWeave questions in natural language. There is no in-app chat widget — you reach the conversational capability two ways.
 
-## Getting Started
-The AI Copilot is available via the chat widget in the bottom-right corner of every page. It has full context about your organization's compliance posture.
+## 1. MCP Server (recommended)
+ControlWeave ships a Model Context Protocol server, so you can point Claude Desktop, Cursor, VS Code + GitHub Copilot, Continue.dev, or Windsurf at your live compliance data and talk to it there. Start it with \`npm run mcp:secure\` from \`controlweave/backend\`. See the MCP Guide for setup and the full tools reference.
+
+## 2. The /ai/query API
+A single-turn, organization-aware question endpoint (\`POST /api/v1/ai/query\`, requires the \`ai.use\` permission). It has no conversation memory, so include the context you need in each question.
 
 ## What You Can Ask
 - "What are my highest risk controls?"
@@ -416,39 +419,47 @@ The AI Copilot is available via the chat widget in the bottom-right corner of ev
 - "What evidence do I need for SOC 2 CC6.1?"
 - "Summarize my compliance gaps"
 
+## AI Inside the App
+The in-app AI is a set of purpose-built features rather than a chat box: AI Insights (gap analysis, forecast, risk heatmap, audit readiness), Security Posture, per-finding remediation plans on Vulnerabilities, RBAC document analysis under Access Governance, and control analysis / test procedures / evidence suggestions on individual controls.
+
 ## How It Works
-The Copilot uses your organization's data (frameworks, controls, evidence, assessments) to provide contextual, accurate answers. It supports multiple AI providers and respects your BYOK configuration.
+Answers are drawn from your organization's own data (frameworks, controls, evidence, assessments) and scoped to your organization. Multiple providers are supported and BYOK is respected throughout.
 
 ## Tips
 - Be specific in your questions for better answers
 - Reference control IDs when asking about specific requirements
 - Use "Draft a policy for..." to generate policy templates
-- The Copilot remembers context within a conversation session`,
+- Over MCP your client keeps the conversation; the /ai/query API does not`,
 
   'ai-analysis': `# 🔍 AI Analysis
 
 Run structured AI-powered analyses for compliance insights.
 
-## Available Analyses
-- **Gap Analysis** — Identify unaddressed controls and compliance gaps
-- **Risk Heatmap** — Visual risk assessment across control families
+## On the AI Insights Page
+- **Compliance Gap Analysis** — Identify unaddressed controls and compliance gaps
 - **Compliance Forecast** — Predict compliance trajectory based on current progress
 - **Audit Readiness** — Assess preparedness for upcoming audits
-- **Crosswalk Optimizer** — Find opportunities to reduce duplicate compliance work
-- **Evidence Mapper** — Map evidence artifacts to control requirements
+- **Risk Heatmap** — Risk assessment across control families
 
-## Parallel AI Analysis (Pro+)
-Run multiple analyses simultaneously in a single click:
-- **Full Assessment** — Gap analysis + forecast + risk heatmap + audit readiness
+## Elsewhere in the App
+- **Crosswalk Optimizer** — Find opportunities to reduce duplicate compliance work
+- **Evidence suggestions** — Open a control and ask for the evidence it needs
+- **Control analysis and test procedures** — Also on the individual control
+- **Security Posture** — An AI reading of your overall posture
+
+## Parallel Analysis (Swarms)
+Three predefined swarms run several analyses at once:
+- **Full Compliance Assessment** — Gap analysis + forecast + risk heatmap + audit readiness
 - **Risk Assessment** — Risk heatmap + gap analysis
 - **Audit Preparation** — Audit readiness + gap analysis + crosswalk optimization
 
+Audit Preparation has a button in the **Auditor Workspace**. The other two are available through the API (\`POST /api/v1/ai/swarm/execute\`). All three are available to every authenticated user with the \`ai.use\` permission — there is no tier requirement.
+
 ## Using AI Analysis
-1. Navigate to **AI Analysis** in the sidebar
-2. Select the analysis type you want to run
+1. Navigate to **AI Insights** in the sidebar (under Compliance)
+2. Select the analysis you want to run
 3. Click **Run** and wait for results (typically 10-30 seconds)
-4. Review the detailed findings and recommendations
-5. Export or share results with your team`,
+4. Review the detailed findings and recommendations`,
 
   'vulnerabilities': `# 🛡️ Vulnerability Management
 

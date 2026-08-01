@@ -1,6 +1,6 @@
 {
   "name": "controlweave-backend",
-  "version": "4.7.1",
+  "version": "4.8.0",
   "engines": {
     "node": ">=20.16.0"
   },
@@ -113,7 +113,7 @@
     "pg": "^8.18.0",
     "redis": "^4.7.0",
     "rss-parser": "^3.13.0",
-    "sanitize-html": "^2.17.1",
+    "sanitize-html": "2.17.5",
     "socket.io": "^4.8.1",
     "stripe": "^17.5.0",
     "xml2js": "^0.6.2",

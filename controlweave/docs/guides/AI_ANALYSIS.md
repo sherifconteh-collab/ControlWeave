@@ -4,7 +4,7 @@ Comprehensive guide to ControlWeave's AI-powered compliance analysis tools.
 
 ## What is AI Analysis?
 
-AI Analysis provides structured, report-quality insights powered by large language models. Unlike the [AI Copilot](AI_COPILOT.md) (which is conversational), AI Analysis runs formal analyses that produce detailed, actionable reports tailored to your organization's data.
+AI Analysis provides structured, report-quality insights powered by large language models. Unlike [conversational AI](AI_COPILOT.md) — which you reach over MCP or the `/ai/query` API — AI Analysis runs formal analyses in the app that produce detailed, actionable reports tailored to your organization's data.
 
 **Key Characteristics:**
 - 📊 **Structured Output**: Formal reports with sections, tables, and recommendations
@@ -309,34 +309,30 @@ See [Access Governance](ACCESS_GOVERNANCE.md) for the rest of the module.
 
 ### Step-by-Step
 
-1. **Navigate** to the relevant page (Dashboard, Controls, etc.)
-2. **Click** the AI Analysis button or select from the analysis menu
-3. **Select analysis type** if prompted
-4. **Configure options** (framework scope, date range, depth level)
-5. **Click Run Analysis**
-6. **Wait** for completion (typically 10–60 seconds)
-7. **Review** the generated report
+1. **Navigate** to **Insights & Reporting → AI Insights**
+2. **Click Generate** on the analysis you want
+3. **Wait** for completion (typically 10–60 seconds)
+4. **Review** the generated report, which renders in the card itself
 
-![AI Analysis running indicator showing spinner and progress message](../screenshots/ai-analysis-running-01.png)
-*Figure 1: Analysis in progress*
+![AI Insights page with Generate buttons for gap analysis, forecast, audit readiness and risk heatmap](../screenshots/ai-analysis-results-01.png)
+*Figure 1: The AI Insights page*
 
-![AI Analysis results panel showing structured report output](../screenshots/ai-analysis-results-01.png)
-*Figure 2: AI Analysis results*
+Each analysis runs against your current organization data as-is. There are no
+scope, depth, or date-range options to configure — earlier versions of this
+guide described a configuration step that does not exist.
 
-### Options Available
+### Analyses on the page
 
-**Framework Scope:**
-- All active frameworks
-- Specific framework(s)
-- Single framework
+| Card | What it does |
+|---|---|
+| **Compliance Gap Analysis** | Ranks the most material gaps across your active frameworks by impact |
+| **Compliance Forecast** | Projects implementation trajectory from your current pace |
+| **Audit Readiness** | What is ready, what is at risk, what needs attention before fieldwork |
+| **Risk Heatmap** | Top control-level risks weighted by criticality and implementation state |
+| **Predictive Risk Score** | A deterministic 0–100 score from implementation, vulnerabilities, evidence freshness and assessment coverage — **no AI provider required** |
 
-**Depth:**
-- Quick (broader strokes, faster)
-- Comprehensive (detailed analysis, may take longer)
-
-**Date Range:**
-- Point-in-time (current state)
-- Trend comparison (compare to past period)
+The first four need an LLM provider; the Predictive Risk Score is computed
+locally and works with no API key at all.
 
 ---
 
@@ -478,7 +474,7 @@ See [LLM Configuration Guide](SETTINGS.md#llm-configuration).
 | **Output** | Saved report | Chat response |
 | **Best for** | Audits, executive reviews | Learning, exploring |
 
-**Rule of thumb**: Need a PDF or executive summary? Use AI Analysis. Need a quick answer? Use [AI Copilot](AI_COPILOT.md).
+**Rule of thumb**: Need a PDF or executive summary? Use AI Analysis. Need a quick answer? Ask over [MCP or the /ai/query API](AI_COPILOT.md).
 
 ---
 
@@ -521,7 +517,7 @@ All features retain the core GRC identity, behavioral instructions, and adversar
 
 ## Related Guides
 
-- [🤖 AI Copilot](AI_COPILOT.md) - Conversational AI assistant
+- [🤖 Conversational AI](AI_COPILOT.md) - Asking questions over MCP or the API
 - [📄 Evidence Management](EVIDENCE.md) - Evidence collection and AI suggestions
 - [⚙️ Settings & LLM Configuration](SETTINGS.md#llm-configuration) - Configure AI providers
 - [🎛️ Controls](CONTROLS.md) - Manage controls and track remediation

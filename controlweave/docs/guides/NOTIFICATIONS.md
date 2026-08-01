@@ -69,36 +69,26 @@ The notification bell updates automatically via WebSocket — no page refresh ne
 
 ---
 
-## Step 2: Enable Browser Notifications
+## Step 2: Notification Center
 
-Allow ControlWeave to show desktop notifications even when you have another tab active.
-
-1. Click the notification bell
-2. Click **Enable Browser Notifications** (if prompted)
-
-![Browser permission dialog requesting notification access](../screenshots/notifications-browser-permission-01.png)
-*Figure 2.1: Browser notification permission prompt*
-
-3. Click **Allow** in the browser's permission dialog
-
-Once enabled, critical compliance alerts will appear as OS-level desktop notifications even when the ControlWeave tab is in the background.
-
----
-
-## Step 3: Notification Center
+> **📋 Not available**: OS-level desktop notifications. ControlWeave never calls
+> the browser's `Notification.requestPermission()`, so there is no permission
+> prompt and no desktop alerts — earlier versions of this guide described an
+> **Enable Browser Notifications** button that was never built. Notifications
+> reach you in the bell, the Notification Center, and by email if SMTP is
+> configured.
 
 The Notification Center provides a full history with filtering, pagination, and bulk actions.
 
-### 3.1 Open the Notification Center
+### 2.1 Open the Notification Center
 
-1. Click the notification bell
-2. Click **View All Notifications**, or
-3. Navigate directly to **Notifications** in the left sidebar
+Navigate to **Notifications** in the left sidebar. (The bell dropdown lists
+recent items and offers **Mark all read**, but has no "view all" link.)
 
 ![Full notification center page with list of all notifications](../screenshots/notifications-center-list-01.png)
-*Figure 3.1: Notification Center*
+*Figure 2.1: Notification Center*
 
-### 3.2 Page Layout
+### 2.2 Page Layout
 
 The Notification Center shows up to **50 notifications per page** with:
 - **Title** and **Message**: What happened
@@ -107,30 +97,27 @@ The Notification Center shows up to **50 notifications per page** with:
 - **Linked resource**: Click to navigate directly to the relevant control, assessment, or vulnerability
 - **Read/Unread status**: Bold text for unread items
 
-### 3.3 Filter Notifications
+### 2.3 Filter Notifications
 
 Use the filter bar to narrow your view:
 
 ![Notification filter bar showing type filter and unread-only toggle](../screenshots/notifications-filters-01.png)
-*Figure 3.2: Notification filter options*
+*Figure 2.2: Notification filter options*
 
 **Available Filters**:
 - **Type**: Control Due, Assessment Needed, Status Change, Crosswalk, System
 - **Unread Only**: Toggle to show only unread notifications
 - **Date Range**: Filter by notification date (future enhancement)
 
-### 3.4 Mark Notifications as Read
+### 2.4 Mark Notifications as Read
 
 **Single notification**:
 1. Click **Mark Read** (or click the notification title) to mark an individual notification as read
 
 **All notifications**:
-1. Click **Mark All Read** at the top of the Notification Center to clear all unread indicators at once
+1. Click **Mark all read** at the top of the Notification Center to clear all unread indicators at once — it is visible in Figure 2.1, beside the unread count
 
-![Mark all read button highlighted at top of notification list](../screenshots/notifications-mark-all-read-01.png)
-*Figure 3.3: Mark all notifications as read*
-
-### 3.5 Navigate to Source
+### 2.5 Navigate to Source
 
 Each notification links to the item that triggered it:
 - **Control Due** → Control detail page
@@ -143,20 +130,19 @@ Click the notification title or the **View** link to navigate directly.
 
 ---
 
-## Step 4: Configure Notification Preferences
+## Step 3: Configure Notification Preferences
 
 Customize how you receive each notification type — in-app, by email, or both.
 
-### 4.1 Open Notification Preferences
+### 3.1 Open Notification Preferences
 
-1. Navigate to **Notifications** in the left sidebar
-2. Click the **Preferences** tab (or gear icon), or
-3. Go to **Settings** → **Notifications**
+Go to **Settings** → **Notifications**. (The Notifications page itself has no
+preferences tab — the toggles live in Settings.)
 
 ![Notification preferences page showing per-type toggles for in-app and email](../screenshots/notifications-preferences-page-01.png)
-*Figure 4.1: Notification preferences*
+*Figure 3.1: Notification preferences*
 
-### 4.2 Per-Type Settings
+### 3.2 Per-Type Settings
 
 For each notification type, configure two independent channels:
 
@@ -175,29 +161,30 @@ Toggle the switches for each type to match your preference:
 | Crosswalk | ✅ On | ❌ Off | Informational; in-app is fine |
 | System | ✅ On | ✅ On | Enable email for important announcements |
 
-### 4.3 Save Preferences
+### 3.3 Save Preferences
 
 Click **Save Preferences** after making changes.
 
-> **💡 Note**: Email notifications require SMTP to be configured by your organization administrator. If email options appear greyed out, contact your admin to enable email delivery in **Settings → Email Configuration**.
+> **💡 Note**: Email notifications require SMTP to be configured by your organization administrator. SMTP lives on the same **Settings → Notifications** tab, visible to users with `settings.manage`.
 
 ---
 
-## Step 5: Email Notification Status
+## Step 4: Email Notification Status
 
 Administrators can check whether SMTP email delivery is configured and working.
 
-1. Go to **Settings** → **Email Configuration**
-2. The page shows the current SMTP status: **Configured** or **Not Configured**
+1. Go to **Settings** → **Notifications** (requires `settings.manage`)
+2. The SMTP section shows the current status and offers host, port, user,
+   password and from-address fields, plus a test-send action
 
-![Email configuration status page showing SMTP settings](../screenshots/notifications-email-status-01.png)
-*Figure 5.1: Email SMTP configuration status*
+There is no separate **Email Configuration** page; SMTP shares the Notifications
+tab with the per-type preference toggles.
 
 When SMTP is **Not Configured**, only in-app notifications are delivered. Email preferences are saved but not acted on until SMTP is enabled.
 
 ---
 
-## Step 6: Notification Events Reference
+## Step 5: Notification Events Reference
 
 Below is a complete reference of what triggers each notification type.
 
@@ -228,7 +215,7 @@ Below is a complete reference of what triggers each notification type.
 
 ---
 
-## Step 7: Admin — Create a System Notification
+## Step 6: Admin — Create a System Notification
 
 Organization administrators can broadcast announcements to all users.
 

@@ -179,7 +179,7 @@ When you implement **NIST 800-53 AC-2** (Account Management):
 - Less duplicate work
 
 **Strategy 2: Focus on Overlaps**
-1. Go to **AI Analysis** → **Crosswalk Optimizer**
+1. Go to **Insights & Reporting → AI Insights** → **Crosswalk Optimizer**
 2. AI identifies controls that satisfy multiple frameworks
 3. Prioritize these "high-value" controls
 4. Maximize compliance with minimal effort
@@ -271,7 +271,7 @@ ControlWeaver has no tier gating and no limit on the number of active frameworks
 
 **Let AI help you choose:**
 
-1. Go to **AI Analysis** → **Compliance Q&A**
+1. Go to **Insights & Reporting → AI Insights** → **Compliance Q&A**
 2. Ask: "What frameworks should my healthcare SaaS company adopt?"
 3. AI provides recommendations based on:
    - Your industry
@@ -283,7 +283,7 @@ ControlWeaver has no tier gating and no limit on the number of active frameworks
 
 **Find optimal implementation path:**
 
-1. Go to **AI Analysis** → **Crosswalk Optimizer**
+1. Go to **Insights & Reporting → AI Insights** → **Crosswalk Optimizer**
 2. Click **Run Analysis**
 3. AI identifies:
    - Controls satisfying multiple frameworks
@@ -391,7 +391,7 @@ Generate reports showing:
 ### Executive Summary
 
 High-level framework compliance:
-1. Go to **AI Analysis** → **Executive Report**
+1. Go to **Insights & Reporting → AI Insights** → **Executive Report**
 2. Select frameworks
 3. AI generates board-ready summary
 4. Includes risks, gaps, recommendations

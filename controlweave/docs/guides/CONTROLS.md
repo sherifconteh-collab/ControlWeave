@@ -562,11 +562,11 @@ For organizations with 500 or more active controls:
 
 ## Keyboard Shortcuts
 
-- `Ctrl/Cmd + F` - Search controls
-- `Ctrl/Cmd + K` - Open AI Copilot
-- `E` - Edit implementation (when control selected)
-- `S` - Save changes
-- `Esc` - Close modal/dialog
+- `Esc` - Close an open detail panel
+
+That is the only shortcut the app implements. Earlier versions of this guide
+listed `Ctrl/Cmd + F`, `Ctrl/Cmd + K`, `E`, and `S` bindings; none of them were
+ever wired up. Your browser's own find-in-page still works, of course.
 
 ---
 

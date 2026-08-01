@@ -44,9 +44,9 @@ Learn the basics and get up and running quickly:
 ### Dashboards (NEW - Phase 4)
 Real-time monitoring and visualization dashboards:
 - [Dashboards Overview](dashboards/README) - Available dashboards and features
-- [AI Monitoring Dashboard](dashboards/AI-Monitoring-Dashboard) - Monitor AI system usage and decisions
-- [Data Governance Dashboard](dashboards/Data-Governance-Dashboard) - Retention policies and legal holds
-- [Vendor Risk Dashboard](dashboards/Vendor-Risk-Dashboard) - Track vendor contracts and security risks
+- [AI Monitoring Dashboard](../guides/AI_MONITORING.md) - Monitor AI system usage and decisions
+- [Data Governance Dashboard](../guides/DATA_GOVERNANCE.md) - Retention policies and legal holds
+- [Vendor Risk Dashboard](../guides/VENDOR_RISK.md) - Track vendor contracts and security risks
 
 ### Operations
 Day-to-day platform usage and workflows:
@@ -161,7 +161,7 @@ For leadership monitoring compliance status.
 
 ### Resources
 - **[User Guide](User-Guide)** - Comprehensive documentation
-- **AI Copilot** - Purple button in the platform (bottom-right)
+- **Conversational AI** - Over MCP or the `/ai/query` API; in-app AI lives on the AI Insights page
 - **Email Support** - contehconsulting@gmail.com
 - **GitHub Issues** - [Report bugs or request features](https://github.com/sherifconteh-collab/ControlWeaver-Pro/issues)
 

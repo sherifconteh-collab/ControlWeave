@@ -26,4 +26,4 @@ Recommended deployment configuration for small teams and initial ControlWeave ad
 5. Seed frameworks: `node scripts/seed-frameworks.js`
 6. Start: `npm run dev`
 
-See [QUICK_START.md](QUICK_START.md) for the full setup guide.
+See [QUICK_START.md](../QUICK_START.md) for the full setup guide.

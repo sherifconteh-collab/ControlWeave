@@ -26,7 +26,7 @@
 > | Field | Value |
 > |-------|-------|
 > | **Status** | Unreleased — changes staged for next release |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -34,8 +34,19 @@
 
 - **GitHub Evidence Connector**: `services/githubService.js` and `routes/github.js` add a real GitHub REST API client — org-scoped token settings (`Settings → Integrations → GitHub`), a test-connection check, a one-time import endpoint, and a full `code_scanning_alerts` / `dependabot_alerts` / `audit_log` / `pull_requests` source for Auto-Evidence Collection Rules. GitHub now performs genuine live data retrieval (like Splunk), not just configuration-record evidence.
 - Dynamic per-source-type configuration fields in the Auto-Evidence rule creation form (`dashboard/evidence/auto/page.tsx`), including a GitHub event-type dropdown, replacing free-text inputs.
+- **Access Governance module** (`/api/v1/access-governance`, migrations `126`–`128`): entitlement reporting across users, roles, and effective permissions with over-privileged (wildcard) and dormant-access flags; separation-of-duties toxic-combination rules with a live violations report (five system rules ship, three enabled); access review certification campaigns (`draft → active → completed`) that generate an AC-2 evidence record on completion disclosing any self-reviewed items; and a role/permission simulator giving a positive/negative allowed-denied matrix before a role is assigned. New `sod_rules`, `access_review_campaigns`, `access_review_items` tables gated by `access_governance.read` / `.manage`, with row-level security on all four new tables. New `/dashboard/access-governance` page. Revocation decisions are recorded, never auto-applied — de-provisioning stays an explicit action through the existing guarded role-assignment flow.
+- **AI-assisted RBAC document import** (migration `127`, `rbac_analysis` feature): upload a role definition spreadsheet, SoD matrix, or roles & responsibilities document (PDF/DOCX/TXT/MD/CSV) and have AI map its duties onto the live permission catalog, flag SoD conflicts including ones the organization is currently violating, and propose platform roles and SoD rules. Only extracted text is persisted; the uploaded file is processed in memory and discarded. Every suggestion requires an explicit per-item click to apply.
+- **Nine-organization demo roster** — one per industry vertical (financial services, healthcare, defense, technology, energy, retail, biotech, higher education) plus an external audit firm with a seeded three-engagement workbench. Industry-addressed logins (`admin@financial.com` and so on) with the legacy tier logins kept as working aliases. See `DEMO_CREDENTIALS.md`.
+- **SOC 2: all five Trust Services Criteria** (migration `129`): the framework shipped with 27 controls, every one a `CC*` — the Security category alone. Adds the 28 missing criteria across Availability (A1), Confidentiality (C1), Processing Integrity (PI1), and Privacy (P1–P8), each with the same examine / interview / test program the existing controls carry, and moves `coverage_status` to `comprehensive`. Descriptions are ControlWeave's own paraphrase; the AICPA text is copyrighted and is not reproduced.
+- **Control function classification** (migration `130`): `framework_controls.control_functions text[]` carrying `preventive` / `detective` / `corrective`, backfilled from control titles with word-boundary matching. Roughly 500 of 1,200 controls are classified; the rest are deliberately left blank rather than guessed at. Filterable through the API and the controls UI.
+- **Framework-neutral evidence type taxonomy** (migration `131`): a 14-value `evidence_types` vocabulary, an `evidence.evidence_type` foreign key, and `assessment_procedures.expected_evidence_types`, so evidence is labelled consistently regardless of framework. Pre-existing evidence stays untyped rather than being guessed at. New `GET /evidence/types` and an `?evidence_type=` list filter.
+- **Auto-crosswalk propagation engine** (`services/crosswalkPropagationService.js`, migration `132`): implementing or verifying a control now credits mapped controls at ≥90% similarity in the organization's other *active* frameworks as `satisfied_via_crosswalk`, which is what `README.md` and `docs/HOW_CROSSWALKS_WORK.md` have described for several releases without any code behind it. Credits are recorded per (organization, credited control, source control) in `control_crosswalk_credits` with the similarity score, mapping type, and the status the control held beforehand, so `GET /controls/:id` can return the provenance an assessor will ask for. Credit is withdrawn automatically when the source control stops being implemented, restoring the recorded prior status — unless another still-implemented source justifies it, or someone has since implemented the control themselves. Credit never overwrites work already in progress, never crosses organizations, and both directions are audit-logged (`crosswalk_credit_applied` / `crosswalk_credit_withdrawn`) as AU-2 posture changes.
 
 ### Fixed
+
+- **`assessment_procedures` had no uniqueness on `(framework_control_id, procedure_id)`**, so every `ON CONFLICT DO NOTHING` insert against that table was a silent no-op guard: re-running any procedure seeder duplicated its rows instead of skipping them. Migration `129` deduplicates defensively and adds the constraint, which makes the `ON CONFLICT` clauses in every seeder actually work.
+- **Demo-account seeding re-ran on every boot.** `ensureDemoAccountsSeeded()` matched on `lower(u.email)`, but `users.email` is encrypted at rest — the comparison ran against ciphertext and never matched, so the full demo seed re-executed on each start. Now matched on the deterministic `email_hash` lookup key; boot logs `demo.seed.present` and skips.
+- **The public contact endpoint emailed `undefined` credentials.** Its tier-to-demo-account map had collapsed, so enquiries received a message containing literal `undefined` in place of a login. Replaced with industry resolution, a legacy tier mapping, and a guaranteed fallback.
 
 - **`evidence_collection_rules` accepted only `splunk`/`connector`**: migration `088`'s `source_type` CHECK constraint never matched the app's own `ALLOWED_SOURCE_TYPES` allowlist (`microsoft_sentinel`, `aws_cloudtrail`, `crowdstrike`, `jira`, `servicenow`, `github`) <!-- ip-hygiene:ignore --> — creating a rule with any of those source types threw a raw Postgres constraint violation. Fixed in migration `125`.
 - **Auto-Evidence rule creation form silently discarded its configuration**: `RuleForm`'s submit handler always sent `source_config: {}` regardless of source type, so no rule created through the UI (Splunk included) was ever actually functional. Fixed generically using the already-fetched `/auto-evidence/sources` `configFields` metadata.
@@ -43,6 +54,8 @@
 ### Security
 
 - **GitHub and Splunk connector tokens were stored in plaintext**: both `githubService.js` and the pre-existing `splunkService.js` set `organization_settings.is_encrypted = true` on save but never actually called `encrypt()`/`decrypt()` from `utils/encrypt.js` — the stored value was plain text despite the flag. Both now encrypt at rest (AES-256-GCM); `decrypt()` transparently falls back to legacy plaintext rows, so no migration is required.
+- **Rate limits on the control and implementation routes crosswalk propagation made expensive**: `PUT /controls/:id/implementation` and `PATCH /implementations/:id/status` (60/min — one status change now fans out into a mapping query plus a read-modify-write per credited control, or a withdrawal walk over everything the control was holding up), `POST /controls/:id/inherit` (20/min — several queries per mapped control, and a control can carry dozens of mappings), and `GET /controls/:id` (120/min). Neither route file had any rate limiting before.
+- **Rate limits on seven previously unlimited evidence routes**: `GET /evidence/:id/download` and `GET /evidence/:id/integrity-check` (30/min each — the download path is the bulk-exfiltration route for files that may carry PII, and integrity-check re-hashes the stored file on every call), `DELETE /evidence/:id` (30/min, destructive and irreversible), `PUT /evidence/:id`, `POST /evidence/:id/link`, `DELETE /evidence/:evidenceId/unlink/:controlId` (60/min each), and `GET /evidence/:id` (120/min).
 
 ---
 
@@ -68,7 +81,7 @@
 > | **Release date** | 2026-07-10 |
 > | **Tag** | `v4.3.0` |
 > | **Release branch** | `release/4.3.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 ### ⚠️ Breaking Changes
@@ -151,7 +164,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-18 |
 > | **Tag** | `v3.5.0` |
 > | **Release branch** | `release/3.5.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -191,7 +204,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-16 |
 > | **Tag** | `v3.4.0` |
 > | **Release branch** | `release/3.4.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -241,7 +254,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -274,7 +287,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -307,7 +320,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -340,7 +353,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -373,7 +386,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -406,7 +419,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -439,7 +452,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -472,7 +485,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -505,7 +518,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -538,7 +551,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -571,7 +584,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -611,7 +624,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -642,7 +655,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -675,7 +688,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -718,7 +731,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -756,7 +769,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -792,7 +805,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -838,7 +851,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -877,7 +890,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -908,7 +921,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1139,7 +1152,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Community tier.
+> Not available on the Free tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
@@ -1274,7 +1287,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1318,7 +1331,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1351,7 +1364,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1402,7 +1415,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `19b774e8` |
+> | **Built from** | `dc10ac81` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1430,5 +1443,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-07-22T13:54:33.245Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-07-30T04:00:03.152Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->

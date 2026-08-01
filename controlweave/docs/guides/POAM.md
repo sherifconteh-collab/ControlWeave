@@ -54,32 +54,36 @@ Open → In Progress → Pending Auditor Review → Auditor Approved → Closed
 
 ### Access POA&M List
 
-1. Click **POA&M** in the left sidebar
-2. You'll see all POA&M items for your organization
+1. Click **Operations** in the left sidebar (under **Organization** — it
+   requires the `settings.manage` permission)
+2. The **POA&Ms** tab is selected by default and lists every POA&M item for your
+   organization
 
-![POA&M list view showing ID, title, status, severity, and due date](../screenshots/poam-list-view-01.png)
+![POA&M list on the Operations page, with summary counts and the item table](../screenshots/poam-list-view-01.png)
 *Figure 1: POA&M list — Your remediation tracking dashboard*
+
+There is no dedicated POA&M page in the sidebar; POA&M shares the Operations
+page with **Priority Vulns** and **Controls at Risk**.
 
 ### List View Columns
 
-- **ID**: Unique POA&M identifier
 - **Title**: Brief description of the weakness
+- **Priority**: Critical, High, Medium, or Low
 - **Status**: Current remediation status
-- **Severity**: Critical, High, Medium, or Low
-- **Control**: Associated control (if any)
-- **Due Date**: Target completion date
+- **Due Date**: Current target completion date
 - **Owner**: Assigned person
+
+A running count of Open / In Progress / Closed / Risk Accepted items sits above
+the table. Rows are not clickable — there is no POA&M detail view in the UI yet;
+see [What is API-only today](#what-is-api-only-today).
 
 ### Filter & Search
 
-Use the filter bar to narrow results by:
-- **Status**: Filter by current status
-- **Severity**: Focus on critical or high items
-- **Framework**: Show POA&Ms linked to a specific framework
-- **Owner**: View items assigned to a team member
-- **Date Range**: Filter by due date
+A single **Filter POA&Ms...** box above the table narrows the list by text.
+Filtering by status, priority, framework, owner, or date range is supported by
+`GET /api/v1/poam` query parameters but is not yet exposed as a filter bar.
 
-![POA&M filter bar with status and severity options](../screenshots/poam-filter-bar-01.png)
+![The POA&M filter box and Create POA&M button above the item table](../screenshots/poam-filter-bar-01.png)
 *Figure 2: Filter POA&M items*
 
 ---
@@ -88,55 +92,93 @@ Use the filter bar to narrow results by:
 
 ### Create Manually
 
-1. Click **POA&M** in the left sidebar
-2. Click **New POA&M**
+1. Go to **Operations** in the left sidebar
+2. On the **POA&Ms** tab, click **+ Create POA&M**
+3. Fill in the form:
 
-![New POA&M button highlighted](../screenshots/poam-new-button-01.png)
-*Figure 3: Create a new POA&M*
+![POA&M creation dialog with title, description, priority, status, due date and remediation plan](../screenshots/poam-create-form-01.png)
+*Figure 3: POA&M creation form*
 
-3. Fill in the POA&M form:
-
-![POA&M creation form](../screenshots/poam-create-form-01.png)
-*Figure 4: POA&M creation form*
-
-**Required Fields**:
+**Required**:
 - **Title**: Clear, concise description of the weakness
-- **Description**: Full details of the identified weakness or deficiency
-- **Severity**: Critical / High / Medium / Low
-- **Remediation Plan**: Steps to address the weakness
-- **Target Completion Date**: Realistic deadline
 
-**Optional Fields**:
-- **Control**: Link to the relevant compliance control
-- **Owner**: Person responsible for remediation
-- **Milestones**: Break remediation into trackable steps
-- **Supporting Evidence**: Attach relevant documents
+**Optional**:
+- **Description**: Full details of the identified weakness or deficiency
+- **Priority**: Low / Medium / High / Critical (defaults to Medium)
+- **Status**: Open / In Progress / Pending Review / Closed / Risk Accepted
+- **Due Date**: Target completion date
+- **Remediation Plan**: Steps to address the weakness
 
 4. Click **Create POA&M**
 
+The create dialog covers the common fields. Owner, control linkage, milestones,
+resources required, and the scheduled completion date are accepted by
+`POST /api/v1/poam` but are not on the dialog — set them through the API for now.
+
 ### Create from Vulnerability
 
-Convert an existing vulnerability into a formal POA&M:
+Converting a finding into a formal POA&M is available through the API:
 
-1. Navigate to **Vulnerabilities**
-2. Open the vulnerability you want to track
-3. Click **Create POA&M**
+```
+POST /api/v1/poam/from-vulnerability/:vulnerabilityId
+```
 
-![Create POA&M button in vulnerability details](../screenshots/poam-from-vuln-button-01.png)
-*Figure 5: Create POA&M from vulnerability*
-
-The form will be pre-populated with vulnerability details. Review and complete any additional fields, then click **Create POA&M**.
+It pre-populates the POA&M from the vulnerability's details. There is no
+**Create POA&M** button on the vulnerability detail panel — see the
+[Vulnerability Management guide](../wiki/security/Vulnerability-Management.md),
+which lists this among the things that panel does not do.
 
 ### Automatic POA&M Creation
 
-When a control transitions from non-compliant (`Not Started`, `In Progress`, `Needs Review`) to compliant (`Implemented`, `Verified`), the system **automatically creates a POA&M** and places it in `Pending Auditor Review` status.
+`PUT /api/v1/controls/:id` will **automatically create a POA&M** in
+`Pending Auditor Review` when a control transitions from non-compliant
+(`not_started`, `in_progress`, `needs_review`) to compliant (`implemented`,
+`satisfied_via_crosswalk`, `verified`). That route requires a
+`poam_justification` in the request body and returns `400` with
+`requires_poam_submission: true` without one.
 
-**Required**: You must provide a `poam_justification` explaining the remediation when updating the control status.
+> **📋 Note**: changing a control's status from the control detail page does
+> **not** trigger this. The page calls the implementation status endpoint
+> (`/api/v1/implementations/:id/status`), which has no POA&M logic, so no
+> justification is requested and no POA&M is created. Automatic creation
+> currently only happens for API clients calling `PUT /controls/:id`.
 
-![Control status change requiring POA&M justification](../screenshots/poam-auto-create-justification-01.png)
-*Figure 6: Justification required when marking a control compliant*
+---
 
-The POA&M is automatically submitted for auditor review and linked to the control.
+## Milestones, Resources, and Slippage
+
+A POA&M is a *Plan of Action **and Milestones***, and the milestone half is tracked as its own list rather than folded into a single date.
+
+### Milestones
+
+Each POA&M item carries a list of discrete milestones, each with its own description, target date, and status:
+
+| Status | Meaning |
+|---|---|
+| `pending` | not started |
+| `in_progress` | underway |
+| `completed` | done — the completion date is stamped automatically |
+| `delayed` | target date passed without completion |
+| `cancelled` | no longer applicable |
+
+Marking a milestone **completed** stamps its completion date; reopening it clears that date, so the two can never contradict each other. The milestone list reports how many are completed and how many are overdue.
+
+Milestones are ordered by an explicit sort order, so "inventory the affected systems" stays above "verify with an external scan" regardless of their dates.
+
+### Resources Required
+
+Records the funding, staff, and tooling estimated to close the item — for example *"1 FTE security engineer, 40h; $12k for load-balancer certificates"*. Federal POA&M templates require this because the estimate is what gets reviewed and budgeted against.
+
+### Scheduled completion vs. due date — how slippage stays visible
+
+These are two different dates and the difference is the point:
+
+- **Scheduled completion date** — the **original** commitment. Set once, when the item is created, and not overwritten afterwards.
+- **Due date** — the **current** target, which may be revised.
+
+When a deadline moves, the due date changes and the scheduled completion date does not. The gap between them *is* the slippage, which is exactly what OMB-style reporting asks you to show. If a single date were revised in place, the fact that it had ever moved would be gone.
+
+> **📋 Note**: POA&M items that existed before this was introduced have their scheduled completion date backfilled from their due date, so they report zero slippage rather than dropping out of slippage reporting entirely.
 
 ---
 
@@ -144,25 +186,22 @@ The POA&M is automatically submitted for auditor review and linked to the contro
 
 ### Update Status
 
-1. Open the POA&M
-2. Click **Edit**
-3. Change the **Status** field
+Set the status when you create the item, or change it afterwards with:
 
-![POA&M status dropdown options](../screenshots/poam-status-dropdown-01.png)
-*Figure 7: POA&M status options*
+```
+PATCH /api/v1/poam/:id
+```
+
+Valid statuses are `open`, `in_progress`, `pending_review`, `closed`, and
+`risk_accepted`. Editing an existing POA&M from the UI is not yet available.
 
 ### Add Progress Updates
 
 Document progress notes without changing status:
 
-1. Open the POA&M
-2. Scroll to **Updates** section
-3. Click **Add Update**
-4. Enter your progress note
-5. Click **Save**
-
-![POA&M updates section with Add Update button](../screenshots/poam-updates-section-01.png)
-*Figure 8: Log progress updates on a POA&M*
+```
+POST /api/v1/poam/:id/updates
+```
 
 **Good Update Notes Include**:
 - What was completed
@@ -172,12 +211,9 @@ Document progress notes without changing status:
 
 ### Attach Evidence
 
-Link evidence of remediation to the POA&M:
-
-1. Open the POA&M
-2. Scroll to **Evidence** section
-3. Click **Add Evidence**
-4. Upload or link existing evidence
+Upload remediation evidence through the [Evidence module](EVIDENCE.md) and
+reference it in the POA&M's remediation plan or a progress update. A dedicated
+Evidence section on the POA&M itself is not yet available.
 
 ---
 
@@ -187,16 +223,9 @@ When remediation is complete, submit the POA&M for auditor review.
 
 ### Standard Submission
 
-1. Open the POA&M
-2. Click **Submit for Review**
-
-![Submit for Review button](../screenshots/poam-submit-review-button-01.png)
-*Figure 9: Submit POA&M for auditor review*
-
-3. Fill in the review submission form:
-
-![Review submission form with justification and evidence fields](../screenshots/poam-submit-review-form-01.png)
-*Figure 10: Review submission form*
+```
+POST /api/v1/poam/:id/submit-for-review
+```
 
 **Required**:
 - **Justification**: Detailed explanation of how the weakness was remediated
@@ -346,62 +375,79 @@ For agency authorization-specific findings:
 
 ## Auditor Review Workflow
 
-*Available to users with the Auditor role*
+*Requires the `audit.write` permission (`audit.read` for guidance)*
+
+The auditor review workflow is fully implemented on the API and has no UI yet.
+Everything below is reachable through the endpoints named; there is no auditor
+queue screen, guidance panel, review form, or approval-history view in the
+dashboard.
 
 ### Viewing POA&Ms Pending Review
 
-Auditors see a dedicated queue of submissions pending review:
-
-1. Navigate to **POA&M** in the left sidebar
-2. Filter by **Status: Pending Auditor Review**
-
-![POA&M queue filtered to pending review items](../screenshots/poam-auditor-queue-01.png)
-*Figure 11: Auditor review queue*
+```
+GET /api/v1/poam?status=pending_review
+```
 
 ### Getting Framework-Specific Guidance
 
-Before reviewing, access framework-specific guidance:
-
-1. Open the POA&M submission
-2. Click **View Auditor Guidance**
-
-![Auditor guidance panel showing framework-specific review checklist](../screenshots/poam-auditor-guidance-01.png)
-*Figure 12: Framework-specific auditor guidance*
+```
+GET /api/v1/poam/auditor-guidance/:frameworkCode/:typeCode
+```
 
 Guidance includes:
 - Required fields to verify
 - Review checklist specific to the framework type
 - Multi-level review workflow
 
+Use `GET /api/v1/poam/framework-types` to discover the valid framework and type
+codes, and `GET /api/v1/poam/approval-request/:id/context` to pull the full
+context for a single submission.
+
 ### Conducting the Review
 
-1. Open the POA&M pending review
-2. Review the justification and supporting evidence
-3. Check framework-specific data (if applicable)
-4. Click **Review**
-
-![Review form with approve, reject, and changes requested options](../screenshots/poam-review-form-01.png)
-*Figure 13: Auditor review form*
+```
+POST /api/v1/poam/:id/review
+```
 
 **Review Outcomes**:
 - **Approved**: Remediation is satisfactory; POA&M moves to `Auditor Approved`
 - **Rejected**: Remediation is insufficient; POA&M returns to `In Progress`
 - **Changes Requested**: Minor adjustments needed before approval
 
-5. Enter **Review Comments**: Provide actionable feedback
-6. Click **Submit Review**
-
-The POA&M owner is notified of the outcome automatically.
+Include review comments in the request body — they are the actionable feedback
+the POA&M owner receives.
 
 ### Viewing Approval History
 
-Track the complete review history of any POA&M:
+```
+GET /api/v1/poam/:id/approval-history
+```
 
-1. Open the POA&M
-2. Scroll to **Approval History**
+Returns every submission and outcome for the item, in order.
 
-![Approval history showing all review submissions and outcomes](../screenshots/poam-approval-history-01.png)
-*Figure 14: POA&M approval history*
+---
+
+## What is API-only today
+
+The POA&M data model and workflow are complete on the backend; the dashboard
+currently surfaces only the list and the create dialog. These parts have no UI:
+
+| Capability | Endpoint |
+|---|---|
+| POA&M detail view | `GET /api/v1/poam/:id` |
+| Edit a POA&M / change status | `PATCH /api/v1/poam/:id` |
+| Progress updates | `POST /api/v1/poam/:id/updates` |
+| Submit for auditor review | `POST /api/v1/poam/:id/submit-for-review` |
+| Auditor review decision | `POST /api/v1/poam/:id/review` |
+| Approval history | `GET /api/v1/poam/:id/approval-history` |
+| Auditor guidance | `GET /api/v1/poam/auditor-guidance/:frameworkCode/:typeCode` |
+| Create from a vulnerability | `POST /api/v1/poam/from-vulnerability/:vulnerabilityId` |
+| Milestones | `GET/POST/PATCH/DELETE /api/v1/poam/:id/milestones[/:milestoneId]` |
+
+Filtering, status/priority selection, and framework-specific fields are likewise
+supported by the API ahead of the UI. This guide describes the endpoints rather
+than inventing buttons, so nothing here sends you looking for a control that is
+not on screen.
 
 ---
 
@@ -463,37 +509,38 @@ The POA&M status changes to `Closed` and is retained in the audit trail.
 **Problem**: Expected POA&M not in the list
 
 **Solutions**:
-- Check active filters (status or severity may be filtering it out)
-- Verify you have `controls.read` permission
-- Search by POA&M ID or title
+- Clear the **Filter POA&Ms...** text box — it may be hiding the item
+- Verify you have `controls.read` permission, and `settings.manage` to reach the
+  Operations page at all
 - Refresh the page
 
-### Can't Submit for Review
+### Submit for Review Fails
 
-**Problem**: Submit for Review button is disabled or unavailable
+**Problem**: `POST /api/v1/poam/:id/submit-for-review` returns an error
 
 **Possible Causes**:
-- No linked control selected (required for automatic workflow)
 - Missing required justification text
 - Insufficient permissions (need `controls.write`)
+- The item is already in a review state
 
 ### Auditor Review Not Receiving Notifications
 
 **Problem**: Auditor not notified of new submissions
 
 **Solutions**:
-- Verify auditor's notification settings are enabled
+- Verify the auditor's notification settings are enabled (**Settings →
+  Notifications**)
 - Check that the user has the Auditor role with `audit.write` permission
 - Contact an admin to verify notification configuration
 
-### Framework-Specific Fields Not Appearing
+### Framework-Specific Fields Not Accepted
 
-**Problem**: Framework-specific data fields not shown
+**Problem**: `framework_specific_data` is rejected or ignored
 
 **Solutions**:
-- Select a **Framework-Specific Type** in the review submission form
+- Pass a valid `framework_specific_type` alongside it — discover the valid codes
+  with `GET /api/v1/poam/framework-types`
 - Verify the framework is activated for your organization
-- Contact support if the framework type is not listed
 
 ---
 

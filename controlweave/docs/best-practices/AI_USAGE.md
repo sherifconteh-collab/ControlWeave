@@ -72,7 +72,7 @@ Optimize your AI request usage:
 
 ## Related Guides
 
-- [AI Copilot](../guides/AI_COPILOT.md) - AI Copilot user guide
+- [Conversational AI](../guides/AI_COPILOT.md) - Asking questions over MCP or the API
 - [AI Analysis](../guides/AI_ANALYSIS.md) - AI analysis features
 - [Ollama Integration](../integrations/OLLAMA.md) - Private AI deployment
 - [Settings & LLM Configuration](../guides/SETTINGS.md) - Configure AI providers

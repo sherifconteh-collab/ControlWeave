@@ -485,10 +485,10 @@ All audit logs matching APSC-DV-000800-000840 requirements are automatically for
 - [STIG Viewer Tool](https://public.cyber.mil/stigs/srg-stig-tools/)
 
 ### ControlWeave Documentation
-- [Audit Log AU-2 Compliance](../AUDIT_LOG_AU2_COMPLIANCE.md)
+- [Audit Log AU-2 Compliance](../../../../AUDIT_LOGGING.md)
 - [Vulnerability Management](./Vulnerability-Management.md)
-- [CI/CD Security Pipeline](../CI_CD_COMPLIANCE_MAPPING.md)
-- [Security Summary](../SECURITY_SUMMARY.md)
+- [CI/CD Security Pipeline](../../../../CI_CD_GUIDE.md)
+- [Security Summary](../../../../SECURITY_SUMMARY.md)
 
 ## Support
 

@@ -257,19 +257,13 @@ To enable AI features, configure your LLM provider:
 
 2. Choose a provider:
 
-![Provider selection dropdown showing Anthropic, OpenAI, Gemini, Groq, Ollama options](../screenshots/llm-provider-select-01.png)
-*Figure 8.2: Select your LLM provider*
 
 3. Enter your API key:
 
-![API key input field with show/hide password toggle](../screenshots/llm-api-key-entry-01.png)
-*Figure 8.3: Enter your API key*
 
 4. Click **Test Connection** to verify
 5. Select default model:
 
-![Model selection dropdown showing available models for the chosen provider](../screenshots/llm-model-select-01.png)
-*Figure 8.4: Select your preferred model*
 
 6. Click **Save Configuration**
 
