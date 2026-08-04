@@ -1,6 +1,6 @@
 {
   "name": "controlweave-backend",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "engines": {
     "node": ">=20.16.0"
   },
@@ -33,6 +33,7 @@
     "qa:e2e:auditor": "node scripts/qa-auditor-workflow.js",
     "qa:e2e:rbac": "node scripts/qa-rbac-mega-test.js",
     "qa:e2e:dynamic": "node scripts/qa-dynamic.js",
+    "qa:e2e:links": "bash scripts/qa-link-routes-e2e.sh",
     "qa:e2e:dynamic:all": "node scripts/qa-dynamic.js --suites=syntax,mega,dynamic,auditor,rbac",
     "qa:crosswalk:live": "node scripts/verify-live-crosswalk.js",
     "check:ip-hygiene": "node scripts/ip-hygiene-check.js",
@@ -97,8 +98,9 @@
     "esprima": "^4.0.1",
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.5.2",
     "geoip-lite": "^2.0.2",
-    "hono": "^4.12.28",
+    "hono": "^4.12.34",
     "ioredis": "^5.4.1",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
@@ -127,18 +129,20 @@
     "pm2": "^7.0.3"
   },
   "overrides": {
-    "express-rate-limit": "8.5.2",
+    "express-rate-limit": "$express-rate-limit",
     "minimatch": "^10.2.3",
     "glob": "^11.0.1",
-    "hono": "^4.12.28",
+    "hono": "^4.12.34",
     "tmp": ">=0.2.6",
-    "socket.io-parser": "4.2.6",
+    "socket.io-parser": ">=4.2.7",
     "yauzl": ">=3.2.1",
     "uuid": "^14.0.0",
     "qs": "^6.15.2",
     "@hono/node-server": ">=2.0.5",
     "body-parser": ">=1.20.6",
-    "brace-expansion": ">=5.0.8",
-    "postcss": ">=8.5.23"
+    "brace-expansion": ">=5.0.9",
+    "postcss": ">=8.5.23",
+    "fast-uri": "^3.1.5",
+    "ip-address": "^10.4.0"
   }
 }

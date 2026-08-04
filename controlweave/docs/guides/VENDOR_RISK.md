@@ -11,6 +11,29 @@ ControlWeave provides two complementary vendor risk management capabilities:
 
 Together, these modules give you a complete picture of your vendor ecosystem's risk posture.
 
+
+## Register risks on a vendor
+
+Open a vendor from **Vendor Risk (TPRM)** and the detail panel lists the risk
+register entries linked to it, worst residual score first, each with its
+category, status and the movement from inherent to residual.
+
+This is not the same thing as the vendor's **risk tier**. The tier is a static
+classification set at onboarding — it records how much this supplier matters.
+A linked register risk records what could actually go wrong, how likely it is,
+how bad it would be, what is being done about it and when it was last reviewed.
+A vendor can be tiered `critical` with no risks recorded (nobody has assessed
+it yet) or tiered `low` while carrying an open critical risk (the tier has gone
+stale). The panel flags that second case explicitly, because a vendor review is
+the moment to catch it.
+
+Linking is done from the risk, not the vendor, so one screen owns the
+relationship: open the risk in the [Risk Register](RISK_REGISTER.md) and add the
+vendor there. The endpoints are `POST` and
+`DELETE /api/v1/risks/:id/vendors/:vendorId`; the vendor detail response
+(`GET /api/v1/tprm/vendors/:id`) carries `risks`, `open_risk_count` and
+`max_residual_score`.
+
 ---
 
 ## TPRM — Third-Party Risk Management

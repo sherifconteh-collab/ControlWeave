@@ -8,8 +8,11 @@ This guide covers how to track and manage your organization's assets using Contr
 
 ## 📋 Prerequisites
 - ControlWeave account
-- Admin or Asset Manager role (write access requires `assets.write` permission)
-- List of hardware, software, and service accounts to import
+- `assets.read` to view and `assets.write` to change anything. There is no
+  "Asset Manager" role — the assignable roles are `admin`, `auditor` and `user`,
+  and CMDB access comes from the permission, not a dedicated role
+- Your list of hardware, software and service accounts — as a CSV if you have
+  one, since the inventory can be bulk-imported (§1.4)
 
 ---
 
@@ -20,27 +23,33 @@ ControlWeave's CMDB helps you:
 - 🏗️ Define and classify deployment environments
 - 🔐 Track service accounts and credential rotation schedules
 - 🔑 Register password vault integrations
-- 🔗 Link assets to security controls and vulnerabilities
-- 📋 Generate SBOM and AIBOM for compliance evidence
+- 🔗 Record dependencies between assets, and track vulnerabilities against them
+- 🎯 Link assets to the compliance controls they evidence (CM-8, AC-2, IA-5)
+- 📥 Bulk-import an inventory from CSV and export it back out
 
-ControlWeaver has no tier gating and no asset limit — CMDB, hardware/software assets, AI agents, and service accounts are all available to every authenticated user.
-| **Environments** | — | 5 | Unlimited | Unlimited |
-| **Password Vaults** | ❌ | ✅ | ✅ | ✅ |
-| **SBOM Management** | ❌ | ✅ Basic | ✅ Full | ✅ Full |
-| **AIBOM Management** | ❌ | ✅ Basic | ✅ Full | ✅ Full |
-| **Asset-Control Mapping** | ❌ | ✅ Manual | ✅ AI-Powered | ✅ AI-Powered |
-| **Shadow IT Detection** | ❌ | ❌ | ✅ AI | ✅ AI |
+SBOM is a separate feature with its own page rather than something the CMDB
+generates — see the [SBOM guide](SBOM.md). Per-asset AIBOM does not exist; §5.2
+explains what is actually there.
+
+ControlWeave has no tier gating and no asset limit — CMDB, hardware and software assets, AI agents, service accounts, environments and password vaults are all available to every authenticated user with the `assets.read` / `assets.write` permissions.
 
 ---
 
 ## Step 1: Access the CMDB
 
-### 1.1 Navigate to CMDB
+### 1.1 Navigate to the asset inventory
 
-1. Under **Assets & Security** in the left sidebar, click **Assets**
-2. The CMDB dashboard displays an overview of your asset inventory
+Under **Assets & Security** in the left sidebar, click **Assets**. That page is
+titled *Configuration Management Database (CMDB)* and is the general asset
+inventory: a filterable list of assets with a detail drawer showing
+vulnerabilities, dependencies and notes.
 
-The CMDB is organized into six sections:
+### 1.2 Navigate to the specialized registers
+
+The six specialized registers live at `/dashboard/cmdb` and are **not** in the
+sidebar. Reach them from the **Financial Compliance** entry under
+**Assets & Security**, or go to `/dashboard/cmdb` directly:
+
 - **Hardware** — Physical and virtual machines
 - **Software** — Applications and services
 - **AI Agents** — AI/ML models and autonomous agents
@@ -48,40 +57,78 @@ The CMDB is organized into six sections:
 - **Environments** — Deployment environments (Production, Staging, etc.)
 - **Password Vaults** — Credential store integrations
 
-### 1.2 Dashboard Overview
+Two further pages live under `/dashboard/cmdb` alongside the registers:
 
-The CMDB Dashboard displays:
-- **Total Assets**: Count by category
-- **Asset Health**: Status breakdown (Active, Inactive, Decommissioned)
-- **Environment Coverage**: Assets mapped to environments
-- **Upcoming Reviews**: Service accounts and assets with approaching review dates
-- **Recent Activity**: Latest asset changes
+- **Dependency Graph** (`/dashboard/cmdb/dependency-map`) — visualizes the
+  asset-to-asset relationships recorded via `POST /api/v1/cmdb/relationships`
+- **Financial Services Workspace** (`/dashboard/cmdb/financial-services-workspace`)
 
-### 1.3 Import Assets from External CMDB
+**Every register works the same way, and the shape is narrower than it looks.**
+Each is a single table page with:
 
-Click **📥 Import Assets** (top-right of the CMDB dashboard) to bulk-import assets from any external CMDB or IT asset management tool.
+- a **+ Add New** button (top right) opening an *Add New …* modal whose submit
+  button reads **Save**
+- an **Edit** link on each row, opening that same modal seeded from the record
+  and titled *Edit …*
+- a **Delete** link on each row
 
-**Supported formats**: CSV (`.csv`) and JSON (`.json`) exports from any CMDB, IT asset management, or vulnerability scanning tool. Examples include IT management platforms, IT service management tools, open-source asset trackers, vulnerability scanners, and custom spreadsheets.
+Editing arrived late: for a long time these pages had only Add and Delete, so
+correcting a typo meant deleting the record and retyping it. If you are working
+from an older build and see no Edit link, `PUT /api/v1/cmdb/environments/:id`,
+`/service-accounts/:id`, `/password-vaults/:id` and the asset equivalents have
+always worked.
 
-**AI-assisted field mapping workflow**:
+There is still no per-row detail *page* — everything happens in the table and
+its modal.
 
-1. Click **📥 Import Assets**
-2. Upload your CSV or JSON file
-3. AI analyzes your column headers and sample rows, then suggests how each column maps to the ControlWeave CMDB schema (e.g., your `ci_name` → `name`, `ip_addr` → `ip_address`)
-4. Review the AI's suggested mappings in the table — adjust any that are incorrect
-5. Check the data preview to verify rows look correct
-6. Select the **Asset Type** (Hardware, Software, or AI Agent)
-7. Click **🔍 Dry Run** to validate the mapping without writing any data
-8. Click **✅ Import** to commit the assets
+The steps below name the fields each modal collects. Read "go to X → **+ Add
+New**" throughout — the buttons are not labeled "Add Hardware", "Add Software",
+"Add Environment" and so on.
 
-**Handling gaps**: If the AI identifies required fields (like `name`) that have no matching column in your file, they are highlighted in amber. You can:
-- Map another column to fill the gap
-- Skip the import for those rows
-- Manually enter missing values after import
+### 1.3 What the two dashboards show
 
-**Idempotent imports**: Re-importing a file will skip rows that create duplicate asset names. Existing assets are not overwritten.
+**Assets** (`/dashboard/assets`): Total Assets, Active, Categories,
+Environments, plus category / status / environment filters.
 
-> **API**: `POST /api/v1/cmdb/import/analyze` (upload + AI mapping) and `POST /api/v1/cmdb/import/commit` (write assets)
+**CMDB** (`/dashboard/cmdb`): Total Assets, Service Accounts and AI Agents,
+with links into each register and a short explanation of why the CMDB matters
+for GRC.
+
+### 1.4 Bulk import and export
+
+The **Bulk import & export** panel at the bottom of `/dashboard/cmdb` handles
+loading and extracting inventory in one go.
+
+1. **Download template** gives you a CSV with exactly the columns the importer
+   accepts. **Export inventory** gives you the same columns filled in, so you
+   can export, edit and load the file back.
+2. Choose what the rows are — Hardware, Software or AI Agents — and pick your
+   file.
+3. **Dry run** validates without writing anything. It reports how many rows are
+   valid and lists every problem row by its line number in your file.
+4. **Import** stays disabled until a dry run has succeeded, and imports only the
+   valid rows. All of them insert in a single transaction, so a failure part-way
+   leaves nothing behind rather than a half-loaded inventory.
+
+Choosing a different file clears the previous dry-run result, so an import can
+never run against an analysis of different content.
+
+**Columns.** `name` is required. Optional: asset tag, serial number, model,
+manufacturer, location, status, criticality, security classification, IP
+address, hostname, FQDN, MAC address, version, license key and expiry, cloud
+provider and region, acquisition/deployment/end-of-life dates, documentation URL
+and notes. Two columns are resolved for you: `environment` matches a registered
+environment by name, and `owner_email` matches an active user in your
+organization. Unrecognized columns are ignored and reported rather than
+silently dropped. Dates must be `YYYY-MM-DD`. The limit is 5000 rows per
+import.
+
+Ownership by UUID, the AI governance fields and freeform metadata are
+deliberately not importable — they stay on the form and the API.
+
+The equivalent endpoints are `GET /api/v1/cmdb/import/template`,
+`GET /api/v1/cmdb/import/export`, `POST /api/v1/cmdb/import/analyze` (dry run)
+and `POST /api/v1/cmdb/import/commit`. Import and export are both audit-logged.
 
 ---
 
@@ -91,7 +138,7 @@ Define your deployment environments before adding assets. Assets are associated 
 
 ### 2.1 Add an Environment
 
-1. Go to **Assets & Security → Assets**, then **Environments** → **Add Environment**
+1. Go to `/dashboard/cmdb` → **Environments**, then click **+ Add New**
 2. Fill in the environment details:
 
 **Required Fields**:
@@ -104,19 +151,28 @@ Define your deployment environments before adding assets. Assets are associated 
 - **Contains PHI**: Whether the environment processes Protected Health Information
 - **Contains PCI**: Whether the environment processes Payment Card Industry data
 - **Data Classification**: `public`, `internal`, `confidential`, `restricted`
-- **Network Zone**: `internet`, `dmz`, `intranet`, `restricted`, `isolated`
 - **Security Level**: `low`, `medium`, `high`, `critical`
 - **Criticality**: Business impact level
 
-3. Click **Save Environment**
+3. Click **Save**
 
-> **💡 Tip**: Mark your production environment's data classifications accurately — these flags flow into compliance control assessments and help the AI Copilot generate context-aware recommendations.
+> **💡 Tip**: Mark your production environment's data classifications accurately.
+> These flags feed the organization context the AI analyses read, so getting them
+> right improves the recommendations those analyses produce.
 
 ### 2.2 Edit or Delete an Environment
 
-- Click an environment name to view its details
-- Click **Edit** to update any field
-- Click **Delete** to remove the environment (only possible when no assets reference it)
+Environment names are not clickable — there is no detail page — but each row
+carries **Edit** and **Delete**. Edit reopens the creation modal seeded from the
+record; Delete asks "Delete this environment?" first.
+
+`assets.environment_id` references `environments(id)` with no cascade, so
+Postgres refuses to delete an environment that assets still point at. The route
+does not translate that into a useful message: you get a generic
+`Internal server error`. If a delete fails, reassign or remove the referencing
+assets first.
+
+The equivalent endpoint is `PUT /api/v1/cmdb/environments/:id`.
 
 ---
 
@@ -124,7 +180,7 @@ Define your deployment environments before adding assets. Assets are associated 
 
 ### 3.1 Add a Hardware Asset
 
-1. Go to **Assets & Security → Assets**, then **Hardware** → **Add Hardware**
+1. Go to `/dashboard/cmdb` → **Hardware** → **+ Add New**
 2. Fill in asset details:
 
 **Required Fields**:
@@ -158,18 +214,17 @@ Define your deployment environments before adding assets. Assets are associated 
 - **Owner**: Responsible user
 - **Documentation URL**: Link to runbooks or wikis
 
-3. Click **Save Asset**
+3. Click **Save**
 
 ### 3.2 Bulk Asset Management
 
-For large inventories, use CSV import:
+Use the **Bulk import & export** panel on `/dashboard/cmdb` (§1.4) — download
+the template, fill it in, dry-run it and import. The register pages themselves
+have no Import control; bulk loading is centralized on the CMDB dashboard so one
+file can be validated the same way whichever category it targets.
 
-1. Click **Import** → **CSV Import**
-2. Download the CSV template
-3. Populate the template with your asset data
-4. Upload the completed file
-5. Review the import preview for errors
-6. Click **Import Assets**
+To script it instead, `POST /api/v1/cmdb/assets` creates one asset per call, and
+`POST /api/v1/cmdb/import/commit` takes a whole CSV.
 
 ---
 
@@ -177,7 +232,7 @@ For large inventories, use CSV import:
 
 ### 4.1 Add a Software Asset
 
-1. Go to **Assets & Security → Assets**, then **Software** → **Add Software**
+1. Go to `/dashboard/cmdb` → **Software** → **+ Add New**
 2. Fill in asset details:
 
 **Software-Specific Fields**:
@@ -193,18 +248,17 @@ For large inventories, use CSV import:
 - **Environment**: Associated deployment environment
 - **Owner**: Application owner
 
-3. Click **Save Asset**
+3. Click **Save**
 
 ### 4.2 SBOM Integration
 
-Software assets support Software Bill of Materials (SBOM) for component-level visibility:
+**Software assets have no SBOM tab.** The Software register is a table with add
+and delete only; there is no per-asset detail page, so no SBOM upload,
+generation or component listing hangs off one.
 
-1. Open a software asset's detail page
-2. Click **SBOM** tab
-3. Click **Upload SBOM** or **Generate SBOM**
-4. Supported formats: CycloneDX, SPDX
-5. ControlWeave parses the SBOM and lists all components
-6. Click **Scan for Vulnerabilities** to check components against CVE databases
+SBOM management is its own feature with its own page — see the
+[SBOM guide](SBOM.md) and **Assets & Security → SBOM** in the sidebar. It is not
+linked to individual software-asset records.
 
 ---
 
@@ -214,7 +268,7 @@ AI Agent assets have additional fields to support AI governance and the NIST AI 
 
 ### 5.1 Add an AI Agent
 
-1. Go to **Assets & Security → Assets**, then **AI Agents** → **Add AI Agent**
+1. Go to `/dashboard/cmdb` → **AI Agents** → **+ Add New**
 2. Fill in standard asset fields, plus:
 
 **AI Governance Fields**:
@@ -226,18 +280,28 @@ AI Agent assets have additional fields to support AI governance and the NIST AI 
 - **Human Oversight Required**: Whether a human must review AI outputs
 - **AI Transparency Score**: 0–100 score reflecting model explainability
 
-3. Click **Save Asset**
+3. Click **Save**
 
 ### 5.2 AIBOM Support
 
-AI Agents support AI Bill of Materials (AIBOM) to document model components, training data, and dependencies:
+An AI Bill of Materials documents a model's components, training data and
+dependencies.
 
-1. Open an AI Agent asset's detail page
-2. Click **AIBOM** tab
-3. Click **Upload AIBOM** or **Generate AIBOM**
-4. Review model components, datasets, and third-party dependencies
+**There is no AIBOM tab on an AI Agent.** The AI Agents register captures the
+agent's model, purpose, EU AI Act risk level, human-oversight and bias-testing
+fields, but no bill of materials — there is no AIBOM upload, generation or
+review screen anywhere in the dashboard.
 
-> **💡 Tip**: Maintaining accurate AIBOMs is critical for compliance with the EU AI Act and NIST AI RMF. ControlWeave AI Analysis can generate compliance gap reports based on your AIBOM data.
+What does exist:
+- `POST /api/v1/ai/monitoring/aiboms/:aibomId/enable` turns on continuous
+  monitoring for an AIBOM record.
+- `scripts/generate-aibom.js` produces an AIBOM for **ControlWeave itself**, not
+  for your registered agents. See the [SBOM guide](SBOM.md).
+
+> **💡 Tip**: Accurate AIBOMs matter for the EU AI Act and NIST AI RMF. Until
+> per-agent AIBOM management ships, record what you have in the agent's
+> description and attach the document through the
+> [Evidence module](EVIDENCE.md).
 
 ---
 
@@ -247,7 +311,7 @@ AI Agents support AI Bill of Materials (AIBOM) to document model components, tra
 
 Service accounts represent non-human identities such as API keys, CI/CD tokens, and database credentials.
 
-1. Go to **Assets & Security → Assets**, then **Service Accounts** → **Add Service Account**
+1. Go to `/dashboard/cmdb` → **Service Accounts** → **+ Add New**
 2. Fill in the details:
 
 **Required Fields**:
@@ -271,22 +335,27 @@ Service accounts represent non-human identities such as API keys, CI/CD tokens, 
 - **Last Review Date** / **Next Review Date**: Access review schedule
 - **Reviewer**: User responsible for access reviews
 
-3. Click **Save Service Account**
+3. Click **Save**
 
 ### 6.2 Credential Rotation Tracking
 
-ControlWeave tracks credential rotation schedules and alerts when rotation is overdue:
+Each service account carries a **rotation frequency** (defaulting to 90 days), a
+**last rotation date** and a **next rotation date**. The register shows **Next
+Rotation** as a column.
 
-- **Green**: Rotation is current
-- **Yellow**: Rotation due within 14 days
-- **Red**: Rotation overdue
+What the guide previously described but the page does not do:
 
-To record a rotation:
+- **No color coding on rotation.** The green/amber/red chips on this page are
+  for account *status* and *privilege level*. An overdue rotation is not
+  highlighted — read the Next Rotation column yourself.
+- **No Record Rotation button.** There is no one-click "I rotated this" action.
+  To log a rotation, click **Edit** on the account and set **Last Rotation
+  Date**; the next date follows from the frequency. The equivalent endpoint is
+  `PUT /api/v1/cmdb/service-accounts/:id` with `last_rotation_date`.
 
-1. Open the service account
-2. Click **Record Rotation**
-3. Confirm the date credentials were rotated
-4. The next rotation date is automatically calculated
+Rotation dates are stored and returned by the API
+(`last_rotation_date`, `rotation_frequency_days`, `next_rotation_date`), so
+overdue-rotation reporting can be built on `GET /api/v1/cmdb/service-accounts`.
 
 ---
 
@@ -296,7 +365,7 @@ Register your organization's password vaults to link service account credentials
 
 ### 7.1 Add a Password Vault
 
-1. Go to **Assets & Security → Assets**, then **Password Vaults** → **Add Vault**
+1. Go to `/dashboard/cmdb` → **Password Vaults** → **+ Add New**
 2. Fill in the details:
 
 **Fields**:
@@ -305,34 +374,74 @@ Register your organization's password vaults to link service account credentials
 - **Vault URL**: API endpoint or web URL
 - **Description**: Notes about this vault's purpose
 
-3. Click **Save Vault**
+3. Click **Save**
 
 Once registered, vaults appear as options when creating service accounts.
 
 ---
 
-## Step 8: Asset-Control Mapping
+## Step 8: Risk Exposure
 
-Link CMDB assets to compliance controls to demonstrate evidence coverage.
+Every asset should be traceable to the risks it carries. An asset with no
+recorded exposure is an unassessed asset, not a safe one.
 
-### 8.1 Manual Mapping
+### 8.1 See what an asset is exposed to
 
-1. Navigate to **Controls**
-2. Open a control (e.g., CM-8 System Component Inventory)
-3. Click **Link Assets**
-4. Search for and select relevant assets
-5. Click **Save**
+1. Open **Assets** (`/dashboard/assets`) and click an asset
+2. The **Risk Exposure** panel at the top of the drawer lists every linked risk
 
-### 8.2 AI-Powered Mapping
+Each row shows the risk's severity band, its category and status, and the
+movement from **inherent** to **residual** score. Both are shown deliberately:
+residual alone tells you where you are but hides how much the treatment
+achieved, and migration 136 stores both so that trail stays auditable. Scores
+are likelihood x impact on a 1-5 scale, so 1-25 — 15+ reads as Critical, 10+
+High, 5+ Medium.
 
-ControlWeave AI can automatically suggest control-to-asset mappings:
+Click a risk to open it in the register.
 
-1. Go to **Insights & Reporting → AI Insights** → **Asset-Control Mapping**
-2. Select the frameworks to analyze
-3. Click **Generate Mappings**
-4. Review AI suggestions
-5. Accept or reject each mapping
-6. Click **Apply Selected**
+### 8.2 Link an asset to a risk
+
+Linking happens on the risk, not the asset, so one screen owns the
+relationship:
+
+1. Open the risk in **Risk Register** (`/dashboard/risks`)
+2. Add the asset under its **Assets** links
+
+The asset's Risk Exposure panel picks it up immediately.
+
+### 8.3 Exposure across the estate
+
+`GET /api/v1/cmdb/risk-exposure[?category=hardware|software|ai-agents]` returns,
+per asset, the number of **open** risks (closed and accepted are excluded), the
+worst residual score, and the title of the top risk. It is one query for the
+whole estate rather than one per asset, so it is the right basis for a report or
+a register column.
+
+---
+
+## Step 9: Asset-Control Mapping
+
+Link CMDB assets to compliance controls so the inventory can evidence them.
+
+### 9.1 Link an asset to a control
+
+1. Open **Assets** (`/dashboard/assets`) and click an asset to open its detail
+   drawer
+2. In **Compliance Controls**, click **+ Link control**
+3. Search by control ID or title (e.g. `CM-8`) and select from the list — it
+   offers controls from your organization's active frameworks and hides ones
+   already linked
+4. Optionally set a **compliance status** for the pairing: Compliant, Partial,
+   Non-compliant or Not applicable
+5. Click **Link**
+
+Each linked control shows on the asset with its framework, its status, and an
+**Unlink** action. The status is editable in place from the same row.
+
+This was unimplemented for a long time: the `asset_control_mappings` table has
+been in the schema since migration 005 — commented *"Links assets to compliance
+controls for traceability"* — with no API and no UI, so the table stayed empty.
+If your inventory shows no links at all, that is why; they have to be made now.
 
 **Common Control-Asset Mappings**:
 - **CM-8** (System Component Inventory) — All CMDB assets
@@ -341,46 +450,75 @@ ControlWeave AI can automatically suggest control-to-asset mappings:
 - **CM-6** (Configuration Settings) — Hardware and software assets
 - **SA-22** (Unsupported System Components) — Assets approaching end-of-life
 
----
+The endpoints are `GET`/`POST /api/v1/cmdb/assets/:assetId/controls`,
+`PUT`/`DELETE /api/v1/cmdb/assets/:assetId/controls/:controlId`, and
+`GET /api/v1/cmdb/controls/:controlId/assets` for the reverse view.
 
-## Step 9: Reporting & Analytics
 
-### 9.1 Asset Inventory Reports
+### 9.2 AI-Powered Mapping
 
-1. Click **Reports** → **Asset Inventory**
-2. Select report type:
-   - **Full Inventory**: Complete asset list with all fields
-   - **By Environment**: Assets grouped by environment
-   - **By Category**: Hardware, Software, AI Agents breakdown
-   - **End-of-Life Report**: Assets approaching decommission
-   - **Service Account Review**: Accounts with overdue reviews or rotations
+ControlWeave AI can suggest control-to-asset mappings, but **this is API-only
+and advisory**. There is no Asset-Control Mapping panel on the AI Insights page,
+and no accept or apply flow — the endpoint returns suggestions as a response and
+persists nothing. Read its suggestions, then record the ones you agree with
+using the linking flow in §9.1.
 
-3. Configure filters (environment, status, criticality)
-4. Choose format: PDF, XLSX, CSV
-5. Click **Generate Report**
+```
+POST /api/v1/ai/asset-control-mapping
+```
 
-### 9.2 Compliance Coverage View
-
-See how CMDB assets contribute to compliance:
-
-1. Click **Dashboard** → **Asset Coverage**
-2. View: frameworks with and without asset-linked controls
-3. Identify gaps where controls lack supporting asset evidence
+Requires the `ai.use` permission and a configured LLM provider.
 
 ---
 
-## Step 10: AI-Assisted CMDB Operations
+## Step 10: Reporting & Analytics
 
-### 10.1 Shadow IT Detection
+### 10.1 Exporting the inventory
 
-AI can detect assets that are active in your environment but not registered in the CMDB:
+Use **Export inventory** in the bulk panel on `/dashboard/cmdb` (§1.4). It emits
+CSV covering every asset — or one category, if you pick one — using the same
+columns the importer accepts, so an export can be edited and loaded back.
 
-1. Go to **Insights & Reporting → AI Insights** → **Shadow IT Detection**
-2. AI compares network data and integration feeds against registered assets
-3. Review unregistered assets
-4. Add to CMDB or mark as reviewed
+There is still no **Reports → Asset Inventory** entry, and none of the packaged
+report types this section used to promise (Full Inventory, By Environment, By
+Category, End-of-Life, Service Account Review) exist; there is no PDF or XLSX
+rendering of the inventory. The CSV export is the supported path.
 
-### 10.2 Ask in natural language
+Where assets appear in packaged reporting: the **System Security Plan (SSP)**
+report includes an asset-inventory section in its narrative, alongside
+compliance posture, vulnerabilities, evidence and POA&M.
+
+Service accounts are not in the CSV export; read them from
+`GET /api/v1/cmdb/service-accounts`.
+
+### 10.2 There is no Asset Coverage view
+
+There is no **Dashboard → Asset Coverage** page and no framework-by-framework
+rollup of which controls have asset-linked evidence. The underlying data now
+exists — §9.1 records the mappings — but nothing aggregates it into a coverage
+view yet. Per control, `GET /api/v1/cmdb/controls/:controlId/assets` returns the
+assets linked to it.
+
+---
+
+## Step 11: AI-Assisted CMDB Operations
+
+### 11.1 Shadow IT Detection
+
+AI can flag assets that appear in your environment but are not registered in the
+CMDB, comparing integration feeds against registered assets.
+
+**This is API-only.** There is no Shadow IT Detection control on the AI Insights
+page — that page offers a single **Phase 6 Analysis** run and nothing else. The
+analysis is reachable at:
+
+```
+POST /api/v1/ai/shadow-it
+```
+
+Requires the `ai.use` permission and a configured LLM provider.
+
+### 11.2 Ask in natural language
 
 There is no in-app chat box. Connect an MCP-compatible assistant (see the
 [MCP Guide](../MCP_GUIDE.md)) and ask asset questions there:
@@ -399,19 +537,21 @@ There is no in-app chat box. Connect an MCP-compatible assistant (see the
 **First 30 Minutes**:
 1. Create your key environments (Production, Staging)
 2. Add your top 10 most critical assets
-3. Link at least one asset to a relevant control
+3. Link at least one asset to a relevant control (§9.1)
 4. Register your password vault (if applicable)
 
 **First Week**:
-1. Import full hardware and software inventory
+1. Bulk-import your hardware and software inventory from CSV (§1.4) — dry-run it
+   first, fix what it flags, then import
 2. Register all service accounts with rotation schedules
-3. Link assets to CMDB controls (CM-8, AC-2, IA-5)
-4. Run an AI-powered asset-control mapping
+3. Link assets to CM-8, AC-2 and IA-5 so the inventory evidences them
+4. Record asset-to-asset dependencies and review them on the Dependency Graph
 
 **Ongoing**:
-1. Monthly: Review service account rotation status
+1. Monthly: Review service account rotation status via the **Next Rotation**
+   column — nothing highlights an overdue one for you (§6.2)
 2. Quarterly: Audit asset list for decommissioned systems
-3. On change: Update assets when infrastructure changes
+3. On change: Edit the asset in place, or re-import a corrected CSV
 
 ---
 
@@ -423,8 +563,8 @@ There is no in-app chat box. Connect an MCP-compatible assistant (see the
 - [ ] Network zones and security levels set
 
 **Assets**:
-- [ ] Hardware inventory imported
-- [ ] Software inventory imported
+- [ ] Hardware inventory entered
+- [ ] Software inventory entered
 - [ ] AI Agents registered with governance fields completed
 - [ ] Service accounts registered with rotation schedules
 
@@ -434,13 +574,14 @@ There is no in-app chat box. Connect an MCP-compatible assistant (see the
 - [ ] Rotation schedules reviewed
 
 **Controls Integration**:
+- [ ] Critical assets linked to the risks they carry (§8.1)
 - [ ] CM-8 (System Component Inventory) linked to assets
 - [ ] AC-2 (Account Management) linked to service accounts
 - [ ] IA-5 (Authenticator Management) linked to service accounts
 
 **Reporting**:
-- [ ] Initial asset inventory report generated
-- [ ] Asset coverage view reviewed
+- [ ] Inventory exported from the bulk panel (§1.4), or reviewed in the SSP
+      report's inventory section (§10.1)
 
 ---
 
@@ -449,9 +590,13 @@ There is no in-app chat box. Connect an MCP-compatible assistant (see the
 After setting up your CMDB:
 
 1. **Track Vulnerabilities**: [Link vulnerabilities to assets](VULNERABILITIES.md)
-2. **Manage SBOM/AIBOM**: Upload SBOMs/AIBOMs via the asset detail page → **SBOM** or **AIBOM** tab
-3. **Map to Controls**: [Associate assets with security controls](CONTROLS.md)
-4. **Generate Reports**: Navigate to **Reports** → **Asset Inventory** for CSV/PDF exports
+2. **Manage SBOM**: use the standalone SBOM feature at **Assets & Security →
+   SBOM** ([guide](SBOM.md)). It is not reachable from an asset record — there
+   is no asset detail page and no SBOM or AIBOM tab (§4.2, §5.2)
+3. **Map to Controls**: link assets to the controls they evidence (§9.1)
+4. **Review dependencies**: open the Dependency Graph at
+   `/dashboard/cmdb/dependency-map`
+5. **Extract the inventory**: **Export inventory** on `/dashboard/cmdb` (§1.4)
 
 ---
 
@@ -464,6 +609,11 @@ After setting up your CMDB:
 
 ---
 
-**Need Help?** Use the AI Copilot (purple button) or contact contehconsulting@gmail.com
+**Need Help?** There is no in-app AI Copilot button. Ask over
+[MCP](../MCP_GUIDE.md), run an analysis from **AI Insights**, or contact
+contehconsulting@gmail.com
 
-> **💡 Pro Tip**: Start by registering environments and then add assets into those environments. This ensures all your assets have proper data classification context from day one, which directly improves your compliance control coverage metrics.
+> **💡 Pro Tip**: Register environments first, then add assets into them. Assets
+> then carry data-classification context from day one — and because there is no
+> Edit control on the registers (§1.2), getting an asset's environment and dates
+> right at creation saves re-entering the record later.

@@ -35,8 +35,13 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const allMode = process.argv.includes('--all');
+
+// sha256 -> screenshot name, for every image actually written this run. Used to
+// refuse a second file with identical bytes; see captureScreenshot.
+const writtenHashes = new Map();
 
 const mappingPath = path.join(__dirname, '..', 'feature-docs-map.json');
 const mapping = JSON.parse(fs.readFileSync(mappingPath, 'utf8'));
@@ -67,7 +72,6 @@ const captureRoutes = {
     { path: '/dashboard/frameworks', name: 'frameworks-activate-button-01.png', description: 'Activate button', action: async (page) => {
       await page.evaluate(() => window.scrollBy(0, 200));
     }},
-    { path: '/dashboard/frameworks', name: 'frameworks-active-badge-01.png', description: 'Active badge' }
   ],
   'controls': [
     { path: '/dashboard/controls', name: 'controls-list-01.png', description: 'Controls list' },
@@ -75,28 +79,28 @@ const captureRoutes = {
       const link = await page.$('a[href*="/dashboard/controls/"]');
       if (link) { await link.click(); await page.waitForTimeout(3000); }
     }},
-    { path: null, name: 'control-status-dropdown-01.png', description: 'Control status dropdown' }
+    { path: null, name: 'control-status-dropdown-01.png', manual: 'chained after control-detail-01 with no action of its own', description: 'Control status dropdown' }
   ],
   'assessments': [
     { path: '/dashboard/assessments', name: 'assessments-list-01.png', description: 'Assessments list' },
-    { path: '/dashboard/assessments', name: 'assessment-create-form-01.png', description: 'Create assessment form' },
+    { path: '/dashboard/assessments', name: 'assessment-create-form-01.png', manual: 'same /dashboard/assessments view as the list, no action', description: 'Create assessment form' },
     { path: '/dashboard/assessments', name: 'assessment-conduct-01.png', description: 'Assessment conduct', action: async (page) => {
       await page.evaluate(() => window.scrollBy(0, 400));
     }},
-    { path: '/dashboard/assessments', name: 'assessment-results-options-01.png', description: 'Assessment results' }
+    { path: '/dashboard/assessments', name: 'assessment-results-options-01.png', manual: 'same /dashboard/assessments view as the list, no action', description: 'Assessment results' }
   ],
-  'ai-copilot': [
-    { path: '/dashboard', name: 'ai-copilot-button-01.png', description: 'AI Copilot button' },
-    { path: '/dashboard', name: 'ai-copilot-panel-open-01.png', description: 'AI Copilot panel', action: async (page) => {
-      const btn = await page.$('button:has-text("Ask AI"), button:has-text("AI Copilot")');
-      if (btn) { await btn.click(); await page.waitForTimeout(1000); }
-    }},
-    { path: null, name: 'ai-copilot-chat-interface-01.png', description: 'AI Copilot chat' }
-  ],
+  // The 'ai-copilot' group is deliberately empty. It used to declare
+  // ai-copilot-button-01, ai-copilot-panel-open-01 and
+  // ai-copilot-chat-interface-01, all of a floating "Ask AI" chat widget that
+  // PR #664 established was never built. The button selector matched nothing,
+  // so the action silently no-opped and every one of those entries saved a
+  // plain /dashboard screenshot under a name promising a chat panel. No doc
+  // references them and no such file is in the repo.
+  'ai-copilot': [],
   'dashboard': [
     { path: '/dashboard', name: 'dashboard-overview-01.png', description: 'Dashboard overview', fullPage: true },
-    { path: '/dashboard', name: 'dashboard-compliance-panel-01.png', description: 'Compliance panel' },
-    { path: '/dashboard', name: 'dashboard-first-login-01.png', description: 'Dashboard first login' },
+    { path: '/dashboard', name: 'dashboard-compliance-panel-01.png', manual: 'same /dashboard view as the overview, no action', description: 'Compliance panel' },
+    { path: '/dashboard', name: 'dashboard-first-login-01.png', manual: 'same /dashboard view as the overview, no action', description: 'Dashboard first login' },
     { path: '/dashboard', name: 'dashboard-framework-progress-01.png', description: 'Framework progress', action: async (page) => {
       await page.evaluate(() => window.scrollBy(0, 800));
     }},
@@ -113,19 +117,15 @@ const captureRoutes = {
       const tab = await page.$('button:has-text("LLM"), [role="tab"]:has-text("LLM")');
       if (tab) { await tab.click(); await page.waitForTimeout(1500); }
     }},
-    { path: null, name: 'llm-provider-select-01.png', description: 'LLM provider select' },
-    { path: null, name: 'llm-api-key-entry-01.png', description: 'LLM API key entry' },
-    { path: null, name: 'llm-model-select-01.png', description: 'LLM model select' },
     { path: '/dashboard/settings', name: 'settings-users-list-01.png', description: 'Users list', action: async (page) => {
       const tab = await page.$('button:has-text("User"), [role="tab"]:has-text("User")');
       if (tab) { await tab.click(); await page.waitForTimeout(1500); }
     }},
-    { path: null, name: 'users-invite-form-01.png', description: 'Users invite form' },
-    { path: null, name: 'users-role-selection-01.png', description: 'Users role selection' }
+    { path: null, name: 'users-invite-form-01.png', manual: 'chained after settings-users-list-01 with no action of its own', description: 'Users invite form' },
+    { path: null, name: 'users-role-selection-01.png', manual: 'chained after users-invite-form-01 with no action of its own', description: 'Users role selection' }
   ],
   'evidence': [
     { path: '/dashboard/evidence', name: 'evidence-upload-form-01.png', description: 'Evidence upload form' },
-    { path: '/dashboard/evidence', name: 'evidence-uploaded-success-01.png', description: 'Evidence uploaded' }
   ],
   'organization': [
     { path: '/dashboard/organization', name: 'organization-settings-01.png', description: 'Organization settings' },
@@ -135,7 +135,11 @@ const captureRoutes = {
   ],
   'cmdb': [
     { path: '/dashboard/cmdb', name: 'cmdb-dashboard-01.png', description: 'CMDB dashboard' },
-    { path: '/dashboard/cmdb/assets', name: 'cmdb-asset-list-01.png', description: 'Asset list' }
+    // The asset inventory is /dashboard/assets. There is no
+    // /dashboard/cmdb/assets route — the pages under /dashboard/cmdb are the
+    // six registers plus dependency-map and financial-services-workspace — so
+    // this entry was capturing a 404 and saving it as the asset list.
+    { path: '/dashboard/assets', name: 'cmdb-asset-list-01.png', description: 'Asset list' }
   ],
   'vulnerabilities': [
     { path: '/dashboard/vulnerabilities', name: 'vulnerabilities-list-01.png', description: 'Vulnerabilities list' }
@@ -184,9 +188,29 @@ async function login(page) {
 /**
  * Capture a single screenshot.
  * When route.path is null the page stays on the previous URL (chained shots).
+ *
+ * A chained entry is only meaningful if it drives the UI to a new state via its
+ * own `action`. Several entries had neither a path nor an action, so they
+ * re-saved the previous screenshot under a name describing something else --
+ * and because some of those names have real, committed screenshots that the
+ * guides reference, running --all actively replaced good images with the wrong
+ * page. Those entries now carry `manual` and are skipped: leaving a correct
+ * screenshot in place beats overwriting it with a confident-looking wrong one.
  */
 async function captureScreenshot(page, route) {
   try {
+    if (route.manual) {
+      console.log(`  ⏭️  ${route.name} — skipped, capture by hand (${route.manual})`);
+      return 'skipped';
+    }
+
+    // Defensive: an entry with no path and no action cannot produce anything
+    // other than a copy of the previous shot.
+    if (!route.path && !route.action) {
+      console.log(`  ⏭️  ${route.name} — skipped, no path and no action to distinguish it`);
+      return 'skipped';
+    }
+
     console.log(`  📸 ${route.name}`);
 
     if (route.path) {
@@ -199,10 +223,30 @@ async function captureScreenshot(page, route) {
       await page.waitForTimeout(1000);
     }
 
-    await page.screenshot({
-      path: path.join(SCREENSHOTS_DIR, route.name),
-      fullPage: route.fullPage || false
-    });
+    // Screenshot to a buffer first so an identical image can be refused before
+    // it reaches disk.
+    //
+    // Most `action`s here are a scroll or a tab click, and both fail soft: a
+    // scrollBy on a page shorter than the viewport moves nothing, and a
+    // selector that misses is swallowed by `if (btn)`. Either way the action
+    // returns cleanly having changed nothing, and the shot is byte-identical to
+    // the previous one -- saved under a name promising a different view. That
+    // is how a guide ends up captioning the same image three ways.
+    //
+    // Writing it would also overwrite a good committed screenshot with a
+    // redundant one, so refuse and say which entry it collided with. The run
+    // stays green; the log names every action that produced no new state.
+    const buffer = await page.screenshot({ fullPage: route.fullPage || false });
+    const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+
+    const twin = writtenHashes.get(hash);
+    if (twin) {
+      console.log(`     ⏭️  identical to ${twin} — not written (the action produced no new state)`);
+      return 'skipped';
+    }
+
+    writtenHashes.set(hash, route.name);
+    fs.writeFileSync(path.join(SCREENSHOTS_DIR, route.name), buffer);
 
     console.log(`     ✅ saved`);
     return true;
@@ -219,6 +263,7 @@ async function captureScreenshot(page, route) {
 async function captureAll(browser, context, page) {
   let captured = 0;
   let failed = 0;
+  let skipped = 0;
 
   // Unauthenticated pages first (register)
   const noAuthCtx = await browser.newContext({
@@ -228,7 +273,8 @@ async function captureAll(browser, context, page) {
   const noAuthPage = await noAuthCtx.newPage();
   for (const routes of Object.values(captureRoutes)) {
     for (const route of routes.filter(entry => entry.noAuth)) {
-      (await captureScreenshot(noAuthPage, route)) ? captured++ : failed++;
+      const result = await captureScreenshot(noAuthPage, route);
+      if (result === 'skipped') skipped++; else if (result) captured++; else failed++;
     }
   }
   await noAuthCtx.close();
@@ -237,11 +283,12 @@ async function captureAll(browser, context, page) {
   for (const [feature, routes] of Object.entries(captureRoutes)) {
     console.log(`\n📦 ${feature}`);
     for (const route of routes.filter(entry => !entry.noAuth)) {
-      (await captureScreenshot(page, route)) ? captured++ : failed++;
+      const result = await captureScreenshot(page, route);
+      if (result === 'skipped') skipped++; else if (result) captured++; else failed++;
     }
   }
 
-  return { captured, failed };
+  return { captured, failed, skipped };
 }
 
 /**
@@ -268,6 +315,7 @@ async function captureChanged(browser, context, page) {
 
   let captured = 0;
   let failed = 0;
+  let skipped = 0;
 
   for (const feature of features) {
     console.log(`\n📦 Feature: ${feature.feature}`);
@@ -277,7 +325,8 @@ async function captureChanged(browser, context, page) {
       continue;
     }
     for (const route of routes.filter(entry => !entry.noAuth)) {
-      (await captureScreenshot(page, route)) ? captured++ : failed++;
+      const result = await captureScreenshot(page, route);
+      if (result === 'skipped') skipped++; else if (result) captured++; else failed++;
     }
   }
 
@@ -286,7 +335,7 @@ async function captureChanged(browser, context, page) {
   changes.screenshotsFailed = failed;
   fs.writeFileSync(changesPath, JSON.stringify(changes, null, 2));
 
-  return { captured, failed };
+  return { captured, failed, skipped };
 }
 
 /**

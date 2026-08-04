@@ -193,6 +193,34 @@ Formal audits require structured sign-offs at completion:
 
 ---
 
+## POA&M Review Queue
+
+*Requires `audit.read` to see the queue, `audit.write` to record a decision.*
+
+The **POA&M Review** tab lists every remediation item sitting in
+`pending_auditor_review` — what an auditor is being asked to sign off on. Items
+arrive here when someone claims a control is compliant, or submits completed
+remediation for review.
+
+Each row shows the item, the control it belongs to, what raised it (a control
+test, an assessment procedure, an audit finding, a vulnerability, a risk, or
+manual entry), its priority, and when it was submitted. Click through to record
+the decision.
+
+On the item's page you can **Approve**, **Reject** or **Request changes** with
+at least 10 characters of comments. Where the item carries a framework-specific
+type, that framework's auditor guidance and expected review chain appear beside
+the form — an ISO 27001 Corrective Action Request and a FISCAM Corrective Action
+Plan are not reviewed against the same criteria.
+
+> **Separation of duties**: you cannot review an item you submitted yourself.
+> The panel says so rather than letting you compose a decision the API would
+> refuse.
+
+See the [POA&M guide](POAM.md) for the full workflow.
+
+---
+
 ## Audit Templates
 
 ControlWeave supports custom templates for consistent audit artifacts. Templates can be uploaded for:

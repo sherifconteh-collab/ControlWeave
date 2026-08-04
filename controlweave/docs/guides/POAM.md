@@ -54,34 +54,59 @@ Open → In Progress → Pending Auditor Review → Auditor Approved → Closed
 
 ### Access POA&M List
 
-1. Click **Operations** in the left sidebar (under **Organization** — it
-   requires the `settings.manage` permission)
-2. The **POA&Ms** tab is selected by default and lists every POA&M item for your
-   organization
+1. Click **POA&M** in the left sidebar, under **Compliance**
+2. The register lists every item for your organization
 
 ![POA&M list on the Operations page, with summary counts and the item table](../screenshots/poam-list-view-01.png)
 *Figure 1: POA&M list — Your remediation tracking dashboard*
 
-There is no dedicated POA&M page in the sidebar; POA&M shares the Operations
-page with **Priority Vulns** and **Controls at Risk**.
+The sidebar entry requires `controls.read`, the same permission every POA&M
+endpoint requires. The **Operations** page (under **Organization**,
+`settings.manage`) still carries a POA&M tab as part of its operational rollup
+alongside **Priority Vulns** and **Controls at Risk**, and links through to this
+register.
+
+### What this feature is called in your organization
+
+Screens show the term your framework uses rather than the federal one. An
+ISO 27001 organization sees **Corrective Action Requests**, SOC 2 sees
+**Deficiencies**, FISCAM and HIPAA see **Corrective Action Plans**, PCI DSS sees
+**Risk Assessments & Validations**, and NIST 800-53, NIST 800-171, CMMC and
+FedRAMP see **POA&M**. With no framework activated the neutral term
+**Corrective Action Item** is used.
+
+This affects labels only. URLs stay `/dashboard/poam`, and the API stays
+`/api/v1/poam`, so links and integrations are unaffected. This guide uses
+"POA&M" throughout for consistency.
 
 ### List View Columns
 
-- **Title**: Brief description of the weakness
+- **Title**: Brief description of the weakness — click it to open the item
+- **Controls**: The originating control, plus a count of any others it covers
+- **Raised by**: What produced the item — a control test, an assessment
+  procedure, an audit finding, a vulnerability, a risk, or entered manually
 - **Priority**: Critical, High, Medium, or Low
 - **Status**: Current remediation status
+- **Milestones**: How many, and the next target date
 - **Due Date**: Current target completion date
 - **Owner**: Assigned person
 
-A running count of Open / In Progress / Closed / Risk Accepted items sits above
-the table. Rows are not clickable — there is no POA&M detail view in the UI yet;
-see [What is API-only today](#what-is-api-only-today).
+Total / Active / Overdue / Risk Accepted counts sit above the table.
 
 ### Filter & Search
 
-A single **Filter POA&Ms...** box above the table narrows the list by text.
-Filtering by status, priority, framework, owner, or date range is supported by
-`GET /api/v1/poam` query parameters but is not yet exposed as a filter bar.
+A **Filter** box narrows the list by text, and **status** and **priority**
+dropdowns sit beside it. Deep links accept `?controlId=`, `?riskId=` and
+`?status=`, which is how the control and risk pages link through to a
+pre-filtered register.
+
+### Export
+
+**Export CSV** and **Export PDF** produce the whole register, honoring whatever
+filters are active on screen. Both include the federal columns — every linked
+control, the framework type, `resources_required`, the original
+`scheduled_completion_date` against the current `due_date` with the slippage in
+days, milestone counts, and any linked risks and treatment.
 
 ![The POA&M filter box and Create POA&M button above the item table](../screenshots/poam-filter-bar-01.png)
 *Figure 2: Filter POA&M items*
@@ -137,11 +162,32 @@ which lists this among the things that panel does not do.
 `poam_justification` in the request body and returns `400` with
 `requires_poam_submission: true` without one.
 
-> **📋 Note**: changing a control's status from the control detail page does
-> **not** trigger this. The page calls the implementation status endpoint
-> (`/api/v1/implementations/:id/status`), which has no POA&M logic, so no
-> justification is requested and no POA&M is created. Automatic creation
-> currently only happens for API clients calling `PUT /controls/:id`.
+The same gate now applies on the control detail page. Marking an implementation
+**Verified**, or recording a test result of **Satisfied**, prompts for the
+justification and produces the POA&M and its approval request — previously those
+endpoints had no POA&M logic at all, so the federal gate was enforced only for
+API clients calling `PUT /controls/:id`, and a user could claim compliance in the
+dashboard without justifying anything.
+
+### POA&Ms raised automatically from gaps
+
+A gap that is found should not be able to go unrecorded, so these raise a
+**draft** POA&M against the control:
+
+| What you do | What is raised |
+|---|---|
+| Record a control test result of **Other Than Satisfied** | Draft POA&M, `source_type` `assessment` |
+| Record an assessment procedure as **Other Than Satisfied** | Draft POA&M, `source_type` `assessment` |
+| Record an audit finding against a control at **medium** severity or above | Draft POA&M, `source_type` `audit_finding` |
+
+Drafts are created `open` with the owner, dates and remediation plan left
+**blank** — the system records that a gap exists, it does not invent a plan
+nobody agreed to. Nothing is ever auto-closed, auto-approved or auto-assigned.
+
+Raising is idempotent per control and source: re-running a failing test updates
+nothing and does not stack up duplicates. Low-severity findings do not raise
+anything, since they are routinely closed in the same conversation that raises
+them; use **+ Raise POA&M** on the control page if you want one anyway.
 
 ---
 
@@ -193,7 +239,18 @@ PATCH /api/v1/poam/:id
 ```
 
 Valid statuses are `open`, `in_progress`, `pending_review`, `closed`, and
-`risk_accepted`. Editing an existing POA&M from the UI is not yet available.
+`risk_accepted`.
+
+In the UI, open the item from the register and click **Edit**. Title,
+description, status, priority, owner, current target date, `resources_required`,
+remediation plan, closure notes and the risk-acceptance expiry are all editable
+there.
+
+**The original commitment is not.** `scheduled_completion_date` is set once and
+shown read-only beside the current target, with the gap between them rendered as
+slippage in days. That split is the point of the field: revising a single
+mutable date erases the fact that it was revised, which is exactly what federal
+reporting asks you to show.
 
 ### Add Progress Updates
 
@@ -202,6 +259,10 @@ Document progress notes without changing status:
 ```
 POST /api/v1/poam/:id/updates
 ```
+
+In the UI, use the **Progress** panel on the item's detail page. Notes and
+status changes share one timeline, newest first, each showing who made it and
+when.
 
 **Good Update Notes Include**:
 - What was completed
@@ -239,6 +300,56 @@ POST /api/v1/poam/:id/submit-for-review
 4. Click **Submit for Review**
 
 The POA&M status changes to `Pending Auditor Review`. Auditors are notified automatically.
+
+---
+
+## Linked Controls
+
+A POA&M covers as many controls as the remediation actually touches. One
+access-review remediation commonly closes findings against AC-2, AC-3 and AC-6
+at once, and controls from different frameworks can sit on the same item —
+`framework_controls` is a shared cross-framework catalog.
+
+The **Controls** panel on the detail page lists them all, each linking to its
+control page, with **unlink** beside it. The control it was originally raised
+against stays the primary one.
+
+```
+POST   /api/v1/poam/:id/controls        { "control_id": "..." }
+DELETE /api/v1/poam/:id/controls/:controlId
+```
+
+A control's own page shows every POA&M touching it, not just those raised
+directly against it.
+
+---
+
+## Linked Risks
+
+Remediation and the risk register are two halves of the same story: the register
+records the decision to treat a risk, the POA&M records the work.
+
+- The **Risks** panel on a POA&M's detail page lists the register entries it
+  burns down, with each entry's residual score.
+- A risk's detail page has a **Remediation** panel listing its POA&Ms with live
+  status, plus **+ Create POA&M from this risk**, which sets priority from the
+  risk's residual score (20+ critical, 12+ high, 6+ medium).
+- Where a POA&M executes one specific treatment, it can be attached to that
+  treatment directly.
+
+```
+POST   /api/v1/poam/from-risk/:riskId   { "treatment_id": "...", "control_id": "..." }
+POST   /api/v1/risks/:id/poam           { "poamItemId": "..." }
+DELETE /api/v1/risks/:id/poam/:poamItemId
+```
+
+> **Closing remediation does not move a residual score.** When every POA&M on a
+> risk closes, the risk is flagged **review due** and a human records the
+> reassessment. Inherent and residual scores are stored separately so an
+> assessor can see what the controls actually achieved; a score that moved on
+> its own would destroy exactly that evidence.
+
+See the [Risk Register guide](RISK_REGISTER.md).
 
 ---
 
@@ -377,18 +488,33 @@ For agency authorization-specific findings:
 
 *Requires the `audit.write` permission (`audit.read` for guidance)*
 
-The auditor review workflow is fully implemented on the API and has no UI yet.
-Everything below is reachable through the endpoints named; there is no auditor
-queue screen, guidance panel, review form, or approval-history view in the
-dashboard.
-
 ### Viewing POA&Ms Pending Review
 
+Open **Auditor Workspace** and select the **POA&M Review** tab. It lists
+everything in `pending_auditor_review` with the control it belongs to, what
+raised it, its priority and when it was submitted. Click an item to open it.
+
+Equivalent API call:
+
 ```
-GET /api/v1/poam?status=pending_review
+GET /api/v1/poam?status=pending_auditor_review
 ```
 
+### Recording a Decision
+
+The item's detail page shows a review panel when its status is
+`pending_auditor_review` and you hold `audit.write`. Choose **Approve**,
+**Reject** or **Request changes**, and write at least 10 characters of comments —
+the API enforces that minimum, so the button stays disabled until you meet it.
+
+**Separation of duties**: you cannot review an item you submitted. The panel
+explains this rather than letting you write a decision the API would refuse with
+a 403.
+
 ### Getting Framework-Specific Guidance
+
+When the item carries a framework-specific type, its guidance and expected
+review chain appear alongside the decision form.
 
 ```
 GET /api/v1/poam/auditor-guidance/:frameworkCode/:typeCode
@@ -429,25 +555,23 @@ Returns every submission and outcome for the item, in order.
 
 ## What is API-only today
 
-The POA&M data model and workflow are complete on the backend; the dashboard
-currently surfaces only the list and the create dialog. These parts have no UI:
+Almost nothing. The detail view, editing, milestones, progress updates,
+submit-for-review, the auditor queue and decision, approval history, control
+linking, risk linking and export all have screens now.
+
+Two things remain API-only:
 
 | Capability | Endpoint |
 |---|---|
-| POA&M detail view | `GET /api/v1/poam/:id` |
-| Edit a POA&M / change status | `PATCH /api/v1/poam/:id` |
-| Progress updates | `POST /api/v1/poam/:id/updates` |
-| Submit for auditor review | `POST /api/v1/poam/:id/submit-for-review` |
-| Auditor review decision | `POST /api/v1/poam/:id/review` |
-| Approval history | `GET /api/v1/poam/:id/approval-history` |
-| Auditor guidance | `GET /api/v1/poam/auditor-guidance/:frameworkCode/:typeCode` |
 | Create from a vulnerability | `POST /api/v1/poam/from-vulnerability/:vulnerabilityId` |
-| Milestones | `GET/POST/PATCH/DELETE /api/v1/poam/:id/milestones[/:milestoneId]` |
+| Approval-request context | `GET /api/v1/poam/approval-request/:id/context` |
 
-Filtering, status/priority selection, and framework-specific fields are likewise
-supported by the API ahead of the UI. This guide describes the endpoints rather
-than inventing buttons, so nothing here sends you looking for a control that is
-not on screen.
+An Evidence section on the POA&M itself is also still missing — attach
+remediation evidence through the [Evidence module](EVIDENCE.md) and reference it
+from the remediation plan or a progress update.
+
+This guide describes what is on screen and names the endpoint where there is no
+screen, so nothing here sends you looking for a control that does not exist.
 
 ---
 

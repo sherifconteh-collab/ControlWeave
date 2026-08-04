@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { cmdbAPI } from '@/lib/api';
+import AssetImportPanel from '@/components/cmdb/AssetImportPanel';
 
 interface CategorySummary {
   key: string; label: string; icon: string; href: string;
@@ -170,6 +171,8 @@ export default function CMDBPage() {
             })}
           </div>
         </div>
+
+        <AssetImportPanel onImported={fetchCounts} />
       </div>
     </DashboardLayout>
   );

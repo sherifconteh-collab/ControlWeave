@@ -749,6 +749,9 @@ export interface EvidenceType {
 }
 
 export const evidenceAPI = {
+  // Reverse of the risk-side link (migration 143). Read-only here; linking is
+  // owned by the risk so one screen writes the relationship.
+  getRisks: (id: string) => api.get(`/evidence/${id}/risks`),
   getAll: (params?: { search?: string; tags?: string; evidence_type?: string; limit?: number; offset?: number }) =>
     api.get('/evidence', { params }),
 
@@ -783,6 +786,10 @@ export const evidenceAPI = {
 
   downloadVersion: (id: string, versionNumber: number) =>
     api.get(`/evidence/${id}/versions/${versionNumber}/download`, { responseType: 'blob' }),
+
+  // Recompute the file's SHA-256 and compare it against the hash recorded at
+  // upload. Returns { matches, expected_hash, current_hash, previous_verified_at }.
+  integrityCheck: (id: string) => api.get(`/evidence/${id}/integrity-check`),
 
   remove: (id: string) => api.delete(`/evidence/${id}`),
 
@@ -946,6 +953,20 @@ function cmdbResource(routePath: string) {
   };
 }
 
+// Client for backend routes/cmdbImport.js — bulk asset import and inventory
+// export, mounted at /api/v1/cmdb/import. Named after the route module it
+// covers; also reachable as cmdbAPI.bulk.
+export const cmdbImportAPI = {
+  template:  ()                  => api.get('/cmdb/import/template', { responseType: 'blob' }),
+  exportCsv: (category?: string) => api.get('/cmdb/import/export', {
+               params: category ? { category } : undefined,
+               responseType: 'blob',
+             }),
+  // analyze is a dry run: it writes nothing and returns a per-row verdict.
+  analyze:   (csv: string)                   => api.post('/cmdb/import/analyze', { csv }),
+  commit:    (csv: string, category: string) => api.post('/cmdb/import/commit', { csv, category }),
+};
+
 export const cmdbAPI = {
   hardware:        cmdbResource("hardware"),
   software:        cmdbResource("software"),
@@ -960,6 +981,29 @@ export const cmdbAPI = {
     create:     (data: Record<string, unknown>)        => api.post('/cmdb/relationships', data),
     remove:     (id: string)                           => api.delete(`/cmdb/relationships/${id}`),
   },
+  // Asset <-> control mappings. The asset_control_mappings table shipped in
+  // migration 005 and had no API until now, so CM-8 could not be evidenced
+  // from the inventory it describes.
+  assetControls: {
+    list:      (assetId: string)  => api.get(`/cmdb/assets/${assetId}/controls`),
+    link:      (assetId: string, data: Record<string, unknown>) =>
+                 api.post(`/cmdb/assets/${assetId}/controls`, data),
+    update:    (assetId: string, controlId: string, data: Record<string, unknown>) =>
+                 api.put(`/cmdb/assets/${assetId}/controls/${controlId}`, data),
+    unlink:    (assetId: string, controlId: string) =>
+                 api.delete(`/cmdb/assets/${assetId}/controls/${controlId}`),
+    byControl: (controlId: string) => api.get(`/cmdb/controls/${controlId}/assets`),
+  },
+  // Reverse views onto risk_asset_links. Linking is owned by the risk side
+  // (riskAPI.linkAsset), so there is one place that writes the relationship.
+  assetRisks: {
+    list:     (assetId: string)   => api.get(`/cmdb/assets/${assetId}/risks`),
+    exposure: (category?: string) => api.get('/cmdb/risk-exposure', {
+                params: category ? { category } : undefined,
+              }),
+  },
+  // Bulk import and inventory export — see cmdbImportAPI below.
+  bulk: cmdbImportAPI,
 };
 
 // AI Analysis APIs
@@ -1652,12 +1696,69 @@ export const opsAPI = {
 
 // POA&M APIs
 export const poamAPI = {
-  getList: (params?: { status?: string; priority?: string; controlId?: string; limit?: number; offset?: number }) =>
-    api.get('/poam', { params }),
+  getList: (params?: {
+    status?: string; priority?: string; source_type?: string; controlId?: string;
+    riskId?: string; vulnerabilityId?: string; ownerId?: string;
+    limit?: number; offset?: number;
+  }) => api.get('/poam', { params }),
+
+  // Returns { item, updates, controls, risks } — the timeline and both link
+  // sets come back with the detail fetch, so a detail page needs one call.
   getById: (id: string) => api.get(`/poam/${id}`),
   create: (data: Record<string, unknown>) => api.post('/poam', data),
   update: (id: string, data: Record<string, unknown>) => api.patch(`/poam/${id}`, data),
 
+  addUpdate: (id: string, note: string) => api.post(`/poam/${id}/updates`, { note }),
+
+  submitForReview: (id: string, data: {
+    control_id?: string; previous_control_status?: string; new_control_status?: string;
+    justification?: string; supporting_evidence_ids?: string[];
+    framework_specific_type?: string; framework_specific_data?: Record<string, unknown>;
+  }) => api.post(`/poam/${id}/submit-for-review`, data),
+
+  // Comments must be at least 10 characters — the backend rejects shorter ones,
+  // so validate client-side at the same threshold rather than letting a review
+  // be composed and then refused.
+  review: (id: string, data: { outcome: 'approved' | 'rejected' | 'changes_requested'; comments: string }) =>
+    api.post(`/poam/${id}/review`, data),
+
+  getApprovalHistory: (id: string) => api.get(`/poam/${id}/approval-history`),
+
+  // The per-framework remediation vocabulary (ISO CAR/OFI, SOC 2 deficiency,
+  // FISCAM CAP/NFR, HIPAA CAP, PCI RAV, NIST, FedRAMP). Scoped to the org's
+  // activated frameworks unless `all` is passed.
+  getFrameworkTypes: (params?: { framework_code?: string; all?: boolean }) =>
+    api.get('/poam/framework-types', { params }),
+
+  getAuditorGuidance: (frameworkCode: string, typeCode: string) =>
+    api.get(`/poam/auditor-guidance/${encodeURIComponent(frameworkCode)}/${encodeURIComponent(typeCode)}`),
+
+  getApprovalRequestContext: (approvalRequestId: string) =>
+    api.get(`/poam/approval-request/${approvalRequestId}/context`),
+
+  createFromVulnerability: (vulnerabilityId: string, data?: Record<string, unknown>) =>
+    api.post(`/poam/from-vulnerability/${vulnerabilityId}`, data || {}),
+
+  createFromRisk: (riskId: string, data?: {
+    treatment_id?: string | null; control_id?: string | null; title?: string; due_date?: string;
+  }) => api.post(`/poam/from-risk/${riskId}`, data || {}),
+
+  // Many-to-many control linkage (migration 141). poam_items.control_id remains
+  // the originating control; these cover the rest.
+  linkControl: (id: string, data: { control_id: string; notes?: string }) =>
+    api.post(`/poam/${id}/controls`, data),
+  unlinkControl: (id: string, controlId: string) =>
+    api.delete(`/poam/${id}/controls/${controlId}`),
+
+  exportUrl: (format: 'csv' | 'pdf', params?: Record<string, string | undefined>) => {
+    const search = new URLSearchParams({ format });
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value) search.set(key, value);
+    });
+    return `/poam/export?${search.toString()}`;
+  },
+  download: (format: 'csv' | 'pdf', params?: Record<string, string | undefined>) =>
+    api.get(poamAPI.exportUrl(format, params), { responseType: 'blob' }),
 };
 
 // Federal POA&M milestones — a POA&M is a list of discrete milestones with their
@@ -2325,6 +2426,19 @@ export const risksAPI = {
     api.post(`/risks/${id}/objectives`, data),
   unlinkObjective: (id: string, objectiveId: string) =>
     api.delete(`/risks/${id}/objectives/${objectiveId}`),
+
+  // Remediation linkage (migration 140). To create a new POA&M from a risk
+  // rather than link an existing one, use poamAPI.createFromRisk.
+  linkPoam: (id: string, data: { poamItemId: string }) => api.post(`/risks/${id}/poam`, data),
+  unlinkPoam: (id: string, poamItemId: string) => api.delete(`/risks/${id}/poam/${poamItemId}`),
+  linkVendor: (id: string, data: { vendorId: string; notes?: string }) =>
+    api.post(`/risks/${id}/vendors`, data),
+  unlinkVendor: (id: string, vendorId: string) => api.delete(`/risks/${id}/vendors/${vendorId}`),
+  // relevance: 'assessment' | 'treatment' | 'monitoring' | 'acceptance'
+  linkEvidence: (id: string, data: { evidenceId: string; relevance?: string; notes?: string }) =>
+    api.post(`/risks/${id}/evidence`, data),
+  unlinkEvidence: (id: string, evidenceId: string) =>
+    api.delete(`/risks/${id}/evidence/${evidenceId}`),
 };
 
 export const incidentsAPI = {

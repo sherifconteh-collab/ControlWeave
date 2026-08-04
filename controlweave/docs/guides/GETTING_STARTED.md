@@ -188,8 +188,6 @@ Let's implement a simple control to get familiar with the process.
 1. Click **Controls** in the left sidebar
 2. You'll see all controls from your activated frameworks
 
-![Controls list page showing control IDs, titles, frameworks, and status](../screenshots/controls-list-01.png)
-*Figure 4.1: Controls list - All controls from your activated frameworks*
 
 ### 4.2 Choose a Control
 Good starter controls:

@@ -56,6 +56,7 @@ export default function AIAgentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState<AIAgentForm>(DEFAULT_FORM);
@@ -74,6 +75,34 @@ export default function AIAgentsPage() {
     finally { setLoading(false); }
   };
 
+  const openCreate = () => {
+    setEditingId(null);
+    setForm(DEFAULT_FORM);
+    setSaveError('');
+    setShowModal(true);
+  };
+
+  // Seed the form from the record, keeping DEFAULT_FORM's shape so a column the
+  // API omits stays a controlled input rather than flipping to uncontrolled.
+  const openEdit = (item: Record<string, unknown>) => {
+    setEditingId(String(item.id));
+    setForm(Object.fromEntries(
+      Object.entries(DEFAULT_FORM).map(([key, fallback]) => {
+        const value = item[key];
+        if (value === null || value === undefined) return [key, fallback];
+        return [key, typeof fallback === 'boolean' ? Boolean(value) : String(value)];
+      })
+    ) as typeof DEFAULT_FORM);
+    setSaveError('');
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setSaveError('');
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this AI agent?')) return;
     try { await cmdbAPI.aiAgents.remove(id); load(); } catch { setError('Failed to delete item'); }
@@ -83,8 +112,10 @@ export default function AIAgentsPage() {
     e.preventDefault();
     setSaving(true); setSaveError('');
     try {
-      await cmdbAPI.aiAgents.create(form as unknown as Record<string, unknown>);
-      setShowModal(false);
+      const payload = form as unknown as Record<string, unknown>;
+      if (editingId) await cmdbAPI.aiAgents.update(editingId, payload);
+      else await cmdbAPI.aiAgents.create(payload);
+      closeModal();
       setForm(DEFAULT_FORM);
       load();
     } catch { setSaveError('Failed to save AI agent'); }
@@ -112,7 +143,7 @@ export default function AIAgentsPage() {
               <p className="text-sm text-gray-500">Models, bots, LLM integrations, and automated AI systems</p>
             </div>
           </div>
-          <button onClick={() => setShowModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">+ Add New</button>
+          <button onClick={openCreate} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium">+ Add New</button>
         </div>
 
         <input
@@ -167,6 +198,7 @@ export default function AIAgentsPage() {
                       <td className="px-4 py-3 text-center">{item.ai_bias_testing_completed ? '✅' : '❌'}</td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => setLinksTarget({ id: item.id, name: item.name })} className="text-purple-500 hover:text-purple-700 text-xs mr-3">🔗 Links</button>
+                        <button onClick={() => openEdit(item as unknown as Record<string, unknown>)} className="text-purple-600 hover:text-purple-800 text-xs mr-3">Edit</button>
                         <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 text-xs">Delete</button>
                       </td>
                     </tr>
@@ -181,8 +213,8 @@ export default function AIAgentsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-5 border-b">
-                <h2 className="font-bold text-lg text-gray-900">Add New AI Agent</h2>
-                <button onClick={() => { setShowModal(false); setSaveError(''); }} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+                <h2 className="font-bold text-lg text-gray-900">{editingId ? 'Edit AI Agent' : 'Add New AI Agent'}</h2>
+                <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
               </div>
               <form onSubmit={handleSave} className="p-5 space-y-4">
                 {saveError && <div className="bg-red-50 border border-red-300 text-red-700 px-3 py-2 rounded text-sm">{saveError}</div>}
@@ -248,7 +280,7 @@ export default function AIAgentsPage() {
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
-                  <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                  <button type="button" onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
                   <button type="submit" disabled={saving} className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
                     {saving ? 'Saving...' : 'Save'}
                   </button>

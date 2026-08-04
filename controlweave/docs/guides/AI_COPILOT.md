@@ -101,8 +101,8 @@ bring-your-own-key.
 
 | Provider | Cost | Speed | Best for |
 |----------|------|-------|----------|
-| **Google Gemini** | Free tier | Fast | Getting started, quick queries |
-| **Groq** | Free tier | Very fast | High throughput |
+| **Google Gemini** | Community tier | Fast | Getting started, quick queries |
+| **Groq** | Community tier | Very fast | High throughput |
 | **Ollama** | Free (self-hosted) | Medium | Privacy, offline use |
 | **Anthropic Claude** | Paid | Medium | Deep analysis, policy generation |
 | **OpenAI GPT** | Paid | Fast | Versatile, comprehensive answers |

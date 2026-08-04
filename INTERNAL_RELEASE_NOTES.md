@@ -26,21 +26,38 @@
 > | Field | Value |
 > |-------|-------|
 > | **Status** | Unreleased — changes staged for next release |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
 ### Added
+
+- **Risk register, incidents, obligations, objectives, indicators, and departments** (migrations `135`–`139`): ControlWeave ships ISO 31000, ISO 27005 and the NIST AI RMF as frameworks a customer can assess against, but had nowhere to record the risks those frameworks are about. The only risk-shaped table was `risk_scores` (migration `057`) — one computed 0-100 posture number per organization, which is a metric, not a register. Six modules close that gap:
+  - `departments` (hierarchical business units) and `business_objectives` (COSO's four categories), the organizational spine every other register hangs off. ISO 31000 defines risk as the effect of uncertainty *on objectives*; without recorded objectives a register is a list of bad things with nothing to be bad for.
+  - `risks` / `risk_treatments` / `risk_reviews` plus control, asset and objective link tables (ISO 31000 / ISO 27005 / NIST SP 800-30). Inherent **and** residual assessment as likelihood × impact on 1–5 scales, the product a stored generated column so 5×5 heat-map queries cannot drift from their inputs. Acceptance is a named decision with a rationale and an optional expiry, and a lapsed acceptance is surfaced as such rather than left reading "accepted". Reviews snapshot the assessment as it stood, so history survives later edits to the risk row.
+  - `incidents` / `incident_timeline` plus risk, control and asset link tables (NIST SP 800-61r2). Per-phase timestamps rather than a status history, because the intervals *are* the metrics — dwell time, time to contain, time to resolve. Transitions are validated against an explicit graph: an incident cannot be eradicated before it is contained, and allowing that produces response metrics that are quietly nonsense. Breach notification is first class, with the 72-hour class of clock tracked and overdue reported as how far past rather than a generic flag.
+  - `compliance_obligations` / `obligation_attestations` / `obligation_control_links`: what the organization is bound to, by whom, by when. Distinct from controls because obligations have a source with authority and they expire. Recurring due dates advance from the *due date*, never from the attestation date, so a repeatedly-late annual obligation cannot drift its own deadline out of the period the regulator expects.
+  - `indicators` / `indicator_measurements`: KRI / KPI / KCI with amber and red thresholds and an explicit `direction`, so "higher is worse" and "higher is better" indicators are both handled instead of whichever case the author had in mind. `breach_level` is persisted at write time so retuning a threshold does not silently rewrite historic breaches.
+
+  Twelve permissions (`risks.*`, `incidents.*`, `obligations.*`, `objectives.*`, `indicators.*`, `departments.*`) are seeded and granted in the same migrations that introduce the routes using them. Incident *write* goes to `user` as well as `admin`: incident reporting has to be available to whoever noticed the problem, or it gets reported by email and never reaches the register. Six new dashboard pages (`/dashboard/risks` with the 5×5 residual heat map, `/dashboard/incidents`, `/dashboard/obligations`, `/dashboard/indicators`, `/dashboard/objectives`, `/dashboard/departments`). All routes are org-scoped, paginated, rate-limited at both the IP and per-organization level, and audit-logged on mutation.
+
+- **Federal POA&M structure — milestones, resources, and slippage tracking** ([#569](https://github.com/sherifconteh-collab/ControlWeaver-Pro/issues/569), migration `134`): `poam_items` carried the core lifecycle but was short of what a federal POA&M requires. New `poam_milestones` table with discrete milestones, each with its own target date, status (`pending` / `in_progress` / `completed` / `delayed` / `cancelled`, enforced by a CHECK constraint) and completion date, exposed as a sub-resource at `/poam/:id/milestones` (list, create, patch, delete) with a completed/overdue summary. New `resources_required` records the funding, staff, and tooling estimate reviewers ask for. New `scheduled_completion_date` holds the *originally scheduled* completion date and is set once, while `due_date` carries the current target — so revising a date makes the slippage visible instead of erasing it. Existing rows are backfilled from `due_date` so slippage reporting does not silently skip them.  <!-- `📦 DB migration required` -->
+- **Real evidence version history** ([#570](https://github.com/sherifconteh-collab/ControlWeaver-Pro/issues/570), migration `133`): `evidence.evidence_version` was an integer that incremented while the row was overwritten in place — no prior version's file, hash, or classification could be retrieved, so the counter went up but nothing was kept. Each update now archives the row as it stood into a new `evidence_versions` table, in the same transaction as the update. New `POST /evidence/:id/versions` replaces the file while retaining the superseded one and its hash, so integrity stays demonstrable across a replacement; `GET /evidence/:id/versions` lists superseded versions and `GET /evidence/:id/versions/:versionNumber/download` retrieves one. Reclassifying evidence no longer destroys the record of what it was classified as while being relied on. Version records are immutable and cascade-delete with their parent. File replacement is audit-logged as `evidence_version_created`.  <!-- `📦 DB migration required` -->
 
 - **GitHub Evidence Connector**: `services/githubService.js` and `routes/github.js` add a real GitHub REST API client — org-scoped token settings (`Settings → Integrations → GitHub`), a test-connection check, a one-time import endpoint, and a full `code_scanning_alerts` / `dependabot_alerts` / `audit_log` / `pull_requests` source for Auto-Evidence Collection Rules. GitHub now performs genuine live data retrieval (like Splunk), not just configuration-record evidence.
 - Dynamic per-source-type configuration fields in the Auto-Evidence rule creation form (`dashboard/evidence/auto/page.tsx`), including a GitHub event-type dropdown, replacing free-text inputs.
 - **Access Governance module** (`/api/v1/access-governance`, migrations `126`–`128`): entitlement reporting across users, roles, and effective permissions with over-privileged (wildcard) and dormant-access flags; separation-of-duties toxic-combination rules with a live violations report (five system rules ship, three enabled); access review certification campaigns (`draft → active → completed`) that generate an AC-2 evidence record on completion disclosing any self-reviewed items; and a role/permission simulator giving a positive/negative allowed-denied matrix before a role is assigned. New `sod_rules`, `access_review_campaigns`, `access_review_items` tables gated by `access_governance.read` / `.manage`, with row-level security on all four new tables. New `/dashboard/access-governance` page. Revocation decisions are recorded, never auto-applied — de-provisioning stays an explicit action through the existing guarded role-assignment flow.
 - **AI-assisted RBAC document import** (migration `127`, `rbac_analysis` feature): upload a role definition spreadsheet, SoD matrix, or roles & responsibilities document (PDF/DOCX/TXT/MD/CSV) and have AI map its duties onto the live permission catalog, flag SoD conflicts including ones the organization is currently violating, and propose platform roles and SoD rules. Only extracted text is persisted; the uploaded file is processed in memory and discarded. Every suggestion requires an explicit per-item click to apply.
 - **Nine-organization demo roster** — one per industry vertical (financial services, healthcare, defense, technology, energy, retail, biotech, higher education) plus an external audit firm with a seeded three-engagement workbench. Industry-addressed logins (`admin@financial.com` and so on) with the legacy tier logins kept as working aliases. See `DEMO_CREDENTIALS.md`.
-- **SOC 2: all five Trust Services Criteria** (migration `129`): the framework shipped with 27 controls, every one a `CC*` — the Security category alone. Adds the 28 missing criteria across Availability (A1), Confidentiality (C1), Processing Integrity (PI1), and Privacy (P1–P8), each with the same examine / interview / test program the existing controls carry, and moves `coverage_status` to `comprehensive`. Descriptions are ControlWeave's own paraphrase; the AICPA text is copyrighted and is not reproduced.
+- **SOC 2: all five Trust Services Criteria** (migration `129`): the framework shipped with 27 controls, every one a `CC*` — the Security category alone. Adds the 28 missing criteria across the Availability, Confidentiality, Processing Integrity, and Privacy categories <!-- ip-hygiene:ignore --> (category names and criterion identifiers only), each with the same examine / interview / test program the existing controls carry, and moves `coverage_status` to `comprehensive`. Descriptions are ControlWeave's own paraphrase; the AICPA text is copyrighted and is not reproduced.
 - **Control function classification** (migration `130`): `framework_controls.control_functions text[]` carrying `preventive` / `detective` / `corrective`, backfilled from control titles with word-boundary matching. Roughly 500 of 1,200 controls are classified; the rest are deliberately left blank rather than guessed at. Filterable through the API and the controls UI.
 - **Framework-neutral evidence type taxonomy** (migration `131`): a 14-value `evidence_types` vocabulary, an `evidence.evidence_type` foreign key, and `assessment_procedures.expected_evidence_types`, so evidence is labelled consistently regardless of framework. Pre-existing evidence stays untyped rather than being guessed at. New `GET /evidence/types` and an `?evidence_type=` list filter.
-- **Auto-crosswalk propagation engine** (`services/crosswalkPropagationService.js`, migration `132`): implementing or verifying a control now credits mapped controls at ≥90% similarity in the organization's other *active* frameworks as `satisfied_via_crosswalk`, which is what `README.md` and `docs/HOW_CROSSWALKS_WORK.md` have described for several releases without any code behind it. Credits are recorded per (organization, credited control, source control) in `control_crosswalk_credits` with the similarity score, mapping type, and the status the control held beforehand, so `GET /controls/:id` can return the provenance an assessor will ask for. Credit is withdrawn automatically when the source control stops being implemented, restoring the recorded prior status — unless another still-implemented source justifies it, or someone has since implemented the control themselves. Credit never overwrites work already in progress, never crosses organizations, and both directions are audit-logged (`crosswalk_credit_applied` / `crosswalk_credit_withdrawn`) as AU-2 posture changes.
+- **Auto-crosswalk propagation engine** (`services/crosswalkCreditService.js`, migration `132`): implementing or verifying a control now credits mapped controls at ≥90% similarity in the organization's other *active* frameworks as `satisfied_via_crosswalk`, which is what `README.md` and `docs/HOW_CROSSWALKS_WORK.md` have described for several releases without any code behind it. Credits are recorded per (organization, credited control, source control) in `control_crosswalk_credits` with the similarity score, mapping type, and the status the control held beforehand, so `GET /controls/:id` can return the provenance an assessor will ask for. Credit is withdrawn automatically when the source control stops being implemented, restoring the recorded prior status — unless another still-implemented source justifies it, or someone has since implemented the control themselves. Credit never overwrites work already in progress, never crosses organizations, and both directions are audit-logged (`crosswalk_credit_applied` / `crosswalk_credit_withdrawn`) as AU-2 posture changes.
+
+### Changed
+
+- **Departments and Business Objectives merged into one page.** Both were thin org-configuration lists with no lifecycle of their own, and they are read together — you assign an objective to a department, and a department's open-risk count only means something next to the objectives it owns. Now `/dashboard/structure` with a tab each, permission-gated per tab so `objectives.read` alone lands on the Objectives tab rather than a blank Departments view. `/dashboard/departments` and `/dashboard/objectives` redirect to the matching tab rather than 404.
+- **Sidebar regrouped into collapsible sections with subsections** — it was four flat lists totalling 48 links. Now seven sections (plus a gated eighth for platform admins) following the GRC domains, with subsection headings inside the larger ones. Only the section containing the current route is expanded, collapse state persists, and active highlighting takes the longest matching href so a nested route no longer highlights its parent as well. No destination was added or removed in the regrouping.
 
 ### Fixed
 
@@ -81,7 +98,7 @@
 > | **Release date** | 2026-07-10 |
 > | **Tag** | `v4.3.0` |
 > | **Release branch** | `release/4.3.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 ### ⚠️ Breaking Changes
@@ -164,7 +181,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-18 |
 > | **Tag** | `v3.5.0` |
 > | **Release branch** | `release/3.5.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -204,7 +221,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-16 |
 > | **Tag** | `v3.4.0` |
 > | **Release branch** | `release/3.4.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -254,7 +271,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -287,7 +304,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -320,7 +337,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -353,7 +370,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -386,7 +403,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -419,7 +436,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -452,7 +469,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -485,7 +502,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -518,7 +535,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -551,7 +568,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -584,7 +601,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -624,7 +641,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -655,7 +672,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -688,7 +705,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -731,7 +748,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -769,7 +786,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -805,7 +822,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -851,7 +868,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -890,7 +907,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -921,7 +938,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1152,7 +1169,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Free tier.
+> Not available on the Community tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
@@ -1287,7 +1304,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1331,7 +1348,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1364,7 +1381,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1415,7 +1432,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `dc10ac81` |
+> | **Built from** | `aa571d24` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1443,5 +1460,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-07-30T04:00:03.152Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-08-01T19:44:02.804Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->

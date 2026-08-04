@@ -41,8 +41,6 @@ Each control has:
 1. Click **Controls** in the left sidebar
 2. You'll see all controls from your activated frameworks
 
-![Controls list showing control ID, title, framework, status, and owner](../screenshots/controls-list-01.png)
-*Figure 2: Controls list - Your compliance inventory*
 
 ### List View Columns
 
@@ -161,6 +159,32 @@ Not Started → In Progress → Implemented → Needs Review → Verified
 ```
 
 > **Note**: Selecting "Not Applicable" is available from the control detail page when a control genuinely does not apply to your system or organization.
+
+#### Claiming compliance requires a justification
+
+Moving a control to **Verified**, or recording a test result of **Satisfied**,
+is a compliance claim. ControlWeave asks you to justify it in writing, then
+creates a POA&M in `Pending Auditor Review` and files an approval request so an
+auditor has something concrete to sign off.
+
+This applies wherever the claim is made — the control detail page, the
+implementations API, or `PUT /api/v1/controls/:id`. Without a justification the
+request is refused with `requires_poam_submission: true`.
+
+#### Recording a gap raises remediation automatically
+
+Recording a test result of **Other Than Satisfied** — NIST SP 800-53A for "this
+control has gaps" — raises a **draft** POA&M against the control, as does
+recording an assessment procedure with the same outcome, or an audit finding at
+medium severity or above.
+
+The draft is deliberately incomplete: owner, dates and remediation plan are left
+blank for a human to fill in. The point is that a gap you found cannot go
+unrecorded, not that the system invents a plan nobody agreed to. Nothing is ever
+auto-closed, auto-approved or auto-assigned, and re-running a failing test does
+not create a second POA&M for the same gap.
+
+See the [POA&M guide](POAM.md).
 
 ### Step 4: Assign Owner
 

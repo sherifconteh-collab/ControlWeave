@@ -22,6 +22,7 @@ Welcome to ControlWeave! This comprehensive guide will help you navigate and use
 - [🗄️ CMDB (Asset Management)](guides/CMDB.md) - Track and manage assets
 - [🔐 Vulnerability Management](guides/VULNERABILITIES.md) - Track and remediate vulnerabilities
 - [📝 POA&M Tracking](guides/POAM.md) - Manage Plans of Action & Milestones
+- [🎲 Risk Register](guides/RISK_REGISTER.md) - Record, assess, treat and review risks
 - [🏗️ SBOM/AIBOM](guides/SBOM.md) - Software and AI Bills of Materials
 - [🏗️ NIST RMF Lifecycle](guides/RMF.md) - Manage system authorization packages
 - [📰 Regulatory News](guides/REGULATORY_NEWS.md) - AI-powered regulatory intelligence feed

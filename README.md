@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.8.0-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.9.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -60,7 +60,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ CMDB: Hardware, Software, AI Agents, Service Accounts, Environments, Password Vaults
 - ✅ SBOM / AIBOM management with CycloneDX support
 - ✅ Vulnerability management with CVSS scoring and AI remediation
-- ✅ POA&M tracking for federal and regulatory reporting
+- ✅ POA&M tracking for federal and regulatory reporting — milestones, resources required, originally-scheduled vs current target dates with visible slippage, auditor review workflow, CSV/PDF export, and items raised automatically from failing control tests, assessment procedures and audit findings
 - ✅ Evidence management with real version history (every superseded version keeps its own file, SHA256 hash, and PII classification, so a prior version can be retrieved and integrity stays demonstrable across a replacement), PII classification, and retention enforcement
 - ✅ AES-256-GCM encryption at rest for user PII (email), HMAC-SHA-384 searchable hashes, CNSA Suite 1.0 compliant — runtime audit verifies encryption on every server start
 - ✅ TLS 1.2+ enforced on all API channels; MCP → REST API channel hardened against plaintext credential exposure
@@ -205,7 +205,8 @@ See [`controlweave/docs/CE_MCP_GUIDE.md`](./controlweave/docs/CE_MCP_GUIDE.md) �
 - **Four treatment strategies** — avoid / mitigate / transfer / accept, with treatment actions carrying a target residual score so effectiveness can be checked after completion
 - **Named risk acceptance** — who accepted it, when, why, and until when; a lapsed acceptance is flagged rather than left reading "accepted"
 - **Review history** — each periodic review snapshots the assessment as it stood, so the trail survives later edits
-- **Linked to the rest of the platform** — controls that treat the risk, assets exposed to it, business objectives threatened by it
+- **Linked to the rest of the platform** — controls that treat the risk, assets exposed to it, business objectives threatened by it, and the POA&M items remediating it
+- **Remediation you can see** — a risk's detail page lists its open POA&Ms with live status, and one can be raised straight from the risk with priority set from the residual score. When every linked item closes the risk is flagged for review; the residual score is deliberately left alone until a human records the reassessment
 
 ### Incident Management
 - **NIST SP 800-61 lifecycle** — new → triaged → investigating → contained → eradicated → recovered → closed, with transitions validated so an incident cannot be eradicated before it is contained
@@ -239,15 +240,24 @@ One page (**Organization → Structure**) with a tab each for departments and ob
 - **Status workflow** — Open → In Progress → Remediated → Accepted
 
 ### Plan of Action & Milestones (POA&M)
-- **POA&M tracking** — Track open findings with milestones, owners, and target dates
-- **Control linkage** — Associate POA&M items with specific controls
-- **Status reporting** — Export POA&M status for federal and regulatory reporting
+- **Raised automatically from the work that finds the gap** — a control test or assessment procedure recorded as *other than satisfied*, or an audit finding at medium severity and above, raises a draft item against the control. Owner, dates and remediation plan are left blank for a human; nothing is auto-closed, auto-approved or auto-assigned
+- **A gated compliance claim** — marking a control compliant requires a written justification and produces an item in *pending auditor review* with an approval request attached, on every path: the control page, the implementations API, and `PUT /controls/:id`
+- **Discrete milestones** — each with its own target date and completion state, because one overall due date cannot express "quarterly scanning stood up by March, remediation SLA met by June"
+- **Visible slippage** — the originally scheduled completion date is set once and shown beside the current target, so revising a date makes the slip visible instead of erasing it
+- **Resources required** — the funding, staff and tooling estimate federal templates ask for
+- **Multi-control linkage** — one remediation can cover several controls, across different frameworks
+- **Risk register linkage** — items link to the risks they burn down, and can be raised directly from a risk or attached to a specific treatment
+- **Auditor review workflow** — a review queue, an approve / reject / request-changes decision with the framework's own guidance alongside, approval history, and separation of duties enforced so a submitter cannot review their own item
+- **Framework-appropriate naming** — ISO 27001 reads *Corrective Action Request*, SOC 2 *Deficiency*, FISCAM and HIPAA *Corrective Action Plan*, PCI DSS *Risk Assessment & Validation*, NIST and FedRAMP *POA&M*
+- **CSV and PDF export** — the whole register with linked controls, both dates and computed slippage, resources required, milestones and linked risks
 
 ### Evidence Management
 - **File Upload** — Attach evidence documents to controls
 - **Tagging & Search** — Organize evidence with tags and full-text search
 - **Control Linking** — Link evidence to one or more controls
 - **Download** — Retrieve evidence files for audit preparation
+- **Version history** — every superseded version keeps its own file, hash and PII classification, and any prior version can be downloaded. Reclassifying evidence no longer destroys the record of what it was classified as while it was being relied on
+- **Integrity verification** — recompute a file's hash and compare it against the one recorded at upload, showing both so a mismatch can be reported precisely
 - **Retention policy** — Configurable evidence retention (default 365 days)
 - **Splunk Import Plugin** — Pull SIEM search results into Evidence as integrity-tracked JSON artifacts
 - **GitHub Evidence Connector** — Import code scanning alerts, Dependabot alerts, org audit log events, or pull request history as live, integrity-tracked evidence

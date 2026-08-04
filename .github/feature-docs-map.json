@@ -132,8 +132,7 @@
       "documentation": [
         "controlweave/docs/guides/EVIDENCE.md",
         "controlweave/docs/guides/GETTING_STARTED.md",
-        "controlweave/docs/USER_GUIDE.md",
-        "controlweave/docs/TIER_COMPARISON.md"
+        "controlweave/docs/USER_GUIDE.md"
       ],
       "screenshots": [
         "evidence-upload-form-01.png",
@@ -150,8 +149,7 @@
       ],
       "documentation": [
         "controlweave/docs/guides/CMDB.md",
-        "controlweave/docs/USER_GUIDE.md",
-        "controlweave/docs/TIER_COMPARISON.md"
+        "controlweave/docs/USER_GUIDE.md"
       ],
       "screenshots": [
         "cmdb-dashboard-01.png",
@@ -218,8 +216,7 @@
       ],
       "documentation": [
         "controlweave/docs/guides/AUDITOR_WORKSPACE.md",
-        "controlweave/docs/USER_GUIDE.md",
-        "controlweave/docs/TIER_COMPARISON.md"
+        "controlweave/docs/USER_GUIDE.md"
       ],
       "screenshots": [
         "auditor-workspace-dashboard-01.png",
@@ -285,7 +282,6 @@
         "controlweave/frontend/src/app/dashboard/billing/**"
       ],
       "documentation": [
-        "controlweave/docs/TIER_COMPARISON.md",
         "controlweave/docs/USER_GUIDE.md"
       ],
       "screenshots": [
@@ -299,7 +295,6 @@
         "controlweave/backend/src/routes/help.js"
       ],
       "documentation": [
-        "controlweave/docs/TIER_COMPARISON.md",
         "controlweave/docs/USER_GUIDE.md",
         "controlweave/docs/guides/AI_ANALYSIS.md",
         "controlweave/docs/guides/AI_COPILOT.md",
@@ -383,8 +378,8 @@
   },
   "screenshotConfig": {
     "baseUrl": "http://localhost:3000",
-    "viewportWidth": 1920,
-    "viewportHeight": 1080,
+    "viewportWidth": 1600,
+    "viewportHeight": 1000,
     "deviceScaleFactor": 1,
     "timeout": 30000,
     "waitForSelectors": true,

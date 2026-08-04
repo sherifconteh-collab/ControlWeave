@@ -11,6 +11,25 @@ This guide covers how to upload, organize, and manage compliance evidence in Con
 - Compliance controls activated via Frameworks
 - Evidence files prepared (policies, procedures, screenshots, etc.)
 
+
+## Which risks a document supports
+
+Open a document's detail drawer and the **Supports Risks** section lists the
+register entries it is attached to, each tagged with why it is evidence for that
+risk — assessment, treatment, monitoring or acceptance.
+
+Linking a document to a **control** and linking it to a **risk** are different
+claims. A control is a thing you do; a risk is a thing that could happen. An
+auditor asking "show me you are managing this exposure" is not asking which
+controls exist. Before this link, a risk's evidence was only reachable
+transitively: through its controls, and only when those controls happened to
+carry the document.
+
+Attaching is done from the risk, so one screen owns the relationship — open the
+risk in the [Risk Register](RISK_REGISTER.md) and use **Attach evidence**. The
+endpoints are `POST` and `DELETE /api/v1/risks/:id/evidence/:evidenceId`, and
+`GET /api/v1/evidence/:id/risks` returns the reverse view.
+
 ---
 
 ## Overview
@@ -229,10 +248,16 @@ To update the description, tags, classification, or retention date of existing e
 PUT /api/v1/evidence/:id
 ```
 
-Editing metadata is not yet exposed in the dashboard — send the changed fields to
-the endpoint above.
+In the dashboard, click **Details** on any evidence row and use the **Metadata**
+tab. Description, tags, PII classification and data sensitivity are all editable
+there.
 
-> **Note**: The original file cannot be replaced. To update the file, upload a new version (see Step 6).
+Add a **change note** while you are at it. Saving snapshots the current values
+into version history *before* applying your edit, and the note is the only
+explanation a later reader — or an auditor — gets for why the record changed.
+
+> **Note**: Saving metadata does not replace the file. To replace the file
+> itself, upload a new version (see Step 6).
 
 ---
 
@@ -259,7 +284,25 @@ GET  /api/v1/evidence/:id/versions/:versionNumber/download
 ```
 
 Lists every prior version with its upload date and uploader, and lets you add a
-new version or download an old one. Versioning has no UI yet.
+new version or download an old one.
+
+### In the dashboard
+
+1. Click **Details** on the evidence row
+2. Open the **Version history** tab
+
+Each superseded version shows its version number, file name and size, the change
+note, who superseded it and when, its SHA-256, and — importantly — **the PII
+classification as it was at the time**. Re-classifying evidence used to destroy
+the record of what it had been classified as while it was being relied on; the
+history is what makes that recoverable.
+
+**Download** on any row retrieves that exact prior file.
+
+To replace the current file, use **Replace the file** on the **Metadata** tab.
+The superseded file and its hash are both retained, so integrity stays
+demonstrable across the replacement rather than being lost at the moment of
+re-upload.
 
 ---
 
@@ -299,8 +342,12 @@ ControlWeave uses SHA256 hashing to verify that evidence files have not been alt
 GET /api/v1/evidence/:id/integrity-check
 ```
 
-ControlWeave recomputes the file hash and compares it to the stored value. There
-is no **Verify Integrity** button in the dashboard yet.
+ControlWeave recomputes the file hash and compares it to the stored value.
+
+In the dashboard, click **Details** on the evidence row, open the **Integrity**
+tab and click **Verify integrity**. The result shows both hashes — expected and
+freshly computed — so a mismatch can be reported precisely rather than as a bare
+failure, along with when the file was last verified.
 
 **Result States**:
 - ✅ **Verified** – File matches the original hash

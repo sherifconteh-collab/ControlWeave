@@ -388,6 +388,7 @@ const obligationsRoutes = require('./routes/obligations');
 const indicatorsRoutes = require('./routes/indicators');
 const usersRoutes = require('./routes/users');
 const cmdbRoutes = safeRequire('./routes/cmdb');
+const cmdbImportRoutes = safeRequire('./routes/cmdbImport');
 const assetsRoutes = safeRequire('./routes/assets');
 const environmentsRoutes = safeRequire('./routes/environments');
 const serviceAccountsRoutes = safeRequire('./routes/serviceAccounts');
@@ -470,6 +471,7 @@ const _absentPaidRoutes = [
   ['dashboard',        dashboardRoutes],
   ['evidence',         evidenceRoutes],
   ['cmdb',             cmdbRoutes],
+  ['cmdbImport',       cmdbImportRoutes],
   ['assets',           assetsRoutes],
   ['environments',     environmentsRoutes],
   ['serviceAccounts',  serviceAccountsRoutes],
@@ -527,6 +529,9 @@ app.use('/api/v1/incidents', incidentsRoutes);
 app.use('/api/v1/obligations', obligationsRoutes);
 app.use('/api/v1/indicators', indicatorsRoutes);
 app.use('/api/v1/users', usersRoutes);
+// Mounted before the main cmdb router so /cmdb/import/* resolves here rather
+// than falling through to cmdb.js.
+if (cmdbImportRoutes) app.use('/api/v1/cmdb/import', cmdbImportRoutes);
 if (cmdbRoutes) app.use('/api/v1/cmdb', cmdbRoutes);
 if (assetsRoutes) app.use('/api/v1/assets', assetsRoutes);
 if (environmentsRoutes) app.use('/api/v1/environments', environmentsRoutes);

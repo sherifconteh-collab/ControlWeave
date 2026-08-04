@@ -25,6 +25,7 @@
 .github/scripts/auto-review-docs.js
 .github/scripts/capture-screenshots.js
 .github/scripts/check-doc-staleness.js
+.github/scripts/check-screenshots.js
 .github/scripts/check-wiki-health.js
 .github/scripts/detect-feature-changes.js
 .github/scripts/generate-doc-updates.js
@@ -49,6 +50,7 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
+.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -156,6 +158,7 @@ controlweave/backend/__tests__/ai/llmSchemas.test.js
 controlweave/backend/__tests__/ai/llmService.test.js
 controlweave/backend/__tests__/ai/orgRagService.test.js
 controlweave/backend/__tests__/ai/promptSafety.test.js
+controlweave/backend/__tests__/csv.test.js
 controlweave/backend/__tests__/middleware/auth.test.js
 controlweave/backend/__tests__/middleware/sanitizeText.test.js
 controlweave/backend/__tests__/refactor/llmservice-split.test.js
@@ -330,6 +333,10 @@ controlweave/backend/migrations/136_risk_register.sql
 controlweave/backend/migrations/137_incident_management.sql
 controlweave/backend/migrations/138_obligations_register.sql
 controlweave/backend/migrations/139_indicators.sql
+controlweave/backend/migrations/140_risk_poam_linkage.sql
+controlweave/backend/migrations/141_poam_control_links.sql
+controlweave/backend/migrations/142_risk_vendor_linkage.sql
+controlweave/backend/migrations/143_risk_evidence_linkage.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -378,6 +385,7 @@ controlweave/backend/scripts/migrate-all.js
 controlweave/backend/scripts/qa-auditor-workflow.js
 controlweave/backend/scripts/qa-dynamic-scenarios.js
 controlweave/backend/scripts/qa-dynamic.js
+controlweave/backend/scripts/qa-link-routes-e2e.sh
 controlweave/backend/scripts/qa-rbac-mega-test.js
 controlweave/backend/scripts/repair-demo-account-via-api.js
 controlweave/backend/scripts/reset-demo-org-tiers.js
@@ -481,6 +489,7 @@ controlweave/backend/src/routes/autoEvidenceCollection.js
 controlweave/backend/src/routes/benchmarks.js
 controlweave/backend/src/routes/billing.js
 controlweave/backend/src/routes/cmdb.js
+controlweave/backend/src/routes/cmdbImport.js
 controlweave/backend/src/routes/complianceGate.js
 controlweave/backend/src/routes/contacts.js
 controlweave/backend/src/routes/controlHealth.js
@@ -587,6 +596,7 @@ controlweave/backend/src/services/aiExemplars/test_procedures.json
 controlweave/backend/src/services/aiQualityGate.js
 controlweave/backend/src/services/alienVaultService.js
 controlweave/backend/src/services/approvalService.js
+controlweave/backend/src/services/assetImportService.js
 controlweave/backend/src/services/auditService.js
 controlweave/backend/src/services/auditorRoleTemplates.js
 controlweave/backend/src/services/awsSecurityHubService.js
@@ -624,6 +634,7 @@ controlweave/backend/src/services/orgContextService.js
 controlweave/backend/src/services/orgRagService.js
 controlweave/backend/src/services/oscalService.js
 controlweave/backend/src/services/passkeyService.js
+controlweave/backend/src/services/poamGateService.js
 controlweave/backend/src/services/policyGapService.js
 controlweave/backend/src/services/policyService.js
 controlweave/backend/src/services/pushService.js
@@ -651,6 +662,7 @@ controlweave/backend/src/services/vendorSecurityService.js
 controlweave/backend/src/services/webhookService.js
 controlweave/backend/src/services/websocketService.js
 controlweave/backend/src/utils/aiSecurity.js
+controlweave/backend/src/utils/csv.js
 controlweave/backend/src/utils/encrypt.js
 controlweave/backend/src/utils/keysetPagination.js
 controlweave/backend/src/utils/logger.js
@@ -704,6 +716,7 @@ controlweave/docs/doc-review-log/PR-624.md
 controlweave/docs/doc-review-log/PR-632.md
 controlweave/docs/doc-review-log/PR-635.md
 controlweave/docs/doc-review-log/PR-664.md
+controlweave/docs/doc-review-log/PR-691.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md
@@ -748,6 +761,7 @@ controlweave/docs/guides/PRODUCTION_AI_FIX_AND_DEMO_RESET_RUNBOOK.md
 controlweave/docs/guides/QUICK_WINS.md
 controlweave/docs/guides/REGULATORY_NEWS.md
 controlweave/docs/guides/REPORTS.md
+controlweave/docs/guides/RISK_REGISTER.md
 controlweave/docs/guides/RMF.md
 controlweave/docs/guides/SBOM.md
 controlweave/docs/guides/SECURITY.md
@@ -777,7 +791,6 @@ controlweave/docs/screenshots/assessments-list-01.png
 controlweave/docs/screenshots/control-detail-01.png
 controlweave/docs/screenshots/control-status-dropdown-01.png
 controlweave/docs/screenshots/control-vulnerability-impact-01.png
-controlweave/docs/screenshots/controls-list-01.png
 controlweave/docs/screenshots/dashboard-compliance-panel-01.png
 controlweave/docs/screenshots/dashboard-custom-executive-01.png
 controlweave/docs/screenshots/dashboard-first-login-01.png
@@ -941,11 +954,14 @@ controlweave/frontend/src/app/dashboard/platform/page.tsx
 controlweave/frontend/src/app/dashboard/platform/security/page.tsx
 controlweave/frontend/src/app/dashboard/platform/settings/page.tsx
 controlweave/frontend/src/app/dashboard/plot4ai/page.tsx
+controlweave/frontend/src/app/dashboard/poam/[id]/page.tsx
+controlweave/frontend/src/app/dashboard/poam/page.tsx
 controlweave/frontend/src/app/dashboard/regulatory-news/page.tsx
 controlweave/frontend/src/app/dashboard/report-issue/page.tsx
 controlweave/frontend/src/app/dashboard/reports/executive/page.tsx
 controlweave/frontend/src/app/dashboard/reports/page.tsx
 controlweave/frontend/src/app/dashboard/resilience/page.tsx
+controlweave/frontend/src/app/dashboard/risks/[id]/page.tsx
 controlweave/frontend/src/app/dashboard/risks/page.tsx
 controlweave/frontend/src/app/dashboard/rmf/page.tsx
 controlweave/frontend/src/app/dashboard/sbom/page.tsx
@@ -1009,6 +1025,9 @@ controlweave/frontend/src/components/aiInsights/RegulatoryImpactWidget.tsx
 controlweave/frontend/src/components/aiInsights/RemediationPlansWidget.tsx
 controlweave/frontend/src/components/aiInsights/RiskScoreWidget.tsx
 controlweave/frontend/src/components/aiLaws/AiLawsJurisdictionView.tsx
+controlweave/frontend/src/components/cmdb/AssetControlLinks.tsx
+controlweave/frontend/src/components/cmdb/AssetImportPanel.tsx
+controlweave/frontend/src/components/cmdb/AssetRiskLinks.tsx
 controlweave/frontend/src/components/controls/ControlHealthView.tsx
 controlweave/frontend/src/components/dataGovernance/DataSovereigntyConfigSection.tsx
 controlweave/frontend/src/components/dataGovernance/DataSovereigntyGapAnalysisSection.tsx
@@ -1016,12 +1035,19 @@ controlweave/frontend/src/components/dataGovernance/DataSovereigntyJurisdictions
 controlweave/frontend/src/components/dataGovernance/DataSovereigntyRegulatoryChangesSection.tsx
 controlweave/frontend/src/components/dataGovernance/DataSovereigntyTab.tsx
 controlweave/frontend/src/components/dataGovernance/dataSovereigntyTypes.ts
+controlweave/frontend/src/components/evidence/EvidenceDetailDrawer.tsx
+controlweave/frontend/src/components/evidence/EvidenceRiskLinks.tsx
 controlweave/frontend/src/components/organization/OrganizationContactsTab.tsx
+controlweave/frontend/src/components/poam/PoamMilestones.tsx
+controlweave/frontend/src/components/poam/PoamReviewPanel.tsx
+controlweave/frontend/src/components/poam/PoamStatusBadge.tsx
 controlweave/frontend/src/components/registers/RegisterUI.tsx
+controlweave/frontend/src/components/risk/RiskEvidenceLinks.tsx
 controlweave/frontend/src/components/rmf/LeveragedAuthorizations.tsx
 controlweave/frontend/src/components/skeletons/index.tsx
 controlweave/frontend/src/components/structure/DepartmentsPanel.tsx
 controlweave/frontend/src/components/structure/ObjectivesPanel.tsx
+controlweave/frontend/src/components/tprm/VendorRiskLinks.tsx
 controlweave/frontend/src/components/tprm/VendorSecurityRatingsTab.tsx
 controlweave/frontend/src/contexts/AuthContext.tsx
 controlweave/frontend/src/contexts/WebSocketContext.tsx
@@ -1035,6 +1061,8 @@ controlweave/frontend/src/lib/branding.ts
 controlweave/frontend/src/lib/cmdbTypes.ts
 controlweave/frontend/src/lib/controlFamilies.ts
 controlweave/frontend/src/lib/generated/api-types.ts
+controlweave/frontend/src/lib/poamTerminology.ts
+controlweave/frontend/src/lib/poamTypes.ts
 controlweave/frontend/src/lib/pushNotifications.ts
 controlweave/frontend/src/lib/tokenStore.ts
 controlweave/frontend/src/lib/useAutoAI.ts

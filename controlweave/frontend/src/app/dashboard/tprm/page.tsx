@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { tprmAPI, aiAPI, tprmPublicAPI } from '@/lib/api';
+import VendorRiskLinks from '@/components/tprm/VendorRiskLinks';
 import VendorSecurityRatingsTab from '@/components/tprm/VendorSecurityRatingsTab';
 import { useToast } from '@/hooks/useToast';
 
@@ -1150,6 +1151,8 @@ export default function TprmPage() {
                     <div><span className="text-gray-500">Email:</span><br />{selectedVendor.vendor_contact_email}</div>
                   )}
                 </div>
+
+                <VendorRiskLinks vendorId={selectedVendor.id} riskTier={selectedVendor.risk_tier} />
                 {selectedVendor.services_provided && (
                   <div className="text-sm">
                     <span className="text-gray-500 block mb-1">Services Provided:</span>

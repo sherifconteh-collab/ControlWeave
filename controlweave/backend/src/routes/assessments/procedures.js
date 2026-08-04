@@ -10,6 +10,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
+const poamGate = require('../../services/poamGateService');
 const { requirePermission } = require('../../middleware/auth');
 const { log } = require('../../utils/logger');
 
@@ -483,7 +484,30 @@ router.post('/results', requirePermission('assessments.write'), async (req, res)
       }
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    // 'other_than_satisfied' is NIST SP 800-53A for "this control has gaps" --
+    // the canonical trigger for remediation. Raise a draft POA&M so the gap is
+    // tracked rather than recorded and forgotten. swallowErrors: the assessor's
+    // result must save even if the follow-up POA&M cannot be written.
+    let poamItem = null;
+    if (poamGate.isTestResultGap(status)) {
+      poamItem = await poamGate.inTransaction(
+        (client) => poamGate.raiseFromGap(client, {
+          orgId: req.user.organization_id,
+          userId: req.user.id,
+          source: 'procedure',
+          sourceId: procedureMeta.assessment_procedure_id,
+          controlId: procedureMeta.framework_control_id,
+          severity: risk_level,
+          title: `Remediate ${procedureMeta.control_code}: ${procedureMeta.procedure_id} other than satisfied`,
+          description: finding
+            ? `Assessment procedure ${procedureMeta.procedure_id} recorded as other than satisfied. Finding: ${truncate(finding, 4000)}`
+            : undefined
+        }),
+        { swallowErrors: true, context: 'poam_gate.raise_from_procedure' }
+      );
+    }
+
+    res.json({ success: true, data: result.rows[0], poam_item: poamItem });
   } catch (error) {
     log('error', 'record_result_error', { error: error?.message || String(error) });
     // Sanitize error message to avoid leaking database details

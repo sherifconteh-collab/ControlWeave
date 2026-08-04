@@ -5,6 +5,8 @@ import { Suspense, useState, useEffect, useCallback, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
+import AssetControlLinks from '@/components/cmdb/AssetControlLinks';
+import AssetRiskLinks from '@/components/cmdb/AssetRiskLinks';
 import { assetsAPI, Asset, AssetCategory, Environment } from '@/lib/assetsApi';
 import { vulnerabilitiesAPI } from '@/lib/api';
 
@@ -550,6 +552,10 @@ function AssetsPageContent() {
                     <h3 className="text-sm font-semibold text-gray-700 mb-2">Open Vulnerabilities</h3>
                     <AssetVulnSummary assetId={selectedAsset.id} />
                   </div>
+
+                  {selectedAssetId && <AssetRiskLinks assetId={selectedAssetId} />}
+
+                  {selectedAssetId && <AssetControlLinks assetId={selectedAssetId} />}
 
                   {selectedDependencies.length > 0 && (
                     <div>

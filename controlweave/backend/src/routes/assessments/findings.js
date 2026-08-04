@@ -11,6 +11,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../../config/database');
 const llm = require('../../services/llmService');
+const poamGate = require('../../services/poamGateService');
 const { requirePermission } = require('../../middleware/auth');
 const { log } = require('../../utils/logger');
 const {
@@ -281,7 +282,32 @@ router.post('/engagements/:id/findings', requirePermission('assessments.write'),
       severity: inserted.rows[0].severity
     });
 
-    res.status(201).json({ success: true, data: inserted.rows[0] });
+    // A finding against a control is the textbook input to a POA&M, and until
+    // now recording one produced no remediation record at all. Raises at medium
+    // and above only -- low-severity observations are routinely closed in the
+    // same conversation that raises them, and auto-raising each would bury the
+    // register in noise. swallowErrors: the finding is the auditor's work
+    // product and must save regardless.
+    let poamItem = null;
+    if (control_id) {
+      poamItem = await poamGate.inTransaction(
+        (client) => poamGate.raiseFromGap(client, {
+          orgId: req.user.organization_id,
+          userId: req.user.id,
+          source: 'finding',
+          sourceId: inserted.rows[0].id,
+          controlId: control_id,
+          severity: inserted.rows[0].severity,
+          title: `Remediate finding: ${String(title).trim()}`,
+          description: recommendation
+            ? `Raised from audit finding. Recommendation: ${String(recommendation)}`
+            : `Raised from audit finding: ${String(description).trim()}`
+        }),
+        { swallowErrors: true, context: 'poam_gate.raise_from_finding' }
+      );
+    }
+
+    res.status(201).json({ success: true, data: inserted.rows[0], poam_item: poamItem });
   } catch (error) {
     log('error', 'create_engagement_finding_error', { error: error?.message || String(error) });
     res.status(500).json({ success: false, error: 'Failed to create finding' });
