@@ -50,7 +50,6 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
-.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -346,6 +345,7 @@ controlweave/backend/scripts/apply-security-baseline.js
 controlweave/backend/scripts/assess-stig-compliance.js
 controlweave/backend/scripts/backfill-email-hashes.js
 controlweave/backend/scripts/check-db.js
+controlweave/backend/scripts/check-migration-schema-drift.js
 controlweave/backend/scripts/check-railway-config.js
 controlweave/backend/scripts/check-stig-versions.js
 controlweave/backend/scripts/check-syntax.js
