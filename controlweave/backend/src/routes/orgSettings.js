@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const router = express.Router();
 const pool = require('../config/database');
+const auditService = require('../services/auditService');
 const llm = require('../services/llmService');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireSod } = require('../middleware/sod');
@@ -237,10 +238,12 @@ router.put('/llm', requirePermission('settings.manage'), validateBody((body) => 
 
     // Audit log each provider key that was set/updated
     if (updatedProviders.length > 0) {
-      await pool.query(`
-        INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details, ip_address, success, created_at)
-        VALUES ($1, $2, 'api_key_updated', 'org_settings', $1, $3, $4, true, NOW())
-      `, [orgId, req.user.id, JSON.stringify({ providers: updatedProviders, action: 'set' }), req.ip || null]).catch(() => {});
+      await auditService.logFromRequest(req, {
+        eventType: 'api_key_updated',
+        resourceType: 'org_settings',
+        resourceId: orgId,
+        details: { providers: updatedProviders, action: 'set' }
+      }).catch(() => {});
     }
 
     // Invalidate cached API keys so the new provider/key is used immediately.
@@ -380,10 +383,12 @@ router.delete('/llm/:provider', requirePermission('settings.manage'), async (req
     );
 
     // Audit log key removal
-    await pool.query(`
-      INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details, ip_address, success, created_at)
-      VALUES ($1, $2, 'api_key_removed', 'org_settings', $1, $3, $4, true, NOW())
-    `, [orgId, req.user.id, JSON.stringify({ provider: req.params.provider, action: 'remove' }), req.ip || null]).catch(() => {});
+    await auditService.logFromRequest(req, {
+      eventType: 'api_key_removed',
+      resourceType: 'org_settings',
+      resourceId: orgId,
+      details: { provider: req.params.provider, action: 'remove' }
+    }).catch(() => {});
 
     res.json({ success: true, message: `${req.params.provider} API key removed` });
   } catch (err) {
@@ -1703,10 +1708,12 @@ router.post('/account/cancel', requirePermission('settings.manage'), validateBod
     `, [orgId, cancelMeta]);
 
     // Audit log
-    await pool.query(`
-      INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details, ip_address, success, created_at)
-      VALUES ($1, $2, 'account_cancelled', 'organization', $1, $3, $4, true, NOW())
-    `, [orgId, req.user.id, cancelMeta, req.ip || null]).catch(() => {});
+    await auditService.logFromRequest(req, {
+      eventType: 'account_cancelled',
+      resourceType: 'organization',
+      resourceId: orgId,
+      details: cancelMeta
+    }).catch(() => {});
 
     res.json({
       success: true,
@@ -1912,10 +1919,12 @@ router.put('/smtp', orgSettingsRateLimiter, requirePermission('settings.manage')
       emailService.invalidateSmtpCacheForOrg(orgId);
     }
 
-    await pool.query(`
-      INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, resource_id, details, ip_address, success, created_at)
-      VALUES ($1, $2, 'smtp_config_updated', 'settings', $1, $3, $4, true, NOW())
-    `, [orgId, req.user.id, JSON.stringify({ updated_by: req.user.email }), req.ip || null]).catch(() => {});
+    await auditService.logFromRequest(req, {
+      eventType: 'smtp_config_updated',
+      resourceType: 'settings',
+      resourceId: orgId,
+      details: { updated_by: req.user.email }
+    }).catch(() => {});
 
     res.json({ success: true, message: 'SMTP configuration saved. Send a test email to verify.' });
   } catch (error) {

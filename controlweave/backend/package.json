@@ -1,6 +1,6 @@
 {
   "name": "controlweave-backend",
-  "version": "4.10.2",
+  "version": "4.10.3",
   "engines": {
     "node": ">=20.16.0"
   },

@@ -339,6 +339,7 @@ controlweave/backend/migrations/142_risk_vendor_linkage.sql
 controlweave/backend/migrations/143_risk_evidence_linkage.sql
 controlweave/backend/migrations/144_evidence_control_links_org_scope.sql
 controlweave/backend/migrations/145_audit_logs_timestamptz.sql
+controlweave/backend/migrations/146_ai_decision_log_attribution.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -722,6 +723,7 @@ controlweave/docs/doc-review-log/PR-664.md
 controlweave/docs/doc-review-log/PR-691.md
 controlweave/docs/doc-review-log/PR-717.md
 controlweave/docs/doc-review-log/PR-726.md
+controlweave/docs/doc-review-log/PR-729.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md

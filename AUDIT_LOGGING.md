@@ -70,9 +70,15 @@ auditService.forwardToSiem(event);
 ```
 
 Key behaviors:
-- Automatically extracts context (IP, user agent, session) from the request object in `logFromRequest`.
+- Automatically extracts context (IP address, user agent, request ID) from the request object in
+  `logFromRequest`. Session is **not** among them: the platform issues stateless JWTs carrying no
+  session identifier, so `audit_logs.session_id` has no writer and `request_id` is the correlation
+  field to use. `authentication_method` is populated for authentication events only.
 - SIEM forwarding is async and non-blocking; `siem_forwarded` is updated on success.
-- Audit-logging failures never break the calling request (errors are swallowed/logged, not thrown).
+- Audit-logging failures never break the calling request, but they are no longer swallowed: each one is
+  reported through the structured logger (`audit.write_failed`, `audit.siem_forward_failed`) so it
+  reaches Sentry, and increments a per-process counter surfaced on the ops dashboard as
+  `audit_pipeline` (AU-5). A silently failing audit pipeline is indistinguishable from an idle one.
 
 ## Where Logging Is Wired In
 
