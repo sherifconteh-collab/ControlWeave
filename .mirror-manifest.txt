@@ -50,6 +50,7 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
+.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
@@ -340,6 +341,7 @@ controlweave/backend/migrations/144_evidence_control_links_org_scope.sql
 controlweave/backend/migrations/145_audit_logs_timestamptz.sql
 controlweave/backend/migrations/146_ai_decision_log_attribution.sql
 controlweave/backend/migrations/147_audit_log_hash_chain.sql
+controlweave/backend/migrations/148_control_hierarchy_and_baselines.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -453,6 +455,7 @@ controlweave/backend/scripts/validate-migrations.js
 controlweave/backend/scripts/validate-phase6.js
 controlweave/backend/scripts/validate-runtime-linkage.js
 controlweave/backend/scripts/verify-audit-chain.js
+controlweave/backend/scripts/verify-catalog-shape.js
 controlweave/backend/scripts/verify-demo-account-logins.js
 controlweave/backend/scripts/verify-live-crosswalk.js
 controlweave/backend/scripts/verify-rls-isolation.js
@@ -606,6 +609,7 @@ controlweave/backend/src/services/auditService.js
 controlweave/backend/src/services/auditorRoleTemplates.js
 controlweave/backend/src/services/awsSecurityHubService.js
 controlweave/backend/src/services/backupScheduler.js
+controlweave/backend/src/services/baselineScope.js
 controlweave/backend/src/services/ce-mcp/audit-logger.js
 controlweave/backend/src/services/ce-mcp/coordinator.js
 controlweave/backend/src/services/ce-mcp/exception-sanitizer.js
@@ -725,6 +729,7 @@ controlweave/docs/doc-review-log/PR-691.md
 controlweave/docs/doc-review-log/PR-717.md
 controlweave/docs/doc-review-log/PR-726.md
 controlweave/docs/doc-review-log/PR-729.md
+controlweave/docs/doc-review-log/PR-735.md
 controlweave/docs/frameworks/GDPR.md
 controlweave/docs/frameworks/HIPAA.md
 controlweave/docs/frameworks/ISO_27001.md

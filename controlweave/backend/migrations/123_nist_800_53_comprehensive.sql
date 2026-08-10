@@ -15,3 +15,9 @@ UPDATE frameworks SET coverage_status = 'comprehensive'
 WHERE code = 'nist_800_53';
 
 SELECT 'Migration 123 completed.' AS result;
+
+-- SUPERSEDED (catalog track): control enhancements are no longer deferred.
+-- The catalog now carries all 714 non-withdrawn enhancements alongside the 300
+-- base controls, with NIST SP 800-53B baseline membership. The
+-- coverage_status set here remains correct -- it is now correct in a stronger
+-- sense than when this migration ran.

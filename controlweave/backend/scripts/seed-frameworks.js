@@ -3,6 +3,72 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const { AIUC1_FRAMEWORK, AIUC1_CONTROLS: AIUC1_SHARED_CONTROLS } = require('./lib/aiuc1-data');
 const NIST_800_53 = require('./lib/frameworks/nist_800_53');
+
+// Derive the FedRAMP baseline frameworks from the 800-53 catalog rather than
+// maintaining a parallel hand-written list. FedRAMP's baselines are the NIST
+// SP 800-53B Low/Moderate/High selections plus FedRAMP-specific parameter
+// values; the control *selection* is what this platform tracks, and it is
+// exactly what the importer already recorded on each control.
+//
+// Deriving it means the FedRAMP frameworks cannot drift from the 800-53
+// catalog they are defined against -- which the previous hand-written stubs
+// had done badly, standing in for 287 and 370 controls with six records.
+//
+// Control ids are prefixed so they remain distinct rows from their 800-53
+// originals (framework_controls is unique on framework_id + control_id, so
+// the same id in two frameworks is legal, but a distinct prefix keeps
+// crosswalks and search unambiguous). The prefix is stripped back off when
+// crosswalking to 800-53 below.
+const FEDRAMP_BASELINE_DEFS = [
+  {
+    code: 'fedramp_low',
+    baseline: 'low',
+    prefix: 'FRL-',
+    name: 'FedRAMP Low Baseline',
+    description: 'FedRAMP Low baseline for cloud services where loss of confidentiality, integrity or availability would have limited adverse effect. Derived from the NIST SP 800-53B Low baseline selection.'
+  },
+  {
+    code: 'fedramp_moderate',
+    baseline: 'moderate',
+    prefix: 'FED-',
+    name: 'FedRAMP Moderate Baseline',
+    description: 'FedRAMP Moderate baseline for cloud services processing Controlled Unclassified Information for US federal agencies. Derived from the NIST SP 800-53B Moderate baseline selection, with FedRAMP-specific parameters, continuous monitoring (ConMon) obligations and 3PAO assessment requirements applying on top.'
+  },
+  {
+    code: 'fedramp_high',
+    baseline: 'high',
+    prefix: 'FRH-',
+    name: 'FedRAMP High Baseline',
+    description: 'FedRAMP High baseline, required for systems processing law enforcement, emergency services, financial and health data. Derived from the NIST SP 800-53B High baseline selection.'
+  }
+];
+
+function buildFedrampBaselines(nist) {
+  return FEDRAMP_BASELINE_DEFS.map((def) => {
+    const selected = nist.controls.filter((c) => (c.baselines || []).includes(def.baseline));
+    return {
+      code: def.code,
+      name: def.name,
+      version: nist.framework.version,
+      category: 'Federal Cloud Security',
+      tier_required: 'community',
+      description: def.description,
+      controls: selected.map((c) => ({
+        control_id: `${def.prefix}${c.control_id}`,
+        title: c.title,
+        description: c.description,
+        priority: c.priority,
+        control_type: c.control_type,
+        is_enhancement: c.is_enhancement,
+        parent_control_id: c.parent_control_id ? `${def.prefix}${c.parent_control_id}` : null,
+        // The baseline is the framework here, so per-control baseline rows
+        // would be redundant -- membership is implied by inclusion.
+        baselines: [],
+        derived_from: c.control_id
+      }))
+    };
+  });
+}
 const CMMC_2_0 = require('./lib/frameworks/cmmc_2_0');
 
 const pool = process.env.DATABASE_URL
@@ -1019,101 +1085,17 @@ const frameworks = [
   },
 
   // === FEDERAL CLOUD SECURITY ===
-  {
-    code: 'fedramp_moderate',
-    name: 'FedRAMP Moderate Baseline',
-    version: '2024',
-    category: 'Federal Cloud Security',
-    tier_required: 'govcloud',
-    description: 'FedRAMP (Federal Risk and Authorization Management Program) Moderate baseline for cloud services processing Controlled Unclassified Information for US federal agencies. Based on NIST SP 800-53 Rev 5 with FedRAMP-specific parameters, continuous monitoring (ConMon) obligations, and third-party assessment organization (3PAO) requirements.',
-    controls: [
-      // Access Control (AC)
-      { control_id: 'FED-AC-1',  title: 'Access Control Policy and Procedures', description: 'Develop, document, and disseminate an access control policy and procedures that address FedRAMP-specific requirements.', priority: '1', control_type: 'policy' },
-      { control_id: 'FED-AC-2',  title: 'Account Management', description: 'Manage information system accounts including establishing, activating, modifying, reviewing, disabling, and removing accounts, with FedRAMP-required review frequencies.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-AC-3',  title: 'Access Enforcement', description: 'Enforce approved authorizations for logical access to information and system resources in accordance with applicable access control policies.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-AC-6',  title: 'Least Privilege', description: 'Employ the principle of least privilege, allowing only authorized accesses for users and processes acting on behalf of users.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-AC-17', title: 'Remote Access', description: 'Establish and document usage restrictions and implementation guidance for remote access, monitor remote access sessions, and encrypt all remote access communications.', priority: '1', control_type: 'technical' },
-      // Audit and Accountability (AU)
-      { control_id: 'FED-AU-2',  title: 'Event Logging', description: 'Identify the types of events that the system is capable of logging in support of the audit function and coordinate the event logging function with other organizations requiring audit-related information.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-AU-3',  title: 'Content of Audit Records', description: 'Ensure that audit records contain information that establishes what type of event occurred, when and where it occurred, the source, the outcome, and the identity of individuals or subjects.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-AU-6',  title: 'Audit Record Review, Analysis, and Reporting', description: 'Review and analyze system audit records for indications of inappropriate or unusual activity, report findings, and adjust the level of audit review and analysis activity.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-AU-12', title: 'Audit Record Generation', description: 'Provide audit record generation capability for the list of events defined in AU-2 and allow designated personnel to select the events to be logged by specific components.', priority: '1', control_type: 'technical' },
-      // Assessment, Authorization, and Monitoring (CA)
-      { control_id: 'FED-CA-2',  title: 'Control Assessments', description: 'Select an independent assessor (3PAO) to conduct control assessments using assessment procedures that include application of assessment methods to assessment objects.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-CA-3',  title: 'Information Exchange', description: 'Approve and manage the exchange of information between the system and other systems using interconnection security agreements, interface descriptions, and data exchange policies.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-CA-5',  title: 'Plan of Action and Milestones', description: 'Develop, document, and update a POA&M for the system that identifies the findings from assessments, required corrective actions, and the resources required to correct identified deficiencies.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-CA-6',  title: 'Authorization', description: 'Assign a senior official as the authorizing official, ensure the system is authorized before operations commence, and update the authorization when significant changes occur.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-CA-7',  title: 'Continuous Monitoring', description: 'Develop and implement a continuous monitoring strategy including establishment of metrics, frequencies, assessment activities, ongoing reporting, and a corrective action process.', priority: '1', control_type: 'organizational' },
-      // Configuration Management (CM)
-      { control_id: 'FED-CM-2',  title: 'Baseline Configuration', description: 'Develop, document, and maintain a current baseline configuration of the information system, including hardware, software, firmware, and settings.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-CM-6',  title: 'Configuration Settings', description: 'Establish and document configuration settings for technology products employed within the information system that reflect the most restrictive mode consistent with operational requirements.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-CM-7',  title: 'Least Functionality', description: 'Configure the system to provide only mission-essential capabilities, prohibiting or restricting the use of functions, ports, protocols, and services not required.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-CM-8',  title: 'System Component Inventory', description: 'Develop and document an inventory of system components that accurately reflects the current system, is consistent with the authorization boundary, and is reviewed and updated at a defined frequency.', priority: '2', control_type: 'technical' },
-      // Contingency Planning (CP)
-      { control_id: 'FED-CP-9',  title: 'System Backup', description: 'Conduct backups of user-level and system-level information, system documentation, and security-related documentation at FedRAMP-defined frequencies and store backup copies in a separate facility.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-CP-10', title: 'System Recovery and Reconstitution', description: 'Provide for the recovery and reconstitution of the system to a known state within defined time periods after a disruption, compromise, or failure.', priority: '1', control_type: 'technical' },
-      // Identification and Authentication (IA)
-      { control_id: 'FED-IA-2',  title: 'Identification and Authentication (Organizational Users)', description: 'Uniquely identify and authenticate organizational users and implement multi-factor authentication for network access to privileged accounts and non-privileged accounts.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-IA-5',  title: 'Authenticator Management', description: 'Manage system authenticators by verifying identity, establishing initial authenticator content, setting administrative procedures, and changing authenticators at defined frequencies.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-IA-8',  title: 'Identification and Authentication (Non-Organizational Users)', description: 'Uniquely identify and authenticate non-organizational users and implement PIV credentials or FedRAMP-approved alternatives.', priority: '2', control_type: 'technical' },
-      // Incident Response (IR)
-      { control_id: 'FED-IR-4',  title: 'Incident Handling', description: 'Implement an incident handling capability including preparation, detection, analysis, containment, eradication, and recovery, and coordinate activities with contingency planning activities.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-IR-5',  title: 'Incident Monitoring', description: 'Track and document system security incidents, maintain records for a defined period, and report incidents to FedRAMP within US-CERT-required timeframes.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-IR-6',  title: 'Incident Reporting', description: 'Report suspected security incidents to the organizational incident response capability and the FedRAMP ISSO within defined timeframes including major incidents to US-CERT.', priority: '1', control_type: 'organizational' },
-      // Risk Assessment (RA)
-      { control_id: 'FED-RA-3',  title: 'Risk Assessment', description: 'Conduct risk assessments including threat and vulnerability identification, likelihood and impact determinations, and risk response documentation at FedRAMP-required intervals.', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-RA-5',  title: 'Vulnerability Monitoring and Scanning', description: 'Scan for vulnerabilities in the system at defined frequencies using authenticated scans, analyze results, and remediate within FedRAMP-defined timeframes (Critical/High: 30 days, Moderate: 90 days, Low: 180 days).', priority: '1', control_type: 'technical' },
-      // System and Communications Protection (SC)
-      { control_id: 'FED-SC-7',  title: 'Boundary Protection', description: 'Monitor and control communications at the external boundary and at key internal boundaries of the system, implement subnetworks for publicly accessible components, and connect to external networks only through managed interfaces.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-SC-8',  title: 'Transmission Confidentiality and Integrity', description: 'Implement cryptographic mechanisms to prevent unauthorized disclosure of information during transmission using FIPS-validated cryptography.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-SC-28', title: 'Protection of Information at Rest', description: 'Implement cryptographic mechanisms to prevent unauthorized disclosure and modification of data at rest using FIPS 140-2/140-3 validated modules for CUI protection.', priority: '1', control_type: 'technical' },
-      // System and Information Integrity (SI)
-      { control_id: 'FED-SI-2',  title: 'Flaw Remediation', description: 'Identify, report, and correct system flaws, install security-relevant software updates within FedRAMP-defined timeframes, and incorporate flaw remediation into the organizational configuration management process.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-SI-3',  title: 'Malicious Code Protection', description: 'Implement malicious code protection mechanisms at system entry and exit points and at workstations, servers, and mobile computing devices, updated at defined frequencies.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-SI-4',  title: 'System Monitoring', description: 'Monitor the system to detect attacks and indicators of potential attacks, unauthorized connections, unusual or unauthorized activities, and connect and configure individual system monitoring to a government-wide monitoring capability.', priority: '1', control_type: 'technical' },
-      // Supply Chain Risk Management (SR)
-      { control_id: 'FED-SR-2',  title: 'Supply Chain Risk Management Plan', description: 'Develop, document, and implement a supply chain risk management plan that identifies supply chain risks, establishes risk tolerances, and includes procedures to address those risks.', priority: '1', control_type: 'organizational' },
-      // FedRAMP-Specific Requirements
-      { control_id: 'FED-CONMON-1', title: 'Continuous Monitoring Strategy', description: 'Implement a FedRAMP continuous monitoring program with defined frequencies for vulnerability scanning (monthly OS/databases, weekly web apps), security control assessments (annual), and POA&M updates (monthly).', priority: '1', control_type: 'organizational' },
-      { control_id: 'FED-CONMON-2', title: 'Monthly Vulnerability Scanning', description: 'Conduct authenticated vulnerability scans of the authorization boundary at a minimum monthly frequency and submit scan results to FedRAMP PMO as required.', priority: '1', control_type: 'technical' },
-      { control_id: 'FED-CONMON-3', title: 'Annual Penetration Testing', description: 'Conduct annual penetration testing by a FedRAMP-approved 3PAO of the authorization boundary, including network and web application testing, and remediate findings within FedRAMP-required timeframes.', priority: '1', control_type: 'technical' },
-    ]
-  },
-  {
-    code: 'fedramp_high',
-    name: 'FedRAMP High Baseline',
-    version: '5.0',
-    category: 'Federal Cloud Security',
-    tier_required: 'govcloud',
-    description: 'The FedRAMP High Baseline is the most stringent FedRAMP impact level, required for systems processing law enforcement data, emergency services data, financial systems, and health systems. It includes all FedRAMP Moderate controls plus additional High-impact requirements from NIST SP 800-53 Rev 5.',
-    controls: [
-      { control_id: 'FRH-AC-2(13)', title: 'Account Management — Disable Accounts for High-Risk Individuals', description: 'Disable accounts of users who pose a significant risk within 1 hour of notification.', priority: 'critical', control_type: 'technical' },
-      { control_id: 'FRH-AC-6(9)',  title: 'Least Privilege — Log Use of Privileged Functions', description: 'Log the execution of privileged functions.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-AC-6(10)', title: 'Least Privilege — Prohibit Non-Privileged Users from Executing Privileged Functions', description: 'Prevent non-privileged users from executing privileged functions and prevent privileged users from executing user-level functions.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-AC-12',    title: 'Session Termination', description: 'Automatically terminate a user session after defined conditions or trigger inactivity timeouts.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-AU-9(3)',  title: 'Audit Information Protection — Cryptographic Protection', description: 'Implement cryptographic mechanisms to protect audit information and tools from unauthorized modification.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-AU-10',    title: 'Non-Repudiation', description: 'Provide irrefutable evidence that a user took specific actions that are relevant to the security of the system.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-CM-5(1)',  title: 'Access Restrictions for Change — Automated Access Enforcement', description: 'Enforce access restrictions using automated mechanisms.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-CP-6(3)',  title: 'Alternate Storage Site — Accessibility', description: 'Identify potential accessibility problems to the alternate storage site in the event of an area-wide disruption or disaster and outline explicit mitigation actions.', priority: 'high', control_type: 'operational' },
-      { control_id: 'FRH-CP-7(5)',  title: 'Alternate Processing Site — Equivalent Security', description: 'Ensure that the alternate processing site provides security controls equivalent to those of the primary site.', priority: 'high', control_type: 'operational' },
-      { control_id: 'FRH-CP-9(3)',  title: 'System Backup — Separate Storage for Critical Information', description: 'Store backup copies of the operating system, application software, and system-level data in a separate facility or fire-rated container.', priority: 'high', control_type: 'operational' },
-      { control_id: 'FRH-IA-3',     title: 'Device Identification and Authentication', description: 'Uniquely identify and authenticate devices before establishing connections, including connections to other devices.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-IA-5(2)',  title: 'Authenticator Management — PKI-Based Authentication', description: 'Require PKI-based authentication for privileged accounts and implement PKI infrastructure to support authentication.', priority: 'critical', control_type: 'technical' },
-      { control_id: 'FRH-IR-4(4)',  title: 'Incident Handling — Information Correlation', description: 'Correlate incident information and individual responses to a service-wide perspective on incidents.', priority: 'high', control_type: 'administrative' },
-      { control_id: 'FRH-PE-6(4)',  title: 'Monitoring Physical Access — Monitoring Physical Access to Servers', description: 'Monitor physical access to information processing facilities containing server rooms using physical intrusion alarms and surveillance equipment.', priority: 'high', control_type: 'physical' },
-      { control_id: 'FRH-PL-8(1)',  title: 'Security and Privacy Architectures — Defense-in-Depth', description: 'Design the security and privacy architectures using a defense-in-depth approach that effectively protects against attacks likely to affect the system.', priority: 'high', control_type: 'administrative' },
-      { control_id: 'FRH-PS-6(3)',  title: 'Access Agreements — Post-Employment Requirements', description: 'Notify individuals of applicable laws, executive orders, directives, policies, regulations, standards, and guidelines when access agreements are terminated.', priority: 'medium', control_type: 'administrative' },
-      { control_id: 'FRH-RA-3(1)',  title: 'Risk Assessment — Supply Chain Risk Assessment', description: 'Assess supply chain risks associated with systems, system components, and system services, documenting the assessment results.', priority: 'high', control_type: 'administrative' },
-      { control_id: 'FRH-SA-10(1)', title: 'Developer Configuration Management — Software/Firmware Integrity', description: 'Require the developer to enable integrity verification of software and firmware components.', priority: 'high', control_type: 'operational' },
-      { control_id: 'FRH-SC-5(3)',  title: 'Denial of Service Protection — Detection and Monitoring', description: 'Employ monitoring tools to detect and characterize denial-of-service attacks.', priority: 'high', control_type: 'technical' },
-      { control_id: 'FRH-SC-8(1)',  title: 'Transmission Confidentiality — Cryptographic Protection', description: 'Implement cryptographic mechanisms to prevent unauthorized disclosure of information and detect changes during transmission.', priority: 'critical', control_type: 'technical' },
-      { control_id: 'FRH-SC-18',    title: 'Mobile Code', description: 'Define acceptable and unacceptable mobile code and mobile code technologies, authorize the use of mobile code, and monitor the use of mobile code within the system.', priority: 'medium', control_type: 'technical' },
-      { control_id: 'FRH-SC-19',    title: 'Voice over IP Technologies', description: 'Establish usage restrictions and implementation guidelines for Voice over Internet Protocol technologies and monitor for unauthorized and malicious use.', priority: 'medium', control_type: 'technical' },
-      { control_id: 'FRH-SC-28(1)', title: 'Protection of Information at Rest — Cryptographic Protection', description: 'Employ cryptographic mechanisms to prevent unauthorized disclosure and modification of the following information at rest: all CUI and federal data.', priority: 'critical', control_type: 'technical' },
-      { control_id: 'FRH-SI-7(14)', title: 'Software and Information Integrity — Binary/Machine Executable Code', description: 'Prohibit the use of binary or machine-executable code from sources with limited or no warranty and without the provision of source code.', priority: 'high', control_type: 'operational' },
-      { control_id: 'FRH-SI-16',    title: 'Memory Protection', description: 'Implement the following controls to protect the system memory from unauthorized code execution: employ address space layout randomization (ASLR) and data execution prevention (DEP).', priority: 'high', control_type: 'technical' },
-    ]
-  },
+  // FedRAMP baselines are DERIVED, not hand-authored.
+  //
+  // These two frameworks previously carried six hand-written records between
+  // them (FED-AU-2, FED-AU-3, FED-AU-6, FED-AU-12, FRH-AU-9(3), FRH-AU-10 and
+  // a handful of others) standing in for baselines that actually select 287
+  // and 370 controls respectively. docs/FRAMEWORK_CATALOG_COMPLETION_PLAN.md
+  // already specified the right approach -- "generated by filtering the
+  // 800-53 module through the baseline's ID list -- never a hand-authored"
+  // copy -- and this is that. The membership comes from the NIST SP 800-53B
+  // profiles the importer reads, so it cannot drift from the catalog.
+  ...buildFedrampBaselines(NIST_800_53),
   {
     code: 'cis_controls_v8',
     name: 'CIS Controls v8',
@@ -1166,16 +1148,53 @@ async function seed() {
       );
       const frameworkId = fwResult.rows[0].id;
 
+      // Two passes. Enhancements reference their parent by control_id string,
+      // and the parent's UUID only exists once it is inserted -- and a parent
+      // is not guaranteed to sort before its children. Insert everything
+      // first, then resolve the hierarchy by id.
+      const controlIdToUuid = new Map();
       for (const ctrl of fw.controls) {
-        await client.query(
-          `INSERT INTO framework_controls (framework_id, control_id, title, description, priority, control_type)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [frameworkId, ctrl.control_id, ctrl.title, ctrl.description || null, ctrl.priority, ctrl.control_type]
+        const inserted = await client.query(
+          `INSERT INTO framework_controls
+             (framework_id, control_id, title, description, priority, control_type, is_enhancement)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id`,
+          [frameworkId, ctrl.control_id, ctrl.title, ctrl.description || null,
+           ctrl.priority, ctrl.control_type, ctrl.is_enhancement === true]
         );
+        controlIdToUuid.set(ctrl.control_id, inserted.rows[0].id);
         totalControls++;
       }
 
-      console.log(`  ${fw.code}: ${fw.controls.length} controls (${fw.tier_required} tier)`);
+      for (const ctrl of fw.controls) {
+        if (ctrl.parent_control_id) {
+          const parentUuid = controlIdToUuid.get(ctrl.parent_control_id);
+          if (parentUuid) {
+            await client.query(
+              'UPDATE framework_controls SET parent_control_id = $1 WHERE id = $2',
+              [parentUuid, controlIdToUuid.get(ctrl.control_id)]
+            );
+          } else {
+            // Loud rather than silent: an enhancement whose parent is missing
+            // means the generated catalog is internally inconsistent, and a
+            // silently orphaned enhancement is invisible in the UI hierarchy.
+            console.warn(`  [WARN] ${fw.code}/${ctrl.control_id}: parent ${ctrl.parent_control_id} not found`);
+          }
+        }
+
+        for (const baseline of ctrl.baselines || []) {
+          await client.query(
+            `INSERT INTO control_baselines (framework_control_id, baseline, baseline_source)
+             VALUES ($1, $2, 'nist_800_53b')
+             ON CONFLICT (framework_control_id, baseline, baseline_source) DO NOTHING`,
+            [controlIdToUuid.get(ctrl.control_id), baseline]
+          );
+        }
+      }
+
+      const enhCount = fw.controls.filter((c) => c.is_enhancement).length;
+      console.log(`  ${fw.code}: ${fw.controls.length} controls`
+        + (enhCount ? ` (${fw.controls.length - enhCount} base + ${enhCount} enhancements)` : ''));
     }
 
     // Create some crosswalk mappings between common controls
@@ -1570,17 +1589,20 @@ async function seed() {
       // FedRAMP High <-> NIST 800-53 Rev 5 (High-only additions)
       ['FRH-AC-2(13)', 'fedramp_high', 'AC-2',  'nist_800_53', 98],
       ['FRH-AC-12',    'fedramp_high', 'AC-12', 'nist_800_53', 98],
+      // Three FedRAMP High pairs were removed when these baselines became
+      // derived rather than hand-written: FRH-CP-7(5) and FRH-SI-7(14)
+      // referenced enhancements WITHDRAWN in Rev 5, and FRH-SA-10(1) is
+      // active but selected by no NIST SP 800-53B baseline. They resolved to
+      // nothing before too -- the hand-written stub never contained them --
+      // so the pairs silently no-opped. Deriving the baseline surfaced them.
       ['FRH-AU-9(3)',  'fedramp_high', 'AU-9',  'nist_800_53', 98],
       ['FRH-AU-10',    'fedramp_high', 'AU-10', 'nist_800_53', 98],
       ['FRH-IA-3',     'fedramp_high', 'IA-3',  'nist_800_53', 98],
       ['FRH-IA-5(2)',  'fedramp_high', 'IA-5',  'nist_800_53', 95],
       ['FRH-SC-28(1)', 'fedramp_high', 'SC-28', 'nist_800_53', 98],
       ['FRH-SC-8(1)',  'fedramp_high', 'SC-8',  'nist_800_53', 98],
-      ['FRH-SI-7(14)', 'fedramp_high', 'SI-7',  'nist_800_53', 90],
       ['FRH-SI-16',    'fedramp_high', 'SI-16', 'nist_800_53', 98],
-      ['FRH-SA-10(1)', 'fedramp_high', 'SA-10', 'nist_800_53', 92],
       ['FRH-CP-6(3)',  'fedramp_high', 'CP-6',  'nist_800_53', 98],
-      ['FRH-CP-7(5)',  'fedramp_high', 'CP-7',  'nist_800_53', 98],
       ['FRH-CP-9(3)',  'fedramp_high', 'CP-9',  'nist_800_53', 98],
       ['FRH-IR-4(4)',  'fedramp_high', 'IR-4',  'nist_800_53', 95],
       ['FRH-RA-3(1)',  'fedramp_high', 'RA-3',  'nist_800_53', 95],

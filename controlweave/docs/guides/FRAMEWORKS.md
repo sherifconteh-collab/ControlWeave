@@ -11,7 +11,7 @@ ControlWeave supports 15+ compliance frameworks with intelligent crosswalk mappi
 ## Available Frameworks
 
 ### Core Security Frameworks
-- **NIST 800-53** - Comprehensive federal security controls (20 families, 300+ controls)
+- **NIST 800-53 Rev 5** - Comprehensive federal security controls (20 families, 1,014 items: 300 base controls plus all 714 non-withdrawn control enhancements, with NIST SP 800-53B Low/Moderate/High baseline membership)
 - **NIST 800-171** - Protecting Controlled Unclassified Information (CUI)
 - **ISO 27001** - International information security standard
 - **NIST CSF 2.0** - Cybersecurity Framework for risk management
@@ -37,7 +37,7 @@ ControlWeave supports 15+ compliance frameworks with intelligent crosswalk mappi
 
 ### Federal & Compliance
 - **FISCAM** - Federal financial systems
-- **FedRAMP** - Cloud services for government (coming soon)
+- **FedRAMP Low / Moderate / High** - Cloud services for government. Derived from the NIST SP 800-53B baseline selections (149 / 287 / 370 controls respectively), so they cannot drift from the 800-53 catalog they are defined against.
 
 ### Reference Models
 - **NIST SP 800-207** - Zero Trust Architecture

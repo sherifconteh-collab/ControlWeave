@@ -13,6 +13,15 @@
 const express = require('express');
 const router = express.Router();
 
+// Upper bound for an explicit page request. The catalog is heading past
+// 2,000 controls once 800-53 enhancements and the derived FedRAMP
+// baselines land, so a 100-row ceiling forces far too many round trips.
+const MAX_CONTROLS_PAGE_SIZE = 500;
+// Ceiling for a caller that asks for no pagination at all. Such a caller
+// still gets a `pagination` object carrying `total` and `truncated`, so a
+// short response is always distinguishable from a complete one.
+const UNPAGINATED_CONTROLS_CAP = 5000;
+
 const ALLOWED_CONTROL_FUNCTIONS = ['preventive', 'detective', 'corrective'];
 
 const pool = require('../../config/database');
@@ -73,6 +82,13 @@ router.get('/:orgId/controls', requirePermission('organizations.read'), async (r
                +
                (SELECT COUNT(*)::int FROM control_mappings cmt WHERE cmt.target_control_id = fc.id AND cmt.source_control_id <> fc.id)
              ) AS mapping_count
+    `;
+
+    // Kept separate from the SELECT list so the COUNT below runs against
+    // exactly the same joins and filters. Every join here is one-to-one
+    // (organization_frameworks, overrides and implementations are each unique
+    // per control+org), so COUNT(*) is not inflated.
+    let fromWhere = `
       FROM organization_frameworks of2
       JOIN framework_controls fc ON fc.framework_id = of2.framework_id
       JOIN frameworks f ON f.id = fc.framework_id
@@ -87,16 +103,16 @@ router.get('/:orgId/controls', requirePermission('organizations.read'), async (r
     let paramIndex = 2;
 
     if (frameworkId) {
-      query += ` AND f.id = $${paramIndex}`;
+      fromWhere += ` AND f.id = $${paramIndex}`;
       params.push(frameworkId);
       paramIndex++;
     }
 
     if (status) {
       if (status === 'not_started') {
-        query += ` AND (ci.status IS NULL OR ci.status = 'not_started')`;
+        fromWhere += ` AND (ci.status IS NULL OR ci.status = 'not_started')`;
       } else {
-        query += ` AND ci.status = $${paramIndex}`;
+        fromWhere += ` AND ci.status = $${paramIndex}`;
         params.push(status);
         paramIndex++;
       }
@@ -110,33 +126,54 @@ router.get('/:orgId/controls', requirePermission('organizations.read'), async (r
       .filter((value) => ALLOWED_CONTROL_FUNCTIONS.includes(value));
 
     if (requestedFunctions.length > 0) {
-      query += ` AND fc.control_functions && $${paramIndex}::text[]`;
+      fromWhere += ` AND fc.control_functions && $${paramIndex}::text[]`;
       params.push(requestedFunctions);
       paramIndex++;
     }
 
-    query += ' ORDER BY f.name, fc.control_id, fc.id';
+    query += fromWhere + ' ORDER BY f.name, fc.control_id, fc.id';
+
+    // The total is computed on every request, paginated or not. Without it the
+    // unpaginated branch below could silently return fewer controls than
+    // exist -- it previously applied a bare LIMIT 2000 with no total and no
+    // pagination object, so a catalog that outgrew the cap would drop controls
+    // off the end of the list with no error and no signal to the client. A
+    // compliance tool hiding controls from an auditor is the worst failure
+    // mode available to it, so the count is worth the extra query.
+    const countResult = await pool.query(`SELECT COUNT(*)::int AS total ${fromWhere}`, params);
+    const total = countResult.rows[0].total;
 
     const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
-    let pagination = null;
+    let pagination;
     if (hasPagination) {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      // Raised from 100. The asset control picker asks for 500 and silently
+      // received 100, so its client-side search only ever saw the first page
+      // of the catalog.
+      const limit = Math.min(MAX_CONTROLS_PAGE_SIZE, Math.max(1, parseInt(req.query.limit, 10) || 50));
       const offset = (page - 1) * limit;
       query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
-      pagination = { page, limit };
+      pagination = { page, limit, total, truncated: offset + limit < total };
     } else {
-      query += ' LIMIT 2000';
+      query += ` LIMIT ${UNPAGINATED_CONTROLS_CAP}`;
+      pagination = {
+        page: 1,
+        limit: UNPAGINATED_CONTROLS_CAP,
+        total,
+        truncated: total > UNPAGINATED_CONTROLS_CAP
+      };
     }
 
     const result = await pool.query(query, params);
-    res.json({
-      success: true,
-      data: result.rows,
-      controls: result.rows,
-      ...(pagination ? { pagination } : {})
-    });
+    if (pagination.truncated) {
+      log('warn', 'organizations.controls.truncated', {
+        organizationId: orgId,
+        returned: result.rows.length,
+        total
+      });
+    }
+    res.json({ success: true, data: result.rows, controls: result.rows, pagination });
   } catch (error) {
     log('error', 'organizations.controls.failed', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to load controls' });

@@ -14,6 +14,9 @@ const pool = require('../../config/database');
 const auditService = require('../../services/auditService');
 const { requirePermission } = require('../../middleware/auth');
 const { log } = require('../../utils/logger');
+
+const VALID_TARGET_BASELINES = ['low', 'moderate', 'high'];
+
 const {
   RMF_FRAMEWORK_CODES,
   VALID_CIA_LEVELS,
@@ -78,6 +81,57 @@ router.get('/me/profile', requirePermission('organizations.read'), async (req, r
   } catch (error) {
     log('error', 'organizations.profile.read_failed', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to load organization profile' });
+  }
+});
+
+// PUT /organizations/me/baseline
+//
+// Sets the impact baseline compliance percentages are measured against. NIST
+// SP 800-53B selects 149 controls at Low, 287 at Moderate and 370 at High; an
+// organization pursuing Moderate should be scored against its 287 rather than
+// against the whole catalog. NULL restores the unscoped behavior.
+//
+// Frameworks that carry no baseline data (everything except 800-53 today) stay
+// fully in scope regardless -- see services/baselineScope.js.
+//
+// Follow-up worth doing: this should derive from the FIPS 199 categorization
+// already captured on organization_profiles (the high-water mark of the
+// confidentiality/integrity/availability impact levels) rather than being set
+// independently, so the two cannot disagree.
+router.put('/me/baseline', requirePermission('organizations.write'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const raw = req.body.target_baseline;
+    const baseline = raw === null || raw === undefined || raw === ''
+      ? null
+      : String(raw).toLowerCase();
+
+    if (baseline !== null && !VALID_TARGET_BASELINES.includes(baseline)) {
+      return res.status(400).json({
+        success: false,
+        error: `target_baseline must be one of: ${VALID_TARGET_BASELINES.join(', ')}, or null to unset.`
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE organizations SET target_baseline = $2 WHERE id = $1 RETURNING id, target_baseline`,
+      [orgId, baseline]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Organization not found' });
+    }
+
+    await auditService.logFromRequest(req, {
+      eventType: 'organization.baseline_changed',
+      resourceType: 'organization',
+      resourceId: orgId,
+      details: { target_baseline: baseline }
+    }).catch(() => {});
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    log('error', 'organizations.baseline_update_failed', { error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to update target baseline' });
   }
 });
 
