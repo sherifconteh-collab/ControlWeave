@@ -82,7 +82,8 @@
     "qa:demo:verify-logins": "node scripts/verify-demo-account-logins.js",
     "qa:demo:complete-onboarding": "node scripts/complete-demo-onboarding-via-api.js",
     "qa:demo:repair-account": "node scripts/repair-demo-account-via-api.js",
-    "verify:rls": "node scripts/verify-rls-isolation.js"
+    "verify:rls": "node scripts/verify-rls-isolation.js",
+    "verify:audit-chain": "node scripts/verify-audit-chain.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
