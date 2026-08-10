@@ -12,6 +12,56 @@ import type { PoamItem } from '@/lib/poamTypes';
 import { groupByControlFamily, sameControlRef } from '@/lib/controlFamilies';
 import { useToast } from '@/hooks/useToast';
 
+/**
+ * The engagement shape this screen actually reads. Deliberately not an
+ * exhaustive mirror of the API row -- it names the fields the page renders and
+ * leaves the rest to the index signature, so a server-side addition does not
+ * become a compile error here.
+ */
+interface Engagement {
+  id: string;
+  name: string;
+  status: string;
+  engagement_type?: string | null;
+  scope?: string | null;
+  framework_codes?: string[] | string | null;
+  period_start?: string | null;
+  period_end?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  pbc_count?: number;
+  workpaper_count?: number;
+  finding_count?: number;
+  [key: string]: unknown;
+}
+
+/** Counts returned when an engagement is created or seeded from a template. */
+interface EngagementSummary {
+  created?: number;
+  skipped?: number;
+  open_pbc_count?: number;
+  open_finding_count?: number;
+  finalized_workpaper_count?: number;
+  signoff_count?: number;
+  [key: string]: unknown;
+}
+
+/** One gate on the sign-off readiness checklist. */
+interface ReadinessCheck {
+  key: string;
+  label: string;
+  approved: boolean;
+  [key: string]: unknown;
+}
+
+interface SignoffReadiness {
+  /** Gate flags, not a status string -- the header reads
+   *  readiness.ready_for_validation_package off this. */
+  readiness?: { ready_for_validation_package?: boolean; [key: string]: unknown } | null;
+  checklist?: ReadinessCheck[];
+  [key: string]: unknown;
+}
+
 type WorkspaceTab = 'summary' | 'procedures' | 'pbc' | 'workpapers' | 'findings' | 'signoffs' | 'poam_review' | 'analytics' | 'ai_insights' | 'client_portal';
 
 /**
@@ -52,7 +102,23 @@ const signoffTypes = [
 ];
 const templateArtifactTypes = ['pbc', 'workpaper', 'finding', 'signoff', 'engagement_report'];
 
-function labelize(value: string) {
+/**
+ * Axios-shaped error narrowing. Every catch here reads
+ * `error.response.data.error` off a rejected request; typing the binding as
+ * `unknown` and funnelling through this keeps that access honest instead of
+ * asserting the shape with `any` at nine separate sites.
+ */
+function apiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null) {
+    const response = (error as { response?: { data?: { error?: unknown } } }).response;
+    const message = response?.data?.error;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return fallback;
+}
+
+function labelize(value?: string | null) {
+  if (!value) return '—';
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -70,9 +136,17 @@ function formatDateTime(value?: string | null) {
   return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function asList(payload: any, key?: string) {
+/**
+ * Narrows an API payload to an array. Endpoints here return either a bare
+ * array or an object wrapping one under a named key, so callers cannot assume
+ * either shape. Returns `unknown[]`; call sites annotate their element type.
+ */
+function asList(payload: unknown, key?: string): unknown[] {
   if (Array.isArray(payload)) return payload;
-  if (key && Array.isArray(payload?.[key])) return payload[key];
+  if (key && typeof payload === 'object' && payload !== null) {
+    const nested = (payload as Record<string, unknown>)[key];
+    if (Array.isArray(nested)) return nested;
+  }
   return [];
 }
 
@@ -98,21 +172,21 @@ export default function AuditorWorkspacePage() {
   const [error, setError] = useState('');
   const { toast, showToast } = useToast(2400);
 
-  const [engagements, setEngagements] = useState<any[]>([]);
+  const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [selectedEngagementId, setSelectedEngagementId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<WorkspaceTab>('summary');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const [engagement, setEngagement] = useState<any>(null);
-  const [summary, setSummary] = useState<any>(null);
+  const [engagement, setEngagement] = useState<Engagement | null>(null);
+  const [summary, setSummary] = useState<EngagementSummary | null>(null);
   const [pbc, setPbc] = useState<any[]>([]);
   const [workpapers, setWorkpapers] = useState<any[]>([]);
   const [findings, setFindings] = useState<any[]>([]);
   const [signoffs, setSignoffs] = useState<any[]>([]);
   const [procedures, setProcedures] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
-  const [signoffReadiness, setSignoffReadiness] = useState<any>(null);
+  const [signoffReadiness, setSignoffReadiness] = useState<SignoffReadiness | null>(null);
 
   const [selectedPbcId, setSelectedPbcId] = useState<string | null>(null);
   const [selectedWorkpaperId, setSelectedWorkpaperId] = useState<string | null>(null);
@@ -361,7 +435,7 @@ export default function AuditorWorkspacePage() {
 
   const refreshEngagements = useCallback(async () => {
     const response = await assessmentsAPI.getEngagements({ limit: 100, offset: 0 });
-    const rows = asList(response.data?.data, 'engagements');
+    const rows = asList(response.data?.data, 'engagements') as Engagement[];
     setEngagements(rows);
     return rows;
   }, []);
@@ -371,8 +445,8 @@ export default function AuditorWorkspacePage() {
       setLoading(true);
       setError('');
       await refreshEngagements();
-    } catch (loadError: any) {
-      setError(loadError.response?.data?.error || 'Failed to load auditor workspace');
+    } catch (loadError: unknown) {
+      setError(apiErrorMessage(loadError, 'Failed to load auditor workspace'));
     } finally {
       setLoading(false);
     }
@@ -419,13 +493,17 @@ export default function AuditorWorkspacePage() {
       setProcedures(procedureRows);
       setTemplates(templateRows);
       setSignoffReadiness(readinessRes.data?.data || null);
-      setSelectedProcedureIds((prev) => prev.filter((id) => procedureRows.some((row: any) => row.id === id)));
+      // These collections are heterogeneous per tab; all this code needs from
+      // them is an id, so they are narrowed to that rather than to a full shape.
+      const ids = (rows: unknown[]) => rows as Array<{ id?: string }>;
 
-      setSelectedPbcId((prev) => (pbcRows.some((x: any) => x.id === prev) ? prev : (pbcRows[0]?.id || null)));
-      setSelectedWorkpaperId((prev) => (wpRows.some((x: any) => x.id === prev) ? prev : (wpRows[0]?.id || null)));
-      setSelectedFindingId((prev) => (findingRows.some((x: any) => x.id === prev) ? prev : (findingRows[0]?.id || null)));
-    } catch (loadError: any) {
-      setError(loadError.response?.data?.error || 'Failed to load selected engagement');
+      setSelectedProcedureIds((prev) => prev.filter((id) => ids(procedureRows).some((row) => row.id === id)));
+
+      setSelectedPbcId((prev) => (ids(pbcRows).some((x) => x.id === prev) ? prev : (ids(pbcRows)[0]?.id || null)));
+      setSelectedWorkpaperId((prev) => (ids(wpRows).some((x) => x.id === prev) ? prev : (ids(wpRows)[0]?.id || null)));
+      setSelectedFindingId((prev) => (ids(findingRows).some((x) => x.id === prev) ? prev : (ids(findingRows)[0]?.id || null)));
+    } catch (loadError: unknown) {
+      setError(apiErrorMessage(loadError, 'Failed to load selected engagement'));
     } finally {
       setWorkspaceLoading(false);
     }
@@ -456,8 +534,8 @@ export default function AuditorWorkspacePage() {
         setSelectedEngagementId(rows[0].id);
       }
       showToast('Engagement created');
-    } catch (saveError: any) {
-      setError(saveError.response?.data?.error || 'Failed to create engagement');
+    } catch (saveError: unknown) {
+      setError(apiErrorMessage(saveError, 'Failed to create engagement'));
     } finally {
       setSaving(false);
     }
@@ -703,8 +781,8 @@ export default function AuditorWorkspacePage() {
       const response = await aiAPI.auditReadiness({ framework: fwCode });
       setAiRiskAssessment(response.data?.data || response.data);
       showToast('AI risk assessment complete');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to run AI risk assessment');
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to run AI risk assessment'));
     } finally {
       setAiLoading(null);
     }
@@ -716,8 +794,8 @@ export default function AuditorWorkspacePage() {
       const response = await aiAPI.executiveReport();
       setAiExecutiveSummary(response.data?.data || response.data);
       showToast('AI executive summary generated');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to generate AI executive summary');
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to generate AI executive summary'));
     } finally {
       setAiLoading(null);
     }
@@ -729,8 +807,8 @@ export default function AuditorWorkspacePage() {
       const response = await aiAPI.complianceForecast();
       setAiComplianceForecast(response.data?.data || response.data);
       showToast('AI compliance forecast generated');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to generate compliance forecast');
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to generate compliance forecast'));
     } finally {
       setAiLoading(null);
     }
@@ -742,8 +820,8 @@ export default function AuditorWorkspacePage() {
       const response = await aiAPI.gapAnalysis();
       setAiGapAnalysis(response.data?.data || response.data);
       showToast('AI gap analysis complete');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to run AI gap analysis');
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to run AI gap analysis'));
     } finally {
       setAiLoading(null);
     }
@@ -760,8 +838,8 @@ export default function AuditorWorkspacePage() {
         ? `Audit prep swarm complete — ${data.successCount}/${data.agentCount} agents succeeded`
         : 'Audit preparation swarm complete — all agents finished';
       showToast(msg);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to run audit prep swarm');
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to run audit prep swarm'));
     } finally {
       setSwarmRunning(false);
     }
@@ -804,8 +882,8 @@ export default function AuditorWorkspacePage() {
       setSaving(true);
       setError('');
       await action();
-    } catch (saveError: any) {
-      setError(saveError.response?.data?.error || fallbackMessage);
+    } catch (saveError: unknown) {
+      setError(apiErrorMessage(saveError, fallbackMessage));
     } finally {
       setSaving(false);
     }
@@ -1553,7 +1631,7 @@ export default function AuditorWorkspacePage() {
                           </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {asList(signoffReadiness.checklist).map((item: any) => (
+                          {(asList(signoffReadiness.checklist) as ReadinessCheck[]).map((item) => (
                             <div key={item.key} className="border border-gray-200 rounded px-3 py-2 text-sm">
                               <div className="font-medium text-gray-900">{item.label}</div>
                               <div className={item.approved ? 'text-green-700' : 'text-amber-700'}>

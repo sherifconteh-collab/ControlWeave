@@ -26,8 +26,15 @@
 > | Field | Value |
 > |-------|-------|
 > | **Status** | Unreleased — changes staged for next release |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
+
+### ⚠️ Breaking Changes
+
+> **Action required** — review the migration steps below before deploying.
+
+- **Migration schema drift guard, ported from the ai-grc mirror.** The mirror repository found that a `CREATE TABLE IF NOT EXISTS` shadowed by an earlier migration declaring the same table silently drops the second file's columns from every database the schema is built on, and confirmed it live-breaking four subsystems there (SSO, SIEM, the job runner's retry path, data-retention-policy creation). This repository has no live instance of that defect — verified by running the new check against the full migration set — but shares the same duplicate-migration-number history (the `TEVV-DB-2` grandfathered list in `ci.yml`) that made it possible in the mirror. `backend/scripts/check-migration-schema-drift.js` (`npm run check:migration-drift`, wired into CI as `TEVV-DB-2a`) now fails the build if that ever changes; verified by injecting a synthetic shadowed table with an orphaned column and confirming the check catches it, then removing it. — @sherifconteh-collab
+- **`js-yaml` and `nanoid` were both sitting on vulnerable transitive versions with no direct pin.** `js-yaml` resolved to a pre-4.3.1 release vulnerable to prototype pollution via a crafted document; now pinned `^4.3.1` in both backend and frontend `overrides` (the frontend override was added after the backend fix shipped, closing a devDependency gap that let an unpinned copy back in through `eslint`'s toolchain). `nanoid` resolved below 3.3.8, vulnerable to predictable ID generation from a broken CSPRNG fallback; capped `>=3.3.17 <4.0.0` so the fix applies without pulling the breaking 4.x ESM-only line into a CommonJS backend.
 
 
 ### Added
@@ -123,6 +130,7 @@
 
 ### Fixed
 
+- **Migration schema drift guard, ported from the ai-grc mirror.** The mirror repository found that a `CREATE TABLE IF NOT EXISTS` shadowed by an earlier migration declaring the same table silently drops the second file's columns from every database the schema is built on, and confirmed it live-breaking four subsystems there (SSO, SIEM, the job runner's retry path, data-retention-policy creation). This repository has no live instance of that defect — verified by running the new check against the full migration set — but shares the same duplicate-migration-number history (the `TEVV-DB-2` grandfathered list in `ci.yml`) that made it possible in the mirror. `backend/scripts/check-migration-schema-drift.js` (`npm run check:migration-drift`, wired into CI as `TEVV-DB-2a`) now fails the build if that ever changes; verified by injecting a synthetic shadowed table with an orphaned column and confirming the check catches it, then removing it. — @sherifconteh-collab  <!-- `📦 DB migration required` -->
 - **`GET /risks/:id` returned 500 for every risk.** The vendors query added with migration `142` selected `v.name`; the column is `vendor_name`. Because the seven link queries run in a single `Promise.all`, that one wrong column took down the entire endpoint — controls, assets, objectives, POA&Ms, vendors and evidence all unreachable, and the risk detail page with them. Found by running the stack for the first time: no static gate could catch it, since `check:syntax` parses without resolving queries, typecheck cannot see into a SQL string, and the migration itself is valid.  <!-- `🔌 New API endpoint` -->
 
 - **The compliance gate was enforced on a code path the product does not use.** `PUT /controls/:id` demanded a `poam_justification` when a control moved to compliant, created the POA&M and filed the approval request. The dashboard does not call it — the control detail page calls `PATCH /implementations/:id/status` and `PATCH /implementations/:id/test-result`, and neither had a single POA&M reference. So a control could be marked compliant from the UI with no justification and nothing produced for an auditor to review. The rule now lives in `services/poamGateService.js` and is applied on all three paths, preserving the `requires_poam_submission` 400 response contract that existing API clients branch on.
@@ -145,6 +153,7 @@
 
 - **`express-rate-limit` was undeclared in `package.json`.** It resolved only as a transitive dependency of `@modelcontextprotocol/sdk` while **25 route files require it directly** — if that SDK ever dropped or relocated it, none of those routers would load and the backend would stop booting. Now declared explicitly at `^8.5.2`; the pre-existing exact-version override became `$express-rate-limit` so it follows the declared range rather than conflicting with it (npm rejects the combination outright).
 - **Six advisories cleared across both dependency trees.** Each was a pin that was correct when written and had fallen exactly one patch short: `brace-expansion` `>=5.0.8` → `>=5.0.9` (DoS bypassing the CVE-2026-14257 mitigation), `hono` `^4.12.28` → `^4.12.34` (ReDoS in the CORS middleware), `socket.io-parser` `4.2.6` → `>=4.2.7` (zero-attachment memory exhaustion), plus newly added pins for `fast-uri` `^3.1.5` (host confusion via a backslash authority introducer) and `ip-address` `^10.4.0` (leading-zero octets decoded as decimal, allowing SSRF and trust-boundary bypass). `fast-uri` is held inside the 3.x line rather than taking the 4.x latest, because the advisory is fixed in 3.1.5 and a major bump would land on a consumer that has not asked for it. Backend and frontend both report zero vulnerabilities under the flags CI uses.
+- **`js-yaml` and `nanoid` were both sitting on vulnerable transitive versions with no direct pin.** `js-yaml` resolved to a pre-4.3.1 release vulnerable to prototype pollution via a crafted document; now pinned `^4.3.1` in both backend and frontend `overrides` (the frontend override was added after the backend fix shipped, closing a devDependency gap that let an unpinned copy back in through `eslint`'s toolchain). `nanoid` resolved below 3.3.8, vulnerable to predictable ID generation from a broken CSPRNG fallback; capped `>=3.3.17 <4.0.0` so the fix applies without pulling the breaking 4.x ESM-only line into a CommonJS backend.
 
 - **`routes/poam.js` had no rate limiting at all** — `router.use(authenticate)` and nothing else, while its sibling `routes/poamMilestones.js` carried a router-wide limiter. Both halves of one feature are now governed by the same rule, with the new `/poam/export` route limited separately at 10/min because it streams an organization's entire remediation register in one response. The export is audit-logged as an AU-2 event.  <!-- `🔌 New API endpoint` -->
 
@@ -189,7 +198,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-07-10 |
 > | **Tag** | `v4.3.0` |
 > | **Release branch** | `release/4.3.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 ### ⚠️ Breaking Changes
@@ -272,7 +281,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-18 |
 > | **Tag** | `v3.5.0` |
 > | **Release branch** | `release/3.5.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -312,7 +321,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-05-16 |
 > | **Tag** | `v3.4.0` |
 > | **Release branch** | `release/3.4.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -362,7 +371,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.10` |
 > | **Release branch** | `release/2.8.10` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -395,7 +404,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.9` |
 > | **Release branch** | `release/2.8.9` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -428,7 +437,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.8` |
 > | **Release branch** | `release/2.8.8` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -461,7 +470,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.7` |
 > | **Release branch** | `release/2.8.7` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -494,7 +503,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.6` |
 > | **Release branch** | `release/2.8.6` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -527,7 +536,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.5` |
 > | **Release branch** | `release/2.8.5` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -560,7 +569,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.4` |
 > | **Release branch** | `release/2.8.4` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -593,7 +602,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.3` |
 > | **Release branch** | `release/2.8.3` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -626,7 +635,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.2` |
 > | **Release branch** | `release/2.8.2` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -659,7 +668,7 @@ This release includes 1 improvement.
 > | **Release date** | 2026-03-28 |
 > | **Tag** | `v2.8.1` |
 > | **Release branch** | `release/2.8.1` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -692,7 +701,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-27 |
 > | **Tag** | `v2.8.0` |
 > | **Release branch** | `release/2.8.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -732,7 +741,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.3` |
 > | **Release branch** | `release/2.7.3` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -763,7 +772,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.2` |
 > | **Release branch** | `release/2.7.2` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -796,7 +805,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.1` |
 > | **Release branch** | `release/2.7.1` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -839,7 +848,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.7.0` |
 > | **Release branch** | `release/2.7.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -877,7 +886,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-26 |
 > | **Tag** | `v2.6.0` |
 > | **Release branch** | `release/2.6.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -913,7 +922,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-25 |
 > | **Tag** | `v2.5.0` |
 > | **Release branch** | `release/2.5.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -959,7 +968,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-22 |
 > | **Tag** | `v2.4.4` |
 > | **Release branch** | `release/2.4.4` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -998,7 +1007,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.3` |
 > | **Release branch** | `release/2.4.3` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1029,7 +1038,7 @@ This release includes 1 new feature.
 > | **Release date** | 2026-03-20 |
 > | **Tag** | `v2.4.2` |
 > | **Release branch** | `release/2.4.2` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1260,7 +1269,7 @@ This release includes 1 new feature.
 #### CMDB (Asset Management)
 
 > **Tier:** 🔴 Starter · Professional · Enterprise · Utilities
-> Not available on the Free tier.
+> Not available on the Community tier.
 > **Affected area:** `backend/frontend/migration`
 
 - AI Agent asset type, service accounts, environments, password vaults
@@ -1395,7 +1404,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-18 |
 > | **Tag** | `v0.3.0` |
 > | **Release branch** | `release/0.3.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1439,7 +1448,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-02-05 |
 > | **Tag** | `v0.2.1` |
 > | **Release branch** | `release/0.2.1` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1472,7 +1481,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-22 |
 > | **Tag** | `v0.2.0` |
 > | **Release branch** | `release/0.2.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1523,7 +1532,7 @@ cd controlweave/backend && npm run migrate
 > | **Release date** | 2026-01-05 |
 > | **Tag** | `v0.1.0` |
 > | **Release branch** | `release/0.1.0` |
-> | **Built from** | `22712182` |
+> | **Built from** | `6e9df2f0` |
 > | **Ref** | `refs/heads/main` |
 
 
@@ -1551,5 +1560,5 @@ cd controlweave/backend && npm run migrate
 
 ---
 
-<!-- Generated by generate-internal-release-notes.js on 2026-08-04T16:23:42.055Z -->
+<!-- Generated by generate-internal-release-notes.js on 2026-08-09T18:25:18.203Z -->
 <!-- CM commit convention: docs(release): generate internal release notes for v<version> [skip ci] -->

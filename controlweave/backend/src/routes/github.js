@@ -201,8 +201,9 @@ router.post('/github/import-evidence', requirePermission('evidence.write'), vali
       const validControlIds = validControlRows.rows.map((row) => row.id);
       if (validControlIds.length > 0) {
         await pool.query(
-          `INSERT INTO evidence_control_links (evidence_id, control_id, notes)
-           SELECT $1, unnest($2::uuid[]), $3
+          `INSERT INTO evidence_control_links (evidence_id, control_id, notes, organization_id)
+           SELECT $1, unnest($2::uuid[]), $3, e.organization_id
+           FROM evidence e WHERE e.id = $1
            ON CONFLICT DO NOTHING`,
           [evidenceRecord.id, validControlIds, 'Imported from GitHub']
         );

@@ -62,8 +62,27 @@ Evidence items are linked to controls via the `evidence_control_links` junction 
 const result = await pool.query(
   `SELECT e.* FROM evidence e
    JOIN evidence_control_links ecl ON e.id = ecl.evidence_id
-   WHERE ecl.control_id = $1 AND e.organization_id = $2`,
+   WHERE ecl.control_id = $1 AND ecl.organization_id = $2 AND e.organization_id = $2`,
   [controlId, req.user.organization_id]
+);
+```
+
+The table carries its own `organization_id` (migration `144`), matching every
+other link table in the schema. Filter on it directly. Until that migration the
+table had no tenant column at all, so isolation held only because each query
+remembered to reach `evidence.organization_id` — a property of the queries
+rather than of the schema, and one a single new query could drop.
+
+Inserts must populate it. Where the evidence id is already in hand, take the
+value from the row rather than from `req.user`, so the link cannot be filed
+against a different tenant than the document it points at:
+
+```javascript
+await pool.query(
+  `INSERT INTO evidence_control_links (evidence_id, control_id, organization_id)
+   SELECT $1, $2, e.organization_id FROM evidence e WHERE e.id = $1
+   ON CONFLICT DO NOTHING`,
+  [evidenceId, controlId]
 );
 ```
 

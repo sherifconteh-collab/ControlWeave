@@ -72,7 +72,7 @@ Continuous visibility is maintained across all user actions, API calls, and secu
 
 | Implementation | Details |
 |----------------|---------|
-| **AU-2 compliant audit logging** | Every significant action is logged with 15+ fields: `user_id`, `organization_id`, `action`, `resource_type`, `resource_id`, `outcome`, `ip_address`, `user_agent`, `session_id`, `request_id`, `timestamp`, and more. |
+| **Audit logging** | Significant actions are logged with up to 20 fields: `event_type`, `user_id`, `actor_name`, `organization_id`, `resource_type`, `resource_id`, `success`, `outcome`, `failure_reason`, `ip_address`, `user_agent`, `request_id`, `source_system`, `created_at`, and more. Field coverage is not uniform — route handlers that write `audit_logs` directly rather than through `services/auditService.js` populate a narrower set. `session_id` and `authentication_method` are populated for authentication events only. |
 | **365-day log retention** | Audit logs are retained for one year and auto-rotated, satisfying NIST AU-11 and APSC-DV-000840. |
 | **SIEM integration** | Real-time event forwarding to Splunk, Elastic, Webhook, and Syslog endpoints (`src/routes/siem.js`). |
 | **Performance & request logging** | `performanceTracker` and `requestLogger` middleware capture latency, status codes, and error details for every API call. |
@@ -151,7 +151,7 @@ ControlWeave is designed and operated as an **enterprise-grade, audit-ready comp
 | **Cryptography** | TLS 1.2+ in transit, AES at rest, FIPS 140-2 modules, bcryptjs password hashing | `src/config/security.js`, infrastructure config |
 | **Security Headers** | CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy | `src/server.js` (response middleware) |
 | **Rate Limiting** | Four configurable rate-limit tiers + account lockout | `src/middleware/rateLimit.js`, `src/config/security.js` |
-| **Audit Logging** | AU-2 compliant events with 15+ fields, 365-day retention | `src/middleware/auditLogger.js`, `src/routes/audit.js` |
+| **Audit Logging** | Append-only audit events with 20 fields; no retention policy is enforced for `audit_logs` (deployer-supplied) | `src/services/auditService.js`, `src/middleware/auditLog.js`, `src/routes/audit.js` |
 | **SIEM Integration** | Real-time forwarding (Splunk, Elastic, Webhook, Syslog) | `src/routes/siem.js` |
 | **Vulnerability Management** | SBOM ingestion (SPDX/CycloneDX), STIG upload, CVSS scoring, CISA KEV | `src/routes/sbom.js`, `src/routes/vulnerabilities.js` |
 | **CI/CD Security** | SAST (CodeQL), DAST (OWASP ZAP), Trivy, TruffleHog + Gitleaks on every PR | `.github/workflows/` |
