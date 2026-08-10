@@ -337,6 +337,7 @@ controlweave/backend/migrations/141_poam_control_links.sql
 controlweave/backend/migrations/142_risk_vendor_linkage.sql
 controlweave/backend/migrations/143_risk_evidence_linkage.sql
 controlweave/backend/migrations/144_evidence_control_links_org_scope.sql
+controlweave/backend/migrations/145_audit_logs_timestamptz.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
