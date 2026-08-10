@@ -7,7 +7,7 @@
 // services/reminderService.js's setInterval sweep pattern.
 const pool = require('../config/database');
 const { log } = require('../utils/logger');
-const { runRetentionCleanup } = require('./jobService');
+const { runRetentionCleanup, runAuditLogRetention } = require('./jobService');
 
 let schedulerHandle = null;
 
@@ -38,6 +38,39 @@ async function runRetentionSweep() {
       log('info', 'retention.sweep.completed', {
         organizations: orgsWithPolicy.rows.length,
         removed: totalRemoved
+      });
+    }
+
+    // AU-11: audit records are swept separately from evidence. The policy row
+    // is a different resource_type, the purge has to open and close the
+    // append-only window from migration 121, and a failure there must not
+    // abort the evidence sweep -- so it gets its own query and its own
+    // per-organization error boundary rather than being folded in above.
+    const orgsWithAuditPolicy = await pool.query(
+      `SELECT DISTINCT organization_id
+         FROM data_retention_policies
+        WHERE active = true
+          AND auto_enforce = true
+          AND resource_type = 'audit_logs'`
+    );
+
+    let auditRemoved = 0;
+    for (const row of orgsWithAuditPolicy.rows) {
+      try {
+        const result = await runAuditLogRetention({ organizationId: row.organization_id });
+        auditRemoved += result.removed || 0;
+      } catch (error) {
+        log('error', 'retention.audit_sweep.org_failed', {
+          organizationId: row.organization_id,
+          error: error.message
+        });
+      }
+    }
+
+    if (orgsWithAuditPolicy.rows.length > 0) {
+      log('info', 'retention.audit_sweep.completed', {
+        organizations: orgsWithAuditPolicy.rows.length,
+        removed: auditRemoved
       });
     }
   } catch (error) {

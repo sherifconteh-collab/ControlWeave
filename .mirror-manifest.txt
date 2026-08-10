@@ -50,6 +50,7 @@
 .github/workflows/weekly-demo-hf-seed.yml
 .gitignore
 .gitleaks.toml
+.mirror-manifest.txt
 .openclaw/AGENTS.md
 .openclaw/agents/LICENSE
 .openclaw/agents/README.md
