@@ -22,7 +22,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 
 **Core differentiators:**
 
-- **44 Frameworks, 1,190+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
+- **44 Frameworks, 1,900+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
 - **Auto-Crosswalk Engine** — Implement one control, automatically satisfy equivalent controls across other frameworks (40–60% effort reduction)
 - **Optional AI Insights (BYOK)** — Gap analysis, compliance forecast, audit readiness, and inline assists on controls/evidence using your own Anthropic, OpenAI, Gemini, Grok, Groq, or Ollama key. The platform works without any AI key configured.
 - **RMF Lifecycle** — Full NIST SP 800-37 Rev 2 seven-step workflow with ATO tracking
@@ -43,7 +43,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ RBAC with Admin, ISSE, Auditor, Read-Only, and custom roles
 - ✅ Access Governance — entitlement reporting with over-privileged and dormant-access flags, separation-of-duties toxic-combination rules with a live violations report, access review certification campaigns that generate an AC-2 evidence record on completion, and a role/permission simulator for testing access before you grant it
 - ✅ AI-assisted RBAC document import — upload your existing role matrix, SoD matrix, or roles & responsibilities document and have AI map it onto the permission catalog, flag conflicts, and propose roles and rules (every suggestion requires an explicit click to apply)
-- ✅ 44 compliance frameworks, 1,190+ controls, 360+ crosswalk mappings
+- ✅ 44 compliance frameworks, 1,900+ controls, 360+ crosswalk mappings
 - ✅ SOC 2 across all five Trust Services Criteria — Security, Availability, Confidentiality, Processing Integrity, and Privacy, each with an examine/interview/test audit program
 - ✅ Control function classification — preventive / detective / corrective, filterable across every framework
 - ✅ Framework-neutral evidence types — a 14-value vocabulary (policy, procedure, configuration, log, screenshot, attestation, scan result, and more) that labels evidence consistently no matter which framework you are working against
@@ -64,7 +64,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - ✅ Evidence management with real version history (every superseded version keeps its own file, SHA256 hash, and PII classification, so a prior version can be retrieved and integrity stays demonstrable across a replacement), PII classification, and retention enforcement
 - ✅ AES-256-GCM encryption at rest for user PII (email), HMAC-SHA-384 searchable hashes, CNSA Suite 1.0 compliant — runtime audit verifies encryption on every server start
 - ✅ TLS 1.2+ enforced on all API channels; MCP → REST API channel hardened against plaintext credential exposure
-- ✅ AU-2 compliant immutable audit logging
+- ✅ Immutable, hash-chained audit logging (AU-2/AU-3/AU-5/AU-7/AU-9/AU-11 coverage — see `docs/FEDRAMP_DEPLOYMENT_GUIDE.md`)
 - ✅ All features free — no subscription or license key required
 - ✅ MCP server (54 tools: frameworks, controls, assets, evidence, POA&M, audit, TPRM, AI)
 - ✅ CE-MCP 4-layer security (MAESTRO 16 attack class coverage)
@@ -78,7 +78,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 ### Core Compliance Management
 - **44 Frameworks** across federal, security, privacy, AI governance, and enterprise categories — NIST CSF 2.0, NIST Privacy Framework, NIST AI RMF, FISCAM, NIST 800-53, ISO 27001, SOC 2, NIST 800-171, CMMC 2.0, GDPR, HIPAA, HITECH, FFIEC, NERC CIP, PCI DSS v4.0, CIS Controls v8, COBIT 2019, FedRAMP High, FedRAMP Moderate, FINRA Supervisory Controls for AI, SEC AI Risk Management, SR 11-7 Model Risk Management, EU AI Act, ISO 42001, ISO 42005, ISO 27002, ISO 27005, ISO 27017, ISO 27018, ISO 27701, ISO 31000, CCPA/CPRA, State AI Governance, International AI Governance, OWASP LLM Top 10, OWASP Agentic AI Top 10, NIST SP 800-207 Zero Trust, and 7 ISO/IEC AI standards (23894, 38507, 22989, 23053, 5259, TR 24027, TR 24028)
 - **NIST Publications Library (62 seeded references)** — Searchable NIST publication catalog with direct mappings to in-app controls and assessment tasks, available as optional best-practice guidance or mandatory baseline by organization profile
-- **1,190+ Controls** with broad multi-framework coverage and crosswalk mappings
+- **1,900+ Controls** with broad multi-framework coverage and crosswalk mappings
 - **360+ Crosswalk Mappings** — Implement one control and automatically satisfy equivalent controls across frameworks
 - **Custom Framework Builder** — create org-scoped frameworks with custom controls, clone from any seeded framework, and publish for org-wide use
 - **Control Implementation Tracking** — Status workflow from Not Started to Implemented with assignment and due dates
@@ -86,7 +86,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - **Control Exceptions** — Track and manage approved exceptions with expiry dates and risk acceptance rationale
 
 ### Assessment & Audit
-- **2,000+ Assessment Procedures** based on NIST SP 800-53A, ISO 19011, AICPA SOC 2 Type II, HHS HIPAA Audit Protocol, GDPR/EDPB guidelines, and ISO/IEC AI standards
+- **2,700+ Assessment Procedures** based on NIST SP 800-53A, ISO 19011, AICPA SOC 2 Type II, HHS HIPAA Audit Protocol, GDPR/EDPB guidelines, and ISO/IEC AI standards
 - **Three Assessment Depths** — Basic, Focused, and Comprehensive
 - **Assessment Plans** — Create and track assessment campaigns with scheduling
 - **Result Recording** — NIST-standard outcomes (Satisfied / Other Than Satisfied / Not Applicable)
@@ -598,7 +598,7 @@ All releases and changelogs: [github.com/sherifconteh-collab/ai-grc-platform/rel
 
 A fresh self-hosted install gives you everything — no license key required:
 
-- All 44 compliance frameworks, 1,190+ controls, 97 crosswalk mappings
+- All 44 compliance frameworks, 1,900+ controls, 97 crosswalk mappings
 - Full evidence management, CMDB, SBOM/AIBOM, TPRM, POA&M, RMF Lifecycle, auditor workspace
 - AI-assisted compliance analysis (BYOK — bring your own LLM key)
 - Multi-org management, SSO, webhooks, MCP server

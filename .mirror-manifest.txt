@@ -342,6 +342,7 @@ controlweave/backend/migrations/145_audit_logs_timestamptz.sql
 controlweave/backend/migrations/146_ai_decision_log_attribution.sql
 controlweave/backend/migrations/147_audit_log_hash_chain.sql
 controlweave/backend/migrations/148_control_hierarchy_and_baselines.sql
+controlweave/backend/migrations/149_assessment_procedures_upsertable.sql
 controlweave/backend/nixpacks.toml
 controlweave/backend/package-lock.json
 controlweave/backend/package.json
@@ -424,6 +425,7 @@ controlweave/backend/scripts/seed-disa-stig-framework.js
 controlweave/backend/scripts/seed-disa-stig-gpos.js
 controlweave/backend/scripts/seed-disa-stig-postgresql.js
 controlweave/backend/scripts/seed-disa-stig-web-server.js
+controlweave/backend/scripts/seed-enhancement-crosswalks.js
 controlweave/backend/scripts/seed-enterprise-demo.js
 controlweave/backend/scripts/seed-frameworks.js
 controlweave/backend/scripts/seed-govcloud-test-data.js
@@ -433,6 +435,7 @@ controlweave/backend/scripts/seed-industry-demo-data.js
 controlweave/backend/scripts/seed-iso-ai-standards.js
 controlweave/backend/scripts/seed-iso27001-2022-crosswalks.js
 controlweave/backend/scripts/seed-missing-controls.js
+controlweave/backend/scripts/seed-oscal-assessment-procedures.js
 controlweave/backend/scripts/seed-owasp-frameworks.js
 controlweave/backend/scripts/seed-pro-test-data.js
 controlweave/backend/scripts/setup-platform-admin.js

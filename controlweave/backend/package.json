@@ -65,7 +65,7 @@
     "seed:assessment-ai-governance": "node scripts/seed-assessment-procedures-ai-governance.js",
     "seed:cyber-ai-profile": "node scripts/seed-cyber-ai-profile.js",
     "seed:frameworks": "node scripts/seed-frameworks.js && node scripts/seed-missing-controls.js && npm run seed:crosswalks",
-    "seed:crosswalks": "node scripts/seed-all-crosswalks.js",
+    "seed:crosswalks": "node scripts/seed-all-crosswalks.js && node scripts/seed-enhancement-crosswalks.js",
     "seed:crosswalks:iso27001": "node scripts/seed-iso27001-2022-crosswalks.js",
     "seed:crosswalks:hipaa": "node scripts/seed-hipaa-crosswalks.js",
     "seed:crosswalks:completion": "node scripts/seed-crosswalk-completion.js",
@@ -84,7 +84,9 @@
     "qa:demo:repair-account": "node scripts/repair-demo-account-via-api.js",
     "verify:rls": "node scripts/verify-rls-isolation.js",
     "verify:audit-chain": "node scripts/verify-audit-chain.js",
-    "verify:catalog": "node scripts/verify-catalog-shape.js"
+    "verify:catalog": "node scripts/verify-catalog-shape.js",
+    "seed:enhancement-crosswalks": "node scripts/seed-enhancement-crosswalks.js",
+    "seed:oscal-procedures": "node scripts/seed-oscal-assessment-procedures.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
