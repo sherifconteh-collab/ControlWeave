@@ -250,7 +250,7 @@ describe('monolith-split: router modules still load and preserve stack size', ()
   // The original monolith registered exactly 27 routes
   // (router.get/post/put/patch/delete occurrences) before the split.
   const ORGANIZATION_SUBROUTER_ROUTE_COUNTS = {
-    profile: 2, // me/profile GET + PUT
+    profile: 3, // me/profile GET + PUT, me/baseline PUT
     systems: 4,
     cotsProducts: 4,
     contracts: 4,
@@ -259,7 +259,7 @@ describe('monolith-split: router modules still load and preserve stack size', ()
     multiOrg: 2, // me/new, me/clone
     children: 5,
   };
-  const ORIGINAL_ORGANIZATIONS_ROUTE_COUNT = 27;
+  const ORIGINAL_ORGANIZATIONS_ROUTE_COUNT = 28;
 
   test('routes/organizations exports an Express router (aggregator)', () => {
     // exceljs ships ESM internals Jest's CommonJS runtime cannot parse; the

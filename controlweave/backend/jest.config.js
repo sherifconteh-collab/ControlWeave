@@ -9,5 +9,12 @@ module.exports = {
   ],
   coverageReporters: ['text', 'lcov'],
   // Increase timeout for tests that use real filesystem operations
-  testTimeout: 10000
+  testTimeout: 10000,
+  // Transpile htmlparser2 and its dom* dependencies, which have been
+  // ESM-only since sanitize-html 2.17.6, so Jest's CommonJS runtime can
+  // load them (the app itself uses native require(ESM) on Node >=20.19).
+  transform: { '^.+\\.js$': 'babel-jest' },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(htmlparser2|domhandler|domutils|domelementtype|dom-serializer|entities)/)',
+  ],
 };

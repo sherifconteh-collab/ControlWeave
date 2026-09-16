@@ -178,6 +178,7 @@ controlweave/backend/__tests__/services/registers.test.js
 controlweave/backend/__tests__/utils/consoleBridge.test.js
 controlweave/backend/__tests__/utils/keysetPagination.test.js
 controlweave/backend/apply-migration.mjs
+controlweave/backend/babel.config.js
 controlweave/backend/config/stig-version-manifest.json
 controlweave/backend/demo/vulnerability-upload-samples/01_acas_scan_sample.nessus
 controlweave/backend/demo/vulnerability-upload-samples/02_stig_checklist_sample.ckl
@@ -689,6 +690,7 @@ controlweave/backend/src/utils/totp.js
 controlweave/backend/test-stripe-integration.js
 controlweave/backend/verify-deployment.js
 controlweave/controlweave-sdk/README.md
+controlweave/controlweave-sdk/package-lock.json
 controlweave/controlweave-sdk/package.json
 controlweave/controlweave-sdk/src/index.d.ts
 controlweave/controlweave-sdk/src/index.js

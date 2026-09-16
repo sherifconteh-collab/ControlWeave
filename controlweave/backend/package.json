@@ -1,8 +1,8 @@
 {
   "name": "controlweave-backend",
-  "version": "4.11.0",
+  "version": "4.11.1",
   "engines": {
-    "node": ">=20.16.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "build": "node -e \"console.log('Backend build step complete')\"",
@@ -93,7 +93,7 @@
     "@aws-sdk/client-s3": "^3.712.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@sentry/node": "^10.65.0",
-    "@simplewebauthn/server": "^13.2.2",
+    "@simplewebauthn/server": "^13.3.3",
     "@socket.io/redis-adapter": "^8.3.0",
     "axios": "^1.13.5",
     "bcryptjs": "^2.4.3",
@@ -105,14 +105,14 @@
     "express": "^4.18.2",
     "express-rate-limit": "^8.5.2",
     "geoip-lite": "^2.0.2",
-    "hono": "^4.12.34",
+    "hono": "^4.13.8",
     "ioredis": "^5.4.1",
-    "js-yaml": "^4.3.1",
+    "js-yaml": "^4.3.2",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.11.0",
-    "multer": "^2.1.1",
+    "multer": "^2.4.0",
     "node-cron": "^3.0.3",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^9.1.1",
     "openai": "^6.18.0",
     "openid-client": "^5.7.1",
     "pdf-parse": "^2.4.5",
@@ -120,13 +120,14 @@
     "pg": "^8.18.0",
     "redis": "^4.7.0",
     "rss-parser": "^3.13.0",
-    "sanitize-html": "2.17.5",
+    "sanitize-html": "2.17.7",
     "socket.io": "^4.8.1",
     "stripe": "^17.5.0",
     "xml2js": "^0.6.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.29.7",
     "eslint": "^9.39.4",
     "eslint-plugin-security": "^4.0.0",
     "jest": "^30.4.2",
@@ -137,19 +138,21 @@
     "express-rate-limit": "$express-rate-limit",
     "minimatch": "^10.2.3",
     "glob": "^11.0.1",
-    "hono": "^4.12.34",
+    "hono": "^4.13.8",
     "tmp": ">=0.2.6",
     "socket.io-parser": ">=4.2.7",
     "yauzl": ">=3.2.1",
     "uuid": "^14.0.0",
-    "qs": "^6.15.2",
+    "qs": "^6.16.0",
     "@hono/node-server": ">=2.0.5",
     "body-parser": ">=1.20.6",
     "brace-expansion": ">=5.0.9",
     "postcss": ">=8.5.23",
-    "fast-uri": "^3.1.5",
+    "fast-uri": "^3.1.7",
     "ip-address": "^10.4.0",
-    "js-yaml": "^4.3.1",
-    "nanoid": ">=3.3.17 <4.0.0"
+    "js-yaml": "^4.3.2",
+    "nanoid": ">=3.3.17 <4.0.0",
+    "@xmldom/xmldom": ">=0.9.12",
+    "@humanfs/node": ">=0.16.8"
   }
 }
