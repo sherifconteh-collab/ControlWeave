@@ -27,8 +27,18 @@ const LOOKUP_KEY_TO_TIER = Object.freeze({
 
 const VALID_LOOKUP_KEYS = new Set(Object.keys(LOOKUP_KEY_TO_TIER));
 
+// Add-on module prices (config/plans.js ADDONS), billed as their own
+// subscription items and never treated as a plan.
+const LOOKUP_KEY_TO_ADDON = Object.freeze(Object.fromEntries(
+  Object.entries(require('../config/plans').ADDONS).flatMap(([addon, def]) => (def.lookupKeys || []).map((key) => [key, addon]))
+));
+
 function tierFromLookupKey(lookupKey) {
   return LOOKUP_KEY_TO_TIER[lookupKey] || null;
+}
+
+function addonFromLookupKey(lookupKey) {
+  return LOOKUP_KEY_TO_ADDON[lookupKey] || null;
 }
 
 function isValidLookupKey(lookupKey) {
@@ -77,6 +87,27 @@ async function getLookupKeyFromSubscription(subscription) {
   }
 }
 
+/** Lookup keys of every item on a subscription (plan and add-ons). */
+async function getLookupKeysFromSubscription(subscription) {
+  const items = subscription.items?.data || [];
+  const keys = [];
+  for (const item of items) {
+    const price = item.price;
+    if (!price) continue;
+    if (price.lookup_key) {
+      keys.push(price.lookup_key);
+      continue;
+    }
+    try {
+      const fullPrice = await getStripeClient().prices.retrieve(price.id);
+      if (fullPrice.lookup_key) keys.push(fullPrice.lookup_key);
+    } catch (err) {
+      log('warn', 'stripe.getLookupKeys.failed', { error: err.message });
+    }
+  }
+  return keys;
+}
+
 /**
  * Create a Stripe Checkout session for a subscription.
  *
@@ -98,7 +129,7 @@ async function createCheckoutSession({
   successUrl,
   cancelUrl
 }) {
-  if (!isValidLookupKey(lookupKey)) {
+  if (!isValidLookupKey(lookupKey) && !addonFromLookupKey(lookupKey)) {
     throw new Error(`Invalid lookup key: ${lookupKey}`);
   }
 
@@ -243,7 +274,10 @@ async function updateSubscription(subscriptionId, newLookupKey, prorationBehavio
 
 module.exports = {
   LOOKUP_KEY_TO_TIER,
+  LOOKUP_KEY_TO_ADDON,
   VALID_LOOKUP_KEYS,
+  addonFromLookupKey,
+  getLookupKeysFromSubscription,
   isStripeConfigured,
   isValidLookupKey,
   tierFromLookupKey,

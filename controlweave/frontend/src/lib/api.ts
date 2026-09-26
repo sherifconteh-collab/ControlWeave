@@ -1976,6 +1976,150 @@ export const dependenciesAPI = {
   exportCsv: () => api.get('/platform/dependencies/export', { responseType: 'blob' }),
 };
 
+// Financial audit readiness (backend: routes/financialAudit.js)
+export type RcmProcess = 'procure_to_pay' | 'order_to_cash' | 'record_to_report' | 'hire_to_retire' | 'treasury' | 'fixed_assets' | 'inventory' | 'budget_execution' | 'it_general' | 'entity_level' | 'other';
+export type ControlFrequency = 'annual' | 'quarterly' | 'monthly' | 'weekly' | 'daily' | 'recurring' | 'as_needed';
+export type ControlTestConclusion = 'effective' | 'effective_with_exceptions' | 'ineffective';
+export type SampleResult = 'pending' | 'pass' | 'exception' | 'not_applicable';
+export type DeficiencyLevel = 'control_deficiency' | 'significant_deficiency' | 'material_weakness';
+
+export interface RcmEntryInput {
+  control_ref?: string;
+  process?: RcmProcess;
+  sub_process?: string | null;
+  assessable_unit?: string | null;
+  risk_ref?: string | null;
+  risk_statement?: string;
+  control_description?: string;
+  assertions?: string[];
+  frequency?: ControlFrequency;
+  control_type?: 'manual' | 'automated' | 'it_dependent_manual';
+  control_nature?: 'preventive' | 'detective';
+  key_control?: boolean;
+  fraud_risk?: boolean;
+  risk_level?: 'low' | 'moderate' | 'high';
+  system_name?: string | null;
+  status?: 'draft' | 'active' | 'retired';
+}
+
+export const financialAuditAPI = {
+  listRcm: (params?: { process?: string; key_only?: boolean; search?: string; status?: string; limit?: number; offset?: number }) =>
+    api.get('/financial-audit/rcm', { params }),
+  createRcm: (data: RcmEntryInput) => api.post('/financial-audit/rcm', data),
+  importRcm: (csv: string) => api.post('/financial-audit/rcm/import', { csv }),
+  updateRcm: (id: string, data: RcmEntryInput) => api.patch(`/financial-audit/rcm/${id}`, data),
+  deleteRcm: (id: string) => api.delete(`/financial-audit/rcm/${id}`),
+  sampleSize: (params: { frequency: ControlFrequency; risk_level?: string; control_type?: string; population?: number }) =>
+    api.get('/financial-audit/sampling', { params }),
+  statisticalSampleSize: (data: { confidence_level: number; tolerable_rate: number; expected_rate?: number; population?: number }) =>
+    api.post('/financial-audit/sampling/statistical', data),
+  listTests: (params?: { rcm_entry_id?: string; fiscal_year?: number; status?: string }) => api.get('/financial-audit/tests', { params }),
+  createTest: (data: {
+    rcm_entry_id: string;
+    test_type: 'design' | 'operating_effectiveness';
+    fiscal_year?: number;
+    population_size?: number;
+    sample_method?: string;
+    sample_size?: number;
+    confidence_level?: number;
+    tolerable_rate?: number;
+    expected_rate?: number;
+    engagement_id?: string;
+    procedures?: string;
+  }) => api.post('/financial-audit/tests', data),
+  getTest: (id: string) => api.get(`/financial-audit/tests/${id}`),
+  recordSample: (id: string, n: number, data: { result?: SampleResult; exception_description?: string; item_reference?: string }) =>
+    api.put(`/financial-audit/tests/${id}/samples/${n}`, data),
+  completeTest: (id: string, data: { conclusion?: ControlTestConclusion; notes?: string }) => api.post(`/financial-audit/tests/${id}/complete`, data),
+  reviewTest: (id: string) => api.post(`/financial-audit/tests/${id}/review`, {}),
+  reopenTest: (id: string) => api.post(`/financial-audit/tests/${id}/reopen`, {}),
+  raiseFinding: (id: string, data: { engagement_id?: string; nfr_number?: string; deficiency_level?: DeficiencyLevel; auditor_organization?: string; recommendation?: string }) =>
+    api.post(`/financial-audit/tests/${id}/finding`, data),
+  updateNfr: (findingId: string, data: { nfr_number?: string | null; fiscal_year?: number | null; deficiency_level?: DeficiencyLevel | null; auditor_organization?: string | null; cap_poam_id?: string | null }) =>
+    api.patch(`/financial-audit/findings/${findingId}/nfr`, data),
+  createCap: (findingId: string, data: { due_date?: string; remediation_plan?: string; owner_id?: string }) =>
+    api.post(`/financial-audit/findings/${findingId}/cap`, data),
+  readiness: (fiscalYear?: number) => api.get('/financial-audit/readiness', { params: fiscalYear ? { fiscal_year: fiscalYear } : {} }),
+  exportMatrix: (fiscalYear?: number) =>
+    api.get('/financial-audit/readiness/export', { params: fiscalYear ? { fiscal_year: fiscalYear } : {}, responseType: 'blob' }),
+};
+
+// ERP access governance and transaction monitoring (backend: routes/erpAccess.js, routes/erpMonitoring.js)
+export type ErpImportKind = 'users' | 'roles' | 'assignments' | 'role_functions' | 'role_permissions' | 'function_map' | 'emergency_sessions' | 'transactions'
+  | 'config' | 'sap_usr02' | 'sap_agr_users' | 'sap_agr_1251';
+
+export interface ErpScheduleInput {
+  sync_schedule?: 'manual' | 'daily' | 'weekly';
+  sync_hour_utc?: number;
+  auto_analyze?: boolean;
+  auto_monitor?: boolean;
+  use_library_map?: boolean;
+  ticket_connector_id?: string | null;
+}
+
+export const erpAPI = {
+  summary: () => api.get('/erp/summary'),
+  listSystems: () => api.get('/erp/systems'),
+  createSystem: (data: { name: string; erp_type: string; environment?: string; description?: string }) => api.post('/erp/systems', data),
+  updateSystem: (id: string, data: { name?: string; erp_type?: string; environment?: string; description?: string | null }) => api.patch(`/erp/systems/${id}`, data),
+  deleteSystem: (id: string) => api.delete(`/erp/systems/${id}`),
+  importData: (id: string, data: { kind: ErpImportKind; csv: string; mode?: 'merge' | 'replace' }) =>
+    api.post(`/erp/systems/${id}/import`, data, { timeout: AI_REQUEST_TIMEOUT }),
+  listImports: (id: string) => api.get(`/erp/systems/${id}/imports`),
+  listUsers: (id: string, params?: { search?: string; limit?: number; offset?: number }) => api.get(`/erp/systems/${id}/users`, { params }),
+  getUser: (id: string, userId: string) => api.get(`/erp/systems/${id}/users/${userId}`),
+  analyze: (id: string) => api.post(`/erp/systems/${id}/analyze`, {}, { timeout: AI_REQUEST_TIMEOUT }),
+  listConnectorTypes: () => api.get('/erp/connectors'),
+  setConnector: (id: string, data: { connector_type: string | null; settings?: Record<string, string> }) => api.put(`/erp/systems/${id}/connector`, data),
+  setSchedule: (id: string, data: ErpScheduleInput) => api.put(`/erp/systems/${id}/schedule`, data),
+  syncSystem: (id: string) => api.post(`/erp/systems/${id}/sync`, {}, { timeout: AI_REQUEST_TIMEOUT }),
+  listSyncRuns: (id: string) => api.get(`/erp/systems/${id}/sync-runs`),
+  permissionLibrary: (platform?: 'sap' | 'oracle_ebs') => api.get('/erp/permission-library', { params: { platform } }),
+  listTicketConnectors: () => api.get('/erp/ticket-connectors'),
+  listFunctions: () => api.get('/erp/functions'),
+  listRules: () => api.get('/erp/sod/rules'),
+  createRule: (data: { code: string; name: string; process: string; function_a: string; function_b: string; risk_description: string; severity?: string }) =>
+    api.post('/erp/sod/rules', data),
+  updateRule: (id: string, data: { is_active?: boolean; name?: string; risk_description?: string; severity?: string }) => api.patch(`/erp/sod/rules/${id}`, data),
+  listConflicts: (params?: { system_id?: string; status?: string; severity?: string; level?: string; process?: string; limit?: number; offset?: number }) =>
+    api.get('/erp/sod/conflicts', { params }),
+  decideConflict: (id: string, data: { action: 'mitigate' | 'accept' | 'reopen'; mitigating_control_id?: string; notes?: string; accepted_until?: string }) =>
+    api.patch(`/erp/sod/conflicts/${id}`, data),
+  listMitigatingControls: () => api.get('/erp/mitigating-controls'),
+  createMitigatingControl: (data: { name: string; description: string; frequency?: string; owner_user_id?: string; rcm_entry_id?: string }) =>
+    api.post('/erp/mitigating-controls', data),
+  listReviews: () => api.get('/erp/reviews'),
+  createReview: (data: { system_id: string; name: string; due_date?: string; reviewer_id?: string; routing?: 'reviewer' | 'manager' }) => api.post('/erp/reviews', data),
+  getReview: (id: string, params?: { decision?: string; mine?: boolean; limit?: number; offset?: number }) => api.get(`/erp/reviews/${id}`, { params }),
+  createRevocationTickets: (id: string) => api.post(`/erp/reviews/${id}/tickets`, {}, { timeout: AI_REQUEST_TIMEOUT }),
+  decideReviewItem: (id: string, itemId: string, data: { decision: 'certified' | 'revoke' | 'pending'; roles_to_revoke?: string[]; notes?: string }) =>
+    api.patch(`/erp/reviews/${id}/items/${itemId}`, data),
+  completeReview: (id: string) => api.post(`/erp/reviews/${id}/complete`, {}),
+  exportReview: (id: string) => api.get(`/erp/reviews/${id}/export`, { responseType: 'blob' }),
+  listEmergencySessions: (params?: { status?: string; system_id?: string }) => api.get('/erp/emergency-sessions', { params }),
+  reviewEmergencySession: (id: string, data: { review_status: 'approved' | 'escalated'; review_notes: string }) =>
+    api.patch(`/erp/emergency-sessions/${id}`, data),
+  monitoringSummary: () => api.get('/erp/monitoring/summary'),
+  listMonitoringRules: () => api.get('/erp/monitoring/rules'),
+  updateMonitoringRule: (code: string, data: { is_active?: boolean; parameters?: Record<string, number | string | boolean>; rcm_entry_id?: string | null }) =>
+    api.put(`/erp/monitoring/rules/${code}`, data),
+  runMonitoring: (systemId: string) => api.post(`/erp/monitoring/systems/${systemId}/run`, {}, { timeout: AI_REQUEST_TIMEOUT }),
+  listMonitoringRuns: (params?: { system_id?: string }) => api.get('/erp/monitoring/runs', { params }),
+  listExceptions: (params?: { system_id?: string; rule_code?: string; status?: string; severity?: string; limit?: number; offset?: number }) =>
+    api.get('/erp/monitoring/exceptions', { params }),
+  exportExceptions: (params?: { system_id?: string; rule_code?: string; status?: string; severity?: string }) =>
+    api.get('/erp/monitoring/exceptions/export', { params, responseType: 'blob' }),
+  updateException: (id: string, data: { status?: string; resolution_notes?: string; assigned_to?: string | null }) =>
+    api.patch(`/erp/monitoring/exceptions/${id}`, data),
+  listConfig: (systemId: string, params?: { monitored?: boolean }) => api.get(`/erp/monitoring/systems/${systemId}/config`, { params }),
+  listConfigChanges: (systemId: string) => api.get(`/erp/monitoring/systems/${systemId}/config/changes`),
+  saveBaseline: (systemId: string, data: { config_key: string; comparison: string; expected_value: string; severity?: string; rationale?: string }) =>
+    api.put(`/erp/monitoring/systems/${systemId}/baselines`, data),
+  deleteBaseline: (systemId: string, baselineId: string) => api.delete(`/erp/monitoring/systems/${systemId}/baselines/${baselineId}`),
+  adoptBaselineLibrary: (systemId: string) => api.post(`/erp/monitoring/systems/${systemId}/baselines/adopt-library`, {}),
+  baselineLibrary: (platform?: 'sap' | 'oracle_ebs') => api.get('/erp/monitoring/baseline-library', { params: { platform } }),
+};
+
 // SIEM APIs
 export const siemAPI = {
   list: () => api.get('/siem'),
@@ -2010,6 +2154,8 @@ export const platformAdminAPI = {
   changeOrgTier: (orgId: string, data: { tier: string; prorate?: boolean }) => api.put(`/platform-admin/organizations/${orgId}/subscription/tier`, data),
   cancelOrgSubscription: (orgId: string, data: { immediately?: boolean; reason?: string }) => api.post(`/platform-admin/organizations/${orgId}/subscription/cancel`, data),
   compOrgSubscription: (orgId: string, data: { tier: string; months: number; reason?: string }) => api.post(`/platform-admin/organizations/${orgId}/subscription/comp`, data),
+  setOrgAddon: (orgId: string, addon: string, data: { action: 'grant' | 'revoke'; months?: number | null; reason?: string }) =>
+    api.put(`/platform-admin/organizations/${orgId}/addons/${encodeURIComponent(addon)}`, data),
   reactivateOrgSubscription: (orgId: string) => api.post(`/platform-admin/organizations/${orgId}/subscription/reactivate`),
   // Trial management
   getOrgTrial: (orgId: string) => api.get(`/platform-admin/organizations/${orgId}/trial`),
@@ -2197,6 +2343,8 @@ export const billingAPI = {
   getEntitlements: () => api.get('/billing/entitlements'),
   startCheckout: (plan: 'pro' | 'enterprise', interval: 'monthly' | 'annual') =>
     api.post('/billing/checkout', { plan, interval }),
+  startAddonCheckout: (addon: string, interval: 'monthly' | 'annual') =>
+    api.post('/billing/checkout', { addon, interval }),
 };
 
 // License API (self-hosted / community edition)

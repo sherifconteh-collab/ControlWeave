@@ -9,6 +9,7 @@ const { encrypt, decrypt, hashForLookup } = require('../utils/encrypt');
 const { hasPublicColumn } = require('../utils/schema');
 const llm = require('../services/llmService');
 const approvalService = require('../services/approvalService');
+const { log, serializeError } = require('../utils/logger');
 const { isStripeConfigured, cancelSubscriptionNow } = require('../services/stripeService');
 const {
   MIN_PASSWORD_LENGTH,
@@ -844,6 +845,57 @@ router.post('/organizations/:id/subscription/comp', async (req, res) => {
   } catch (error) {
     console.error('Comp subscription error:', error);
     return res.status(500).json({ success: false, error: 'Failed to comp subscription' });
+  }
+});
+
+// PUT /api/v1/platform-admin/organizations/:id/addons/:addon
+// { action: 'grant', months?, reason? } comps a separately licensed add-on
+// module (config/plans.js ADDONS); { action: 'revoke', reason? } ends a grant.
+// Stripe-billed add-ons are managed by the webhook and are left alone.
+router.put('/organizations/:id/addons/:addon', async (req, res) => {
+  try {
+    const { id, addon } = req.params;
+    const { ADDONS } = require('../config/plans');
+    if (!ADDONS[addon]) {
+      return res.status(400).json({ success: false, error: `Unknown add-on. Available: ${Object.keys(ADDONS).join(', ')}` });
+    }
+    const { action, months, reason } = req.body || {};
+    if (!['grant', 'revoke'].includes(action)) {
+      return res.status(400).json({ success: false, error: 'action must be grant or revoke' });
+    }
+    const org = await pool.query('SELECT id FROM organizations WHERE id = $1', [id]);
+    if (!org.rows.length) return res.status(404).json({ success: false, error: 'Organization not found' });
+    let result;
+    if (action === 'grant') {
+      const grantMonths = months === undefined || months === null ? null : Math.max(1, Math.min(120, parseInt(months, 10) || 12));
+      result = await pool.query(
+        `INSERT INTO organization_addons (organization_id, addon, status, source, expires_at, granted_by, notes)
+         VALUES ($1, $2, 'comped', 'comped', CASE WHEN $3::int IS NULL THEN NULL ELSE NOW() + make_interval(months => $3::int) END, $4, $5)
+         ON CONFLICT (organization_id, addon) DO UPDATE
+           SET status = 'comped', source = 'comped', stripe_subscription_id = NULL, expires_at = EXCLUDED.expires_at,
+               granted_by = EXCLUDED.granted_by, notes = EXCLUDED.notes, updated_at = NOW()
+         RETURNING addon, status, expires_at`,
+        [id, addon, grantMonths, req.user.id, reason ? String(reason).slice(0, 500) : null]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE organization_addons SET status = 'canceled', notes = COALESCE($3, notes), updated_at = NOW()
+          WHERE organization_id = $1 AND addon = $2 AND source = 'comped'
+          RETURNING addon, status, expires_at`,
+        [id, addon, reason ? String(reason).slice(0, 500) : null]
+      );
+      if (!result.rows.length) return res.status(404).json({ success: false, error: 'No platform grant of this add-on to revoke' });
+    }
+    require('../services/entitlementService').clearCache(id);
+    await pool.query(
+      `INSERT INTO audit_logs (organization_id, user_id, event_type, resource_type, details)
+       VALUES ($1, $2, $3, 'organization', $4)`,
+      [id, req.user.id, `platform_admin.addon_${action === 'grant' ? 'granted' : 'revoked'}`, JSON.stringify({ addon, months: months || null, reason: reason || null })]
+    );
+    return res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    log('error', 'platform_admin.addon_update_failed', { error: serializeError(error) });
+    return res.status(500).json({ success: false, error: 'Failed to update the add-on' });
   }
 });
 

@@ -16,6 +16,17 @@ The federal financial-management world is an especially good fit, and it overlap
 
 Today ControlWeave covers the **audit workflow and IT general controls** side well. It does **not yet** cover the part ERP buyers ask about first: **segregation of duties and access analysis inside the ERP itself**, plus continuous monitoring of ERP transactions. Closing that gap is roughly two to three quarters of focused work (phases 1 and 2 below). Phase 1 alone produces something sellable to federal audit-readiness teams without any ERP integration.
 
+## Implementation status
+
+Phases 1 to 3 have shipped, together with the code-side items from phase 4. ERP access governance and monitoring are sold as the separately licensed **ERP Governance** add-on; financial audit readiness stays in the free Community plan.
+
+| Phase | Shipped | Still open |
+|---|---|---|
+| 1. Audit readiness | Expanded FISCAM content (control activities, business process, interface and data management families), COSO 2013 principles, SOX ITGC library, OMB A-123 readiness checklist; risk-control matrix with assertions and CSV import; design and operating effectiveness testing with frequency-table and binomial attribute sampling; NFR fields and POA&M-based CAPs; readiness by process and assertion with matrix export. See [Financial Audit Readiness](./guides/FINANCIAL_AUDIT.md). | DISA STIG content for Oracle Database, WebLogic and Oracle Linux; a formatted A-123 Statement of Assurance package; CAP validation evidence on milestones |
+| 2. ERP access governance | CSV entitlement import for any ERP in merge or full-snapshot mode; SAP USR02 / AGR_USERS / AGR_1251 table imports; direct read-only connectors for Workday (RaaS), Oracle Fusion Cloud ERP and SAP Cloud Identity Services (SCIM 2.0) and Oracle E-Business Suite (database); daily or weekly scheduled syncs with analysis and monitoring; SAP transaction-code and Oracle EBS form-function starter maps; 39 business functions and a 47-rule SoD library; role- and user-level analysis; mitigating controls and time-boxed acceptance; access reviews routed to managers, with Jira or ITSM revocation tickets and revocations verified by later syncs; emergency access review. See [ERP Access Governance](./guides/ERP_ACCESS_GOVERNANCE.md). | RFC connector for on-premises SAP (needs SAP's proprietary library); starter maps for Workday domains and Oracle Fusion privileges |
+| 3. Continuous monitoring | Transaction import (payments, invoices, journals, vendor changes, purchase orders, goods receipts) and 17 full-population rules, including three-way match and purchasing SoD; configuration monitoring against baselines, with recommended SAP and Oracle EBS settings and change history; each run recorded as a control test when tied to the matrix. See [ERP Transaction Monitoring](./guides/ERP_TRANSACTION_MONITORING.md). | Pulling transactions and settings directly from the ERP (today they come from extracts) |
+| 4. Federal | FIPS mode that verifies the host's OpenSSL FIPS provider; guidance for CAC/PIV through the agency IdP over SAML. See [Federal Deployment](./guides/FEDERAL_DEPLOYMENT.md). | Section 508 VPAT; FedRAMP 20x / IL4-IL5 hosting and assessment |
+
 ## What ERP customers expect (buyer checklist)
 
 | Need | Why they need it | ControlWeave today |

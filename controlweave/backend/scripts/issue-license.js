@@ -11,12 +11,13 @@
  *
  *   node scripts/issue-license.js issue --key ./license-keys/license-private.pem \
  *     --licensee "Acme Health" --tier enterprise --seats 250 \
- *     [--maintenance 2027-12-31] [--expires 2027-12-31] [--features scim,sso]
+ *     [--maintenance 2027-12-31] [--expires 2027-12-31] [--features scim,sso] [--addons erp]
  *     Prints a signed license key. The customer sets LICENSE_KEY, or an
  *     administrator activates it under Settings -> License. Validation is
  *     offline (air-gapped federal installs need no network access).
  *
  * Tiers: community, pro, enterprise, govcloud. --seats -1 means unlimited.
+ * Add-ons (separately licensed modules, independent of the tier): erp.
  * Omit --expires for a perpetual license; --maintenance bounds update and
  * support eligibility without switching the product off.
  */
@@ -27,6 +28,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const TIERS = new Set(['community', 'pro', 'enterprise', 'govcloud']);
+const { ADDONS } = require('../src/config/plans');
 
 function args() {
   const out = { _: [] };
@@ -73,10 +75,14 @@ function issue(opts) {
   for (const field of ['maintenance', 'expires']) {
     if (opts[field] && !isDate(opts[field])) fail(`--${field} must be YYYY-MM-DD`);
   }
+  const addons = opts.addons ? String(opts.addons).split(',').map((a) => a.trim().toLowerCase()).filter(Boolean) : [];
+  const unknownAddon = addons.find((a) => !ADDONS[a]);
+  if (unknownAddon) fail(`--addons: unknown add-on ${unknownAddon} (known: ${Object.keys(ADDONS).join(', ')})`);
   const payload = {
     tier,
     seats,
     features: opts.features ? String(opts.features).split(',').map((f) => f.trim()).filter(Boolean) : [],
+    ...(addons.length ? { addons } : {}),
     ...(opts.maintenance ? { maintenance_until: opts.maintenance } : {}),
     license_id: crypto.randomUUID()
   };

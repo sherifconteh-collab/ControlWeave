@@ -16,9 +16,13 @@ ControlWeaver ships as open-core. By default (`COMMERCIAL_MODE` unset) every fea
 
 Currently gated: `sso` (Pro), `connectors` (Pro), `hipaa_sra` (Pro), `scim` and `sso_enforcement` (Enterprise).
 
+## Add-on modules
+
+Some modules are sold on their own, outside every plan: `ADDONS` in `plans.js`. Today that is `erp` (feature `erp_governance`). An add-on is granted by the license key's `addons` claim, or by an `organization_addons` row (Stripe webhook or platform-admin grant), never by the plan tier. `requireFeature()` returns 402 `{ code: 'addon_required', required_addon }` for add-on features. The ERP routers gate every non-GET request at the router level; reads stay open. Do not add add-on features to a plan's `features` array.
+
 ## Rules for new code
 
-- Core GRC stays in Community: frameworks, controls, evidence, assessments, risks, POA&M, policies, reports and the audit trail. Do not gate it.
+- Core GRC stays in Community: frameworks, controls, evidence, assessments, financial audit readiness (RCM, control testing, NFRs), risks, POA&M, policies, reports and the audit trail. Do not gate it.
 - Gate only features listed in `plans.js` `FEATURES`, and only with `requireFeature()`. Add a new feature key there first, and document it in `docs/COMMERCIAL_LICENSING.md`.
 - Gate write or "start" actions, not reads: an organization that downgrades must still see and export its existing data.
 - The legacy `requireTier()`, `requireProEdition()` and `checkTierLimit()` middleware remain no-ops. Do not revive them; use `requireFeature()`.

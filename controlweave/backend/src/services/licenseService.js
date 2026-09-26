@@ -70,7 +70,7 @@ function setLocalPublicKey(pem) {
  * @param {string|null} [overridePubKey] - Optional public key to use for verification.
  *   Falls back to: CONTROLWEAVE_LICENSE_PUBKEY env var → locally-generated key.
  * @returns {{ valid: boolean, tier?: string, seats?: number, licensee?: string,
- *             maintenanceUntil?: string, features?: string[], error?: string }}
+ *             maintenanceUntil?: string, features?: string[], addons?: string[], error?: string }}
  */
 function validateLicenseKey(licenseKey, overridePubKey = null) {
   if (!licenseKey || typeof licenseKey !== 'string' || licenseKey.trim().length === 0) {
@@ -114,7 +114,8 @@ function validateLicenseKey(licenseKey, overridePubKey = null) {
       licensee: payload.sub || 'unknown',
       maintenanceUntil,
       minVersion,
-      features: Array.isArray(payload.features) ? payload.features : []
+      features: Array.isArray(payload.features) ? payload.features : [],
+      addons: Array.isArray(payload.addons) ? payload.addons.map((a) => String(a).toLowerCase()) : []
     };
   } catch (err) {
     if (err.name === 'TokenExpiredError') {

@@ -7,6 +7,10 @@
  *
  * `users: -1` means unlimited. Prices are informational (the checkout uses
  * the Stripe prices with these lookup keys).
+ *
+ * ADDONS are separately licensed modules. They are not part of any plan, so
+ * an add-on is bought (or licensed) on its own, on top of whichever plan the
+ * organization has, Community included.
  */
 
 const FEATURES = Object.freeze({
@@ -15,6 +19,7 @@ const FEATURES = Object.freeze({
   hipaa_sra: 'HIPAA security risk assessment',
   scim: 'SCIM 2.0 user provisioning',
   sso_enforcement: 'Require SSO for all users',
+  erp_governance: 'ERP access governance and transaction monitoring',
   priority_support: 'Priority support and onboarding'
 });
 
@@ -51,6 +56,16 @@ const PLANS = Object.freeze({
   }
 });
 
+const ADDONS = Object.freeze({
+  erp: {
+    label: 'ERP Governance',
+    features: ['erp_governance'],
+    lookupKeys: ['erp_monthly', 'erp_annual'],
+    description: 'ERP connectors and imports, function-level segregation of duties, access certification with manager routing and '
+      + 'revocation tickets, emergency access review, scheduled extracts and continuous transaction and configuration monitoring.'
+  }
+});
+
 // Legacy tier names stored on organizations and in older license keys.
 const TIER_ALIASES = Object.freeze({ govcloud: 'gov', professional: 'pro', free: 'community', open: 'enterprise' });
 
@@ -60,6 +75,15 @@ function normalizePlan(tier) {
   return PLANS[resolved] ? resolved : null;
 }
 
+/** The add-on that grants a feature, or null when plans grant it. */
+function addonFor(feature) {
+  return Object.entries(ADDONS).find(([, addon]) => addon.features.includes(feature))?.[0] || null;
+}
+
+function normalizeAddons(list) {
+  return [...new Set((Array.isArray(list) ? list : []).map((a) => String(a).toLowerCase()).filter((a) => ADDONS[a]))];
+}
+
 /** Cheapest plan that includes a feature. */
 function minimumPlanFor(feature) {
   return Object.entries(PLANS)
@@ -67,4 +91,4 @@ function minimumPlanFor(feature) {
     .find(([, plan]) => plan.features.includes(feature))?.[0] || 'enterprise';
 }
 
-module.exports = { FEATURES, PLANS, normalizePlan, minimumPlanFor };
+module.exports = { FEATURES, PLANS, ADDONS, normalizePlan, minimumPlanFor, addonFor, normalizeAddons };

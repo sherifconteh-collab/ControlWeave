@@ -1,6 +1,6 @@
 {
   "name": "controlweave-backend",
-  "version": "4.11.3",
+  "version": "4.12.0",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -160,5 +160,8 @@
     "nanoid": ">=3.3.17 <4.0.0",
     "@xmldom/xmldom": ">=0.8.15 <0.9.0",
     "@humanfs/node": ">=0.16.8"
+  },
+  "optionalDependencies": {
+    "oracledb": "^7.0.1"
   }
 }

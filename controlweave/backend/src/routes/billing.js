@@ -20,7 +20,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const auditService = require('../services/auditService');
 const stripeService = require('../services/stripeService');
 const entitlements = require('../services/entitlementService');
-const { PLANS, FEATURES, normalizePlan } = require('../config/plans');
+const { PLANS, FEATURES, ADDONS, normalizePlan } = require('../config/plans');
 const { log, serializeError } = require('../utils/logger');
 
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
@@ -63,6 +63,7 @@ router.get('/entitlements', authenticate, async (req, res) => {
         ...ent,
         activeUsers,
         catalog: Object.entries(PLANS).map(([id, plan]) => ({ id, label: plan.label, users: plan.users, features: plan.features, description: plan.description })),
+        addonCatalog: Object.entries(ADDONS).map(([id, addon]) => ({ id, label: addon.label, features: addon.features, description: addon.description })),
         featureLabels: FEATURES
       }
     });
@@ -87,18 +88,37 @@ router.get('/subscription', authenticate, async (req, res) => {
   }
 });
 
-// POST /billing/checkout { plan: 'pro' | 'enterprise', interval: 'monthly' | 'annual' } or { lookupKey }
+/** Resolve a checkout request body to a Stripe lookup key, or an error message. */
+function checkoutLookupKey(body) {
+  const fromKey = typeof body.lookupKey === 'string' ? body.lookupKey.split('_') : [];
+  const interval = (body.interval || fromKey[1]) === 'annual' ? 'annual' : 'monthly';
+  const addon = String(body.addon || (ADDONS[fromKey[0]] ? fromKey[0] : '')).toLowerCase();
+  if (addon) {
+    const lookupKey = `${addon}_${interval}`;
+    return ADDONS[addon] && stripeService.addonFromLookupKey(lookupKey) === addon
+      ? { lookupKey, addon }
+      : { error: `Unknown add-on. Available: ${Object.keys(ADDONS).join(', ')}` };
+  }
+  const plan = normalizePlan(body.plan || fromKey[0]);
+  const lookupKey = `${plan}_${interval}`;
+  return plan && stripeService.isValidLookupKey(lookupKey) ? { lookupKey } : { error: 'Choose the Pro or Enterprise plan' };
+}
+
+// POST /billing/checkout { plan: 'pro' | 'enterprise' } or { addon: 'erp' }, with
+// interval 'monthly' | 'annual'; or { lookupKey }. An add-on is its own
+// subscription, independent of the plan.
 router.post('/checkout', authenticate, requirePermission('settings.manage'), async (req, res) => {
   if (!billingEnabled()) return notAvailable(res);
   try {
-    // Accepts { plan, interval } or a Stripe price lookupKey (pro_monthly, ...).
-    const body = req.body || {};
-    const fromKey = typeof body.lookupKey === 'string' ? body.lookupKey.split('_') : [];
-    const plan = normalizePlan(body.plan || fromKey[0]);
-    const interval = (body.interval || fromKey[1]) === 'annual' ? 'annual' : 'monthly';
-    const lookupKey = `${plan}_${interval}`;
-    if (!plan || !stripeService.isValidLookupKey(lookupKey)) {
-      return res.status(400).json({ success: false, error: 'Choose the Pro or Enterprise plan' });
+    const { lookupKey, addon, error } = checkoutLookupKey(req.body || {});
+    if (error) return res.status(400).json({ success: false, error });
+    if (addon) {
+      const { rows: held } = await pool.query(
+        `SELECT 1 FROM organization_addons WHERE organization_id = $1 AND addon = $2 AND source = 'subscription'
+            AND status IN ('active', 'trial', 'past_due', 'canceling')`,
+        [req.user.organization_id, addon]
+      );
+      if (held.length) return res.status(409).json({ success: false, error: `${ADDONS[addon].label} is already on your subscription. Manage it from Manage billing.` });
     }
     const { rows } = await pool.query('SELECT stripe_customer_id, trial_ends_at FROM organizations WHERE id = $1', [req.user.organization_id]);
     const session = await stripeService.createCheckoutSession({
@@ -146,6 +166,36 @@ router.post('/activate-license', authenticate, requirePermission('settings.manag
   res.json({ success: true, message: 'Activate self-hosted license keys under Settings → License (POST /api/v1/license/activate).' });
 });
 
+// organizations.billing_status -> organization_addons.status for add-on items.
+const ADDON_STATUS = { active_paid: 'active', canceling: 'canceling', trial: 'trial', past_due: 'past_due' };
+
+/**
+ * Sync the add-on items on a subscription into organization_addons. Add-ons
+ * that were on this subscription but no longer are are canceled. A
+ * platform-granted (comped) add-on is only replaced by a subscription that
+ * grants it, never canceled by one.
+ */
+async function applyAddons(orgId, subscription, addons, billingStatus) {
+  const status = ADDON_STATUS[billingStatus] || 'canceled';
+  const trialEndsAt = status === 'trial' && subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
+  for (const addon of addons) {
+    await pool.query(
+      `INSERT INTO organization_addons (organization_id, addon, status, source, stripe_subscription_id, trial_ends_at)
+       VALUES ($1, $2, $3, 'subscription', $4, $5)
+       ON CONFLICT (organization_id, addon) DO UPDATE
+         SET status = EXCLUDED.status, source = 'subscription', stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+             trial_ends_at = EXCLUDED.trial_ends_at, expires_at = NULL, updated_at = NOW()
+       WHERE organization_addons.source = 'subscription' OR EXCLUDED.status <> 'canceled'`,
+      [orgId, addon, status, subscription.id, trialEndsAt]
+    );
+  }
+  await pool.query(
+    `UPDATE organization_addons SET status = 'canceled', updated_at = NOW()
+      WHERE organization_id = $1 AND stripe_subscription_id = $2 AND source = 'subscription' AND NOT (addon = ANY($3::text[]))`,
+    [orgId, subscription.id, addons]
+  );
+}
+
 // Stripe subscription status -> organizations.billing_status (whose check
 // constraint allows community, trial, active_paid, past_due, canceling,
 // canceled, comped, license).
@@ -162,9 +212,14 @@ function billingStatusFor(subscription) {
 async function applySubscription(subscription) {
   const orgId = subscription.metadata && subscription.metadata.organization_id;
   if (!orgId) return null;
-  const lookupKey = await stripeService.getLookupKeyFromSubscription(subscription);
+  const lookupKeys = await stripeService.getLookupKeysFromSubscription(subscription);
   const status = billingStatusFor(subscription);
-  const paidTier = stripeService.tierFromLookupKey(lookupKey);
+  const addons = [...new Set(lookupKeys.map(stripeService.addonFromLookupKey).filter(Boolean))];
+  await applyAddons(orgId, subscription, addons, status);
+  const planKey = lookupKeys.find((key) => stripeService.tierFromLookupKey(key));
+  // A subscription that only carries add-ons leaves the plan alone.
+  if (!planKey && addons.length) return orgId;
+  const paidTier = stripeService.tierFromLookupKey(planKey);
   const tier = status === 'canceled' || status === 'community' ? 'community' : paidTier;
   await pool.query(
     `UPDATE organizations
@@ -181,7 +236,9 @@ async function handleEvent(event) {
   if (event.type === 'checkout.session.completed' && object.mode === 'subscription') {
     const orgId = object.metadata && object.metadata.organization_id;
     if (orgId) {
-      await pool.query('UPDATE organizations SET stripe_customer_id = $2, stripe_subscription_id = $3 WHERE id = $1', [orgId, object.customer, object.subscription]);
+      // The subscription id is recorded by applySubscription: on the
+      // organization for a plan, on organization_addons for an add-on.
+      await pool.query('UPDATE organizations SET stripe_customer_id = COALESCE($2, stripe_customer_id) WHERE id = $1', [orgId, object.customer || null]);
       if (object.subscription) await applySubscription(await stripeService.getSubscription(object.subscription));
     }
     return orgId || null;

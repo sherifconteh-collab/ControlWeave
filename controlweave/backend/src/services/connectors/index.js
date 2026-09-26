@@ -29,7 +29,7 @@ const TEMPLATES = [
     description: 'AWS Security Hub findings, mapped to NIST and CIS controls.' },
   { type: 'qualys_vmdr', label: 'Qualys VMDR', category: 'Vulnerability Scanner', required: ['baseUrl', 'username', 'password'], optional: ['tagIds'], secrets: ['password'],
     description: 'Qualys VMDR vulnerability detections.' },
-  { type: 'servicenow', label: 'ITSM / Change Management', category: 'Ticketing', required: ['instanceUrl', 'username', 'password'], optional: ['changeTableName', 'incidentTableName'], secrets: ['password'], // ip-hygiene:ignore
+  { type: 'servicenow', label: 'ITSM / Change Management', category: 'Ticketing', required: ['instanceUrl', 'username', 'password'], optional: ['changeTableName', 'incidentTableName', 'revocationTableName'], secrets: ['password'], // ip-hygiene:ignore
     description: 'Incident and change records as evidence of change management.' }
 ];
 

@@ -16,6 +16,13 @@ interface CatalogPlan {
   description: string;
 }
 
+interface CatalogAddon {
+  id: string;
+  label: string;
+  features: string[];
+  description: string;
+}
+
 interface Entitlements {
   commercialMode: boolean;
   plan: string;
@@ -27,6 +34,8 @@ interface Entitlements {
   userLimit: number;
   activeUsers: number;
   catalog: CatalogPlan[];
+  addons?: string[];
+  addonCatalog?: CatalogAddon[];
   featureLabels: Record<string, string>;
 }
 
@@ -75,6 +84,18 @@ function PlanView() {
     }
   };
 
+  const addonCheckout = async (addon: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await billingAPI.startAddonCheckout(addon, interval);
+      window.location.href = res.data?.data?.url as string;
+    } catch (err: unknown) {
+      setError(apiError(err, 'Could not start checkout.'));
+      setBusy(false);
+    }
+  };
+
   const portal = async () => {
     setBusy(true);
     try {
@@ -114,7 +135,7 @@ function PlanView() {
               <div className="text-sm text-gray-700">
                 {ent.activeUsers} of {ent.userLimit < 0 ? 'unlimited' : ent.userLimit} users
               </div>
-              {canManage && billingEnabled && ent.source === 'subscription' && (
+              {canManage && billingEnabled && (ent.source === 'subscription' || (ent.addons || []).length > 0) && (
                 <button type="button" onClick={portal} disabled={busy} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Manage billing</button>
               )}
             </div>
@@ -151,6 +172,35 @@ function PlanView() {
                 </div>
               ))}
             </div>
+
+            {(ent.addonCatalog || []).length > 0 && (
+              <section id="addons" className="mt-8">
+                <h2 className="text-lg font-semibold text-gray-900">Add-on modules</h2>
+                <p className="text-sm text-gray-600 mt-1">Licensed separately from your plan and available on any plan, Community included.</p>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(ent.addonCatalog || []).map((addon) => {
+                    const held = (ent.addons || []).includes(addon.id);
+                    return (
+                      <div key={addon.id} className={`bg-white border rounded-lg p-4 flex flex-col ${held ? 'border-purple-500' : 'border-gray-200'}`}>
+                        <h3 className="font-semibold text-gray-900">{addon.label}</h3>
+                        <p className="text-xs text-gray-600 mt-1 flex-1">{addon.description}</p>
+                        {held ? (
+                          <span className="mt-3 text-xs font-medium text-purple-700">Included in your account</span>
+                        ) : billingEnabled && canManage && ent.source !== 'license' ? (
+                          <button type="button" disabled={busy} onClick={() => addonCheckout(addon.id)} className="mt-3 self-start px-3 py-1.5 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50">
+                            Add {addon.label}
+                          </button>
+                        ) : (
+                          <span className="mt-3 text-xs text-gray-500">
+                            {ent.source === 'license' ? 'Add it to your license key: contact sales.' : 'Contact sales to add this module.'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>

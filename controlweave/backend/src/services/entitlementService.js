@@ -13,10 +13,15 @@
  *      canceling (until period end) or comped billing status, or a trial that
  *      has not ended, grants its tier
  *   3. otherwise the Community plan
+ *
+ * Add-on modules (config/plans.js ADDONS, e.g. ERP Governance) are licensed
+ * separately from the plan: through the license key's `addons` claim, or,
+ * without a license key, through organization_addons rows kept in sync by the
+ * Stripe webhook or granted by a platform administrator.
  */
 
 const pool = require('../config/database');
-const { PLANS, FEATURES, normalizePlan, minimumPlanFor } = require('../config/plans');
+const { PLANS, FEATURES, ADDONS, normalizePlan, minimumPlanFor, addonFor, normalizeAddons } = require('../config/plans');
 const licenseService = require('./licenseService');
 
 // Plans are read from the organization row on every check (one primary-key
@@ -62,25 +67,43 @@ function subscriptionPlan(org) {
   return { plan: 'community', source: 'default' };
 }
 
+const GRANTING_ADDON_STATUSES = ['active', 'past_due', 'canceling', 'comped'];
+
+/** Add-ons an organization holds through Stripe or a platform grant. */
+async function subscribedAddons(organizationId) {
+  const { rows } = await pool.query(
+    `SELECT addon FROM organization_addons
+      WHERE organization_id = $1
+        AND (status = ANY($2::text[]) OR (status = 'trial' AND trial_ends_at > NOW()))
+        AND (expires_at IS NULL OR expires_at > NOW())`,
+    [organizationId, GRANTING_ADDON_STATUSES]
+  );
+  return normalizeAddons(rows.map((r) => r.addon));
+}
+
 /**
- * { commercialMode, plan, label, source, features[], userLimit, activeUsers }
+ * { commercialMode, plan, label, source, features[], addons[], userLimit, activeUsers }
  */
 async function getEntitlements(organizationId) {
   if (!commercialMode()) {
-    return { commercialMode: false, plan: 'enterprise', label: 'Open source', source: 'open', features: Object.keys(FEATURES), userLimit: -1 };
+    return { commercialMode: false, plan: 'enterprise', label: 'Open source', source: 'open', features: Object.keys(FEATURES), addons: Object.keys(ADDONS), userLimit: -1 };
   }
   const license = await deploymentLicense();
   let resolved;
   if (license) {
     const plan = normalizePlan(license.tier) || 'community';
-    resolved = { plan, source: 'license', licensee: license.licensee, userLimit: typeof license.seats === 'number' ? license.seats : PLANS[plan].users, extraFeatures: license.features || [] };
+    resolved = {
+      plan, source: 'license', licensee: license.licensee,
+      userLimit: typeof license.seats === 'number' ? license.seats : PLANS[plan].users,
+      extraFeatures: license.features || [], addons: normalizeAddons(license.addons)
+    };
   } else {
     const { rows } = await pool.query(
       'SELECT tier, billing_status, trial_status, trial_ends_at FROM organizations WHERE id = $1',
       [organizationId]
     );
     const sub = subscriptionPlan(rows[0]);
-    resolved = { ...sub, userLimit: PLANS[sub.plan].users, extraFeatures: [] };
+    resolved = { ...sub, userLimit: PLANS[sub.plan].users, extraFeatures: [], addons: await subscribedAddons(organizationId) };
   }
   const plan = PLANS[resolved.plan];
   const value = {
@@ -90,7 +113,12 @@ async function getEntitlements(organizationId) {
     source: resolved.source,
     licensee: resolved.licensee,
     trialEndsAt: resolved.trialEndsAt,
-    features: [...new Set([...plan.features, ...resolved.extraFeatures.filter((f) => FEATURES[f])])],
+    features: [...new Set([
+      ...plan.features,
+      ...resolved.extraFeatures.filter((f) => FEATURES[f]),
+      ...resolved.addons.flatMap((a) => ADDONS[a].features)
+    ])],
+    addons: resolved.addons,
     userLimit: resolved.userLimit
   };
   return value;
@@ -125,7 +153,8 @@ function clearCache() {
 
 /**
  * Express middleware: 402 with an upgrade hint when the organization's plan
- * lacks `feature`. A no-op unless COMMERCIAL_MODE=true.
+ * (or, for an add-on feature, its add-ons) lacks `feature`. A no-op unless
+ * COMMERCIAL_MODE=true.
  */
 function requireFeature(feature) {
   return async (req, res, next) => {
@@ -133,6 +162,16 @@ function requireFeature(feature) {
       if (!commercialMode()) return next();
       const orgId = (req.user && req.user.organization_id) || (req.scim && req.scim.organizationId);
       if (orgId && (await hasFeature(orgId, feature))) return next();
+      const addon = addonFor(feature);
+      if (addon) {
+        return res.status(402).json({
+          success: false,
+          error: `${ADDONS[addon].label} is a separately licensed module. Add it under Settings, Plan and billing, or contact sales for a license key.`,
+          code: 'addon_required',
+          feature,
+          required_addon: addon
+        });
+      }
       const required = minimumPlanFor(feature);
       return res.status(402).json({
         success: false,

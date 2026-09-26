@@ -70,6 +70,7 @@ function buildFedrampBaselines(nist) {
   });
 }
 const CMMC_2_0 = require('./lib/frameworks/cmmc_2_0');
+const FINANCIAL_AUDIT = require('./lib/frameworks/financialAudit');
 
 const pool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL })
@@ -336,8 +337,10 @@ const frameworks = [
       { control_id: 'CC-2', title: 'Configuration Control - Hardware/Software Config', description: 'Maintain and document hardware and software configurations for financial systems.', priority: '1', control_type: 'technical' },
       { control_id: 'SC-1', title: 'Segregation of Duties', description: 'Implement segregation of duties to prevent fraud and unauthorized modifications.', priority: '1', control_type: 'organizational' },
       { control_id: 'CP-FM-1', title: 'Contingency Planning', description: 'Develop and test contingency plans to ensure continuity of financial operations.', priority: '1', control_type: 'organizational' },
+      ...FINANCIAL_AUDIT.FISCAM_ADDITIONS
     ]
   },
+  ...FINANCIAL_AUDIT.NEW_FRAMEWORKS,
   {
     code: 'nist_ai_rmf', name: 'NIST AI Risk Management Framework', version: '1.0',
     category: 'AI Governance', tier_required: 'community',

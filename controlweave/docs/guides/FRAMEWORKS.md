@@ -36,7 +36,12 @@ ControlWeave supports 15+ compliance frameworks with intelligent crosswalk mappi
 - **OWASP Agentic AI Top 10** - Agentic AI security
 
 ### Federal & Compliance
-- **FISCAM** - Federal financial systems
+- **FISCAM** - Federal financial systems, with ControlWeave control activities for business process, interface and data management controls
+- **COSO 2013** - The five components and seventeen principles of internal control (paraphrased)
+- **SOX IT General Controls** - ControlWeave's library of ITGCs relied on in SOX 404 audits
+- **OMB A-123 Appendix A Readiness** - ControlWeave checklist for federal internal control over reporting
+
+See [Financial Audit Readiness](./FINANCIAL_AUDIT.md) for the risk-control matrix and testing workflow that uses them.
 - **FedRAMP Low / Moderate / High** - Cloud services for government. Derived from the NIST SP 800-53B baseline selections (149 / 287 / 370 controls respectively), so they cannot drift from the 800-53 catalog they are defined against.
 
 ### Reference Models

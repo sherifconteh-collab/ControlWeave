@@ -15,6 +15,15 @@
 
 require('dotenv').config();
 
+// FIPS mode has to be switched on before any module uses crypto.
+try {
+  const fips = require('./config/fips').enableFipsMode();
+  if (fips.enabled) require('./utils/logger').log('info', 'security.fips_mode_enabled', { openssl: fips.openssl });
+} catch (error) {
+  console.error(`[security] ${error.message}`);
+  process.exit(1);
+}
+
 // Sentry must be initialized before any other instrumented modules
 let _sentry = null;
 if (process.env.SENTRY_DSN) {
@@ -470,6 +479,9 @@ const scimRoutes = require('./routes/scim');
 const dependencyRoutes = require('./routes/dependencies');
 const qaRoutes = safeRequire('./routes/qa');
 const hipaaSraRoutes = require('./routes/hipaaSra');
+const financialAuditRoutes = require('./routes/financialAudit');
+const erpAccessRoutes = require('./routes/erpAccess');
+const erpMonitoringRoutes = require('./routes/erpMonitoring');
 const siemRoutes = safeRequire('./routes/siem');
 const performanceRoutes = require('./routes/performance');
 const externalAiRoutes = safeRequire('./routes/externalAi');
@@ -570,6 +582,10 @@ app.use('/api/v1/scim', scimRoutes);
 app.use('/api/v1/platform/dependencies', dependencyRoutes);
 if (qaRoutes) app.use('/api/v1/qa', qaRoutes);
 app.use('/api/v1/hipaa-sra', hipaaSraRoutes);
+app.use('/api/v1/financial-audit', financialAuditRoutes);
+// Mounted before /api/v1/erp so monitoring requests do not pass through the access router.
+app.use('/api/v1/erp/monitoring', erpMonitoringRoutes);
+app.use('/api/v1/erp', erpAccessRoutes);
 if (siemRoutes) app.use('/api/v1/siem', siemRoutes);
 if (dashboardRoutes) app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/frameworks', frameworksRoutes);
@@ -1170,6 +1186,7 @@ ensureLicenseFromDb()
           stopReportScheduler = startReportScheduler ? startReportScheduler() : () => {};
           stopRetentionScheduler = startRetentionScheduler ? startRetentionScheduler() : () => {};
           require('./services/dependencyScheduler').startDependencyScheduler();
+          require('./services/erp/erpScheduler').startErpScheduler();
         }
 
         // Start scheduled database backups if enabled.

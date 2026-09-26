@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.11.3-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.12.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -16,13 +16,13 @@
 
 ## What Is This?
 
-ControlWeaver is a comprehensive multi-framework GRC platform. It manages compliance across 40 frameworks simultaneously, automates evidence collection, and offers optional BYOK AI assists — all fully open source under AGPL v3.
+ControlWeaver is a comprehensive multi-framework GRC platform. It manages compliance across 43 frameworks simultaneously, automates evidence collection, and offers optional BYOK AI assists — all fully open source under AGPL v3.
 
 Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supplement to the platform, not its centerpiece.
 
 **Core differentiators:**
 
-- **44 Frameworks, 1,900+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
+- **47 Frameworks, 1,900+ Controls** — NIST CSF, AI RMF, ISO 27001, SOC 2, CMMC 2.0, EU AI Act, HIPAA, NERC CIP, CIS Controls v8, COBIT 2019, FedRAMP High/Moderate, FINRA, SEC, SR 11-7, and 30 more
 - **Auto-Crosswalk Engine** — Implement one control, automatically satisfy equivalent controls across other frameworks (40–60% effort reduction)
 - **Optional AI Insights (BYOK)** — Gap analysis, compliance forecast, audit readiness, and inline assists on controls/evidence using your own Anthropic, OpenAI, Gemini, Grok, Groq, or Ollama key. The platform works without any AI key configured.
 - **RMF Lifecycle** — Full NIST SP 800-37 Rev 2 seven-step workflow with ATO tracking
@@ -76,7 +76,7 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 ## Features
 
 ### Core Compliance Management
-- **44 Frameworks** across federal, security, privacy, AI governance, and enterprise categories — NIST CSF 2.0, NIST Privacy Framework, NIST AI RMF, FISCAM, NIST 800-53, ISO 27001, SOC 2, NIST 800-171, CMMC 2.0, GDPR, HIPAA, HITECH, FFIEC, NERC CIP, PCI DSS v4.0, CIS Controls v8, COBIT 2019, FedRAMP High, FedRAMP Moderate, FINRA Supervisory Controls for AI, SEC AI Risk Management, SR 11-7 Model Risk Management, EU AI Act, ISO 42001, ISO 42005, ISO 27002, ISO 27005, ISO 27017, ISO 27018, ISO 27701, ISO 31000, CCPA/CPRA, State AI Governance, International AI Governance, OWASP LLM Top 10, OWASP Agentic AI Top 10, NIST SP 800-207 Zero Trust, and 7 ISO/IEC AI standards (23894, 38507, 22989, 23053, 5259, TR 24027, TR 24028)
+- **47 Frameworks** across federal, security, privacy, AI governance, financial audit, and enterprise categories — NIST CSF 2.0, NIST Privacy Framework, NIST AI RMF, FISCAM, COSO 2013, SOX IT General Controls, OMB A-123 Appendix A readiness, NIST 800-53, ISO 27001, SOC 2, NIST 800-171, CMMC 2.0, GDPR, HIPAA, HITECH, FFIEC, NERC CIP, PCI DSS v4.0, CIS Controls v8, COBIT 2019, FedRAMP High, FedRAMP Moderate, FINRA Supervisory Controls for AI, SEC AI Risk Management, SR 11-7 Model Risk Management, EU AI Act, ISO 42001, ISO 42005, ISO 27002, ISO 27005, ISO 27017, ISO 27018, ISO 27701, ISO 31000, CCPA/CPRA, State AI Governance, International AI Governance, OWASP LLM Top 10, OWASP Agentic AI Top 10, NIST SP 800-207 Zero Trust, and 7 ISO/IEC AI standards (23894, 38507, 22989, 23053, 5259, TR 24027, TR 24028)
 - **NIST Publications Library (62 seeded references)** — Searchable NIST publication catalog with direct mappings to in-app controls and assessment tasks, available as optional best-practice guidance or mandatory baseline by organization profile
 - **1,900+ Controls** with broad multi-framework coverage and crosswalk mappings
 - **360+ Crosswalk Mappings** — Implement one control and automatically satisfy equivalent controls across frameworks
@@ -92,6 +92,12 @@ Positioning intent: GRC-first, MCP-native, and integration-first. AI is a supple
 - **Result Recording** — NIST-standard outcomes (Satisfied / Other Than Satisfied / Not Applicable)
 - **Audit Logging** — Complete trail of all user actions
 - **Auditor Workspace** — Dedicated external auditor portal with engagements, PBC requests, workpapers, findings, and sign-offs
+
+### Financial Audit & ERP
+- **Financial Audit Readiness** — Risk-control matrix with assertions, key controls and CSV import; tests of design and operating effectiveness with frequency-table or statistical attribute sample sizes and reproducible selection; findings tracked as NFRs with deficiency classification and POA&M corrective action plans; readiness by process and assertion for SOX 404 and OMB A-123 ([guide](./controlweave/docs/guides/FINANCIAL_AUDIT.md))
+- **ERP Access Governance** (ERP Governance add-on) — Direct connectors for Workday, Oracle Fusion Cloud, SAP Cloud Identity Services and Oracle E-Business Suite, SAP table imports and CSV for any ERP, with scheduled syncs; SAP and Oracle EBS starter maps and a 47-rule function-level segregation of duties library; mitigating controls; access reviews routed to managers, with Jira or ITSM revocation tickets and revocations verified by the next sync; emergency access review ([guide](./controlweave/docs/guides/ERP_ACCESS_GOVERNANCE.md))
+- **ERP Transaction Monitoring** (ERP Governance add-on) — Full-population rules for duplicate payments and invoices, payments after vendor bank changes, exercised SoD conflicts, risky journal entries and three-way match, plus configuration monitoring against baselines, with each run recorded as a control test ([guide](./controlweave/docs/guides/ERP_TRANSACTION_MONITORING.md))
+- **FIPS mode** — `FIPS_MODE=true` runs cryptography through the host's OpenSSL FIPS provider and refuses to start without one ([guide](./controlweave/docs/guides/FEDERAL_DEPLOYMENT.md))
 
 ### AI Insights (Optional)
 - **Single AI Insights page** — Gap analysis, compliance forecast, audit readiness, and risk heatmap, generated on demand. No always-on chat copilot.
@@ -512,7 +518,7 @@ FCM_SERVICE_ACCOUNT=  # JSON string (or path) of Firebase service account key
 
 See [`docs/FRAMEWORK_COVERAGE.md`](./docs/FRAMEWORK_COVERAGE.md) for the full list with control counts, implementation priority by industry, and crosswalk coverage statistics.
 
-All 40 frameworks are available to all users — no license key or subscription required:
+All 43 frameworks are available to all users — no license key or subscription required:
 
 **Core Compliance:** NIST CSF 2.0 · NIST SP 800-53 Rev 5 · NIST SP 800-171 · NIST AI RMF 1.0 · ISO/IEC 27001:2022 · SOC 2 TSC · CMMC 2.0 · NIST SP 800-207 (Zero Trust) · FISCAM
 
@@ -598,7 +604,7 @@ All releases and changelogs: [github.com/sherifconteh-collab/ai-grc-platform/rel
 
 A fresh self-hosted install gives you everything — no license key required:
 
-- All 44 compliance frameworks, 1,900+ controls, 97 crosswalk mappings
+- All 47 compliance frameworks, 1,900+ controls, 97 crosswalk mappings
 - Full evidence management, CMDB, SBOM/AIBOM, TPRM, POA&M, RMF Lifecycle, auditor workspace
 - AI-assisted compliance analysis (BYOK — bring your own LLM key)
 - Multi-org management, SSO, webhooks, MCP server
@@ -1205,7 +1211,7 @@ Beyond the main security pipeline, the following workflows run on schedule or ev
 |----------|-------------|
 | [`docs/README.md`](./docs/README.md) | Canonical documentation map: where product docs, business docs, wiki sources, and root-level docs belong |
 | [`docs/OPEN_SOURCE_BUSINESS_MODEL.md`](./docs/OPEN_SOURCE_BUSINESS_MODEL.md) | Open-core GTM playbook: pricing, sales motion, competitive positioning |
-| [`docs/FRAMEWORK_COVERAGE.md`](./docs/FRAMEWORK_COVERAGE.md) | All 40 frameworks with control counts, crosswalk coverage, and industry priority |
+| [`docs/FRAMEWORK_COVERAGE.md`](./docs/FRAMEWORK_COVERAGE.md) | All 43 frameworks with control counts, crosswalk coverage, and industry priority |
 | [`docs/CROSSWALK_GUIDE.md`](./docs/CROSSWALK_GUIDE.md) | Business guide to cross-framework mappings and ROI |
 | [`docs/HOW_CROSSWALKS_WORK.md`](./docs/HOW_CROSSWALKS_WORK.md) | Technical deep-dive: auto-satisfaction engine, SQL examples, auditor Q&A |
 | [`docs/DATABASE_ARCHITECTURE.md`](./docs/DATABASE_ARCHITECTURE.md) | Full Pro schema: all domains, table structure, security notes |

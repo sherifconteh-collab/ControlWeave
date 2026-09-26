@@ -88,6 +88,14 @@ const navigationSections: NavigationSection[] = [
           { name: 'Cyber Resilience', href: '/dashboard/resilience', icon: '🛟', requiredPermissions: ['assessments.read'] },
         ],
       },
+      {
+        label: 'Financial & ERP',
+        items: [
+          { name: 'Financial Audit Readiness', href: '/dashboard/financial-audit', icon: '🧾', requiredPermissions: ['financial_audit.read'] },
+          { name: 'ERP Access Governance', href: '/dashboard/erp-access', icon: '🔐', requiredPermissions: ['erp.read'] },
+          { name: 'ERP Transaction Monitoring', href: '/dashboard/erp-monitoring', icon: '💸', requiredPermissions: ['erp.read'] },
+        ],
+      },
     ],
   },
   {

@@ -243,7 +243,15 @@ const CHECKS = [
       if (!fs.existsSync(dir) || !fs.existsSync(sync)) return [];
       const failures = [];
       const syncText = code(read(sync));
-      if (!syncText.includes('assertCompleteExtract(')) failures.push('services/erp/syncService.js must call assertCompleteExtract() before loading an extract');
+      // Call sites only (not the definition), and the check must run before
+      // the first loadExtract() call.
+      const firstCall = (name) => {
+        const match = new RegExp(`(?<!function\\s+)\\b${name}\\s*\\(`).exec(syncText);
+        return match ? match.index : -1;
+      };
+      const check = firstCall('assertCompleteExtract');
+      const load = firstCall('loadExtract');
+      if (check < 0 || (load >= 0 && check > load)) failures.push('services/erp/syncService.js must call assertCompleteExtract() before loadExtract() replaces data');
       for (const file of walk(dir).filter((f) => path.basename(f) !== 'shared.js')) {
         const text = code(read(file));
         if (!/\bcomplete\s*:/.test(text)) failures.push(`${rel(file)} must report whether its extract is complete ({ complete, total } in its result)`);
