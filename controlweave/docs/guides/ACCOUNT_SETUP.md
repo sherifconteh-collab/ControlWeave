@@ -183,7 +183,7 @@ Add an extra layer of security using a TOTP authenticator app (Google Authentica
 4. Enter the 6-digit code from the app to confirm setup
 5. Save the one-time backup codes in a secure location
 
-After setup, every email + password sign-in will require both your password and a 6-digit code from your authenticator app. Sign-ins using passkeys or SSO may authenticate without a TOTP challenge, depending on your configuration.
+After setup, every email + password sign-in will require both your password and a 6-digit code from your authenticator app. Single sign-on (your organization's identity provider, or Google, Microsoft, Apple or GitHub) asks for the code too, after the provider signs you in. A passkey sign-in does not, because a passkey is already a phishing-resistant second factor.
 
 > **💡 Security Tip**: Authenticator-based 2FA protects your account even if your password is compromised.
 

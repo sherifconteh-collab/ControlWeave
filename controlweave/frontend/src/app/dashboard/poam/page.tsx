@@ -246,6 +246,11 @@ function PoamListView() {
                       >
                         {item.title}
                       </Link>
+                      {item.external_ticket_key && (
+                        <span className="block text-xs text-gray-500">
+                          {item.external_ticket_key}{item.external_ticket_status ? ` - ${item.external_ticket_status}` : ''}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {item.control_code || '—'}

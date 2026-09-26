@@ -11,6 +11,18 @@
 'use strict';
 
 const Anthropic = require('@anthropic-ai/sdk');
+const { assertSafeUrl, safeFetch } = require('../../utils/netGuard');
+
+/** Reject an organization's Ollama URL that points at a private network (see utils/netGuard). */
+async function assertTenantOllamaUrl(value) {
+  try {
+    await assertSafeUrl(String(value).trim());
+  } catch (error) {
+    const wrapped = new Error(`Ollama URL not allowed: ${error.message}. Self-hosted deployments that run Ollama on a private network set CONNECTOR_ALLOW_PRIVATE_HOSTS=true.`);
+    wrapped.status = 400;
+    throw wrapped;
+  }
+}
 const OpenAI = require('openai');
 const pool = require('../../config/database');
 const { decrypt } = require('../../utils/encrypt');
@@ -221,7 +233,13 @@ async function getOrgApiKey(organizationId, provider) {
     'SELECT setting_value, is_encrypted FROM organization_settings WHERE organization_id = $1 AND setting_key = $2',
     [organizationId, settingKey]
   );
-  if (result.rows.length === 0) return null;
+  if (result.rows.length === 0) {
+    // Cache "no key" too: every AI call walks the whole provider chain, and
+    // uncached misses cost one database round trip per unconfigured provider.
+    // Saving a key calls invalidateApiKeyCache, so a new key is seen at once.
+    apiKeyCache.set(cacheKey, { data: null, timestamp: Date.now() });
+    return null;
+  }
   const row = result.rows[0];
   // Decrypt if the value was stored with AES-256-GCM encryption.
   // decrypt() gracefully returns plain-text for legacy unencrypted rows.
@@ -240,6 +258,10 @@ async function resolveApiKey(provider, organizationId) {
   if (organizationId) {
     const orgKey = await getOrgApiKey(organizationId, provider);
     if (orgKey) {
+      // For Ollama the "key" is a base URL the organization typed in, so the
+      // server would otherwise call any host it names (cloud metadata, the
+      // database): check it like every other tenant-supplied URL.
+      if (provider === 'ollama') await assertTenantOllamaUrl(orgKey);
       return { key: orgKey, source: 'organization' };
     }
   }
@@ -247,35 +269,46 @@ async function resolveApiKey(provider, organizationId) {
   return { key: null, source: null };
 }
 
+// Per-request ceiling for a single provider call. The SDK defaults (10 minute
+// timeout, 2 internal retries) stacked under our own retry and fallback loops
+// could hold one AI request for well over half an hour; our loop in chatCore
+// owns retries, so the SDK makes exactly one attempt within this bound.
+const AI_PROVIDER_TIMEOUT_MS = Math.max(5000, parseInt(process.env.AI_PROVIDER_TIMEOUT_MS || '60000', 10));
+const SDK_CLIENT_OPTIONS = Object.freeze({ timeout: AI_PROVIDER_TIMEOUT_MS, maxRetries: 0 });
+
 function getClient(provider, orgApiKey) {
   if (provider === 'claude') {
     if (!orgApiKey) return null;
-    return new Anthropic.default({ apiKey: orgApiKey });
+    return new Anthropic.default({ apiKey: orgApiKey, ...SDK_CLIENT_OPTIONS });
   }
   if (provider === 'openai') {
     if (!orgApiKey) return null;
-    return new OpenAI.default({ apiKey: orgApiKey });
+    return new OpenAI.default({ apiKey: orgApiKey, ...SDK_CLIENT_OPTIONS });
   }
   if (provider === 'grok') {
     if (!orgApiKey) return null;
-    return new OpenAI.default({ apiKey: orgApiKey, baseURL: XAI_API_BASE });
+    return new OpenAI.default({ apiKey: orgApiKey, baseURL: XAI_API_BASE, ...SDK_CLIENT_OPTIONS });
   }
   if (provider === 'gemini') {
     return orgApiKey ? { apiKey: orgApiKey } : null;
   }
   if (provider === 'groq') {
     if (!orgApiKey) return null;
-    return new OpenAI.default({ apiKey: orgApiKey, baseURL: GROQ_API_BASE });
+    return new OpenAI.default({ apiKey: orgApiKey, baseURL: GROQ_API_BASE, ...SDK_CLIENT_OPTIONS });
   }
   if (provider === 'ollama') {
     if (!orgApiKey) return null;
-    // orgApiKey is the base URL for Ollama; Ollama ignores the Authorization header
-    return new OpenAI.default({ apiKey: 'ollama', baseURL: orgApiKey });
+    // orgApiKey is the organization's base URL for Ollama (Ollama ignores the
+    // Authorization header). safeFetch pins each connection to a checked
+    // address, so the URL cannot be rebound to a private host after the check.
+    return new OpenAI.default({ apiKey: 'ollama', baseURL: orgApiKey, fetch: safeFetch, ...SDK_CLIENT_OPTIONS });
   }
   return null;
 }
 
 module.exports = {
+  assertTenantOllamaUrl,
+  AI_PROVIDER_TIMEOUT_MS,
   GEMINI_API_BASE,
   VALID_PROVIDERS,
   PROVIDER_SETTING_KEY_MAP,

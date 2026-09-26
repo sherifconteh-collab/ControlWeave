@@ -1,36 +1,27 @@
----
-description: Tier system — open source, no feature gates
-globs:
-  - "controlweave/backend/src/middleware/auth.js"
-  - "controlweave/backend/src/middleware/edition.js"
-  - "controlweave/backend/src/config/tierPolicy.js"
-  - "controlweave/backend/src/routes/**"
----
-# Tier System
+# Tier System (open-core)
 
-ControlWeaver is open source. All features are available to all authenticated users — there are no paid tiers, feature gates, or upgrade prompts.
+ControlWeaver ships as open-core. By default (`COMMERCIAL_MODE` unset) every feature is available to every authenticated user with no seat limits, exactly like the fully open-source build. Setting `COMMERCIAL_MODE=true` turns on plan entitlements for SaaS or licensed self-hosted deployments.
 
-## What Was Removed
+## How entitlements work
 
-The original tier system (Community / Pro / Enterprise / Gov Cloud) has been fully removed:
+- Plan catalog: `controlweave/backend/src/config/plans.js` (Community, Pro, Enterprise, Government) with features and user limits.
+- Resolution: `services/entitlementService.js`, in this order:
+  1. a valid self-hosted license key (`LICENSE_KEY` or activated via `/api/v1/license`); its seat count overrides the plan's user limit
+  2. the organization's subscription (`organizations.tier` plus `billing_status` `active_paid`, `past_due`, `canceling`, `comped` or `license`), or an unexpired trial
+  3. otherwise Community
+- Gate a route with `requireFeature('<feature>')` from `services/entitlementService`. When the plan lacks the feature it returns HTTP 402 `{ code: 'plan_upgrade_required', feature, required_plan }`, and it is a no-op when commercial mode is off.
+- Seats: call `assertSeatAvailable(orgId)` before creating or reactivating a user. It throws `code: 'SEAT_LIMIT'`; respond 402 (`seat_limit`).
+- Billing: `routes/billing.js` (Stripe Checkout, customer portal, signed idempotent webhook).
+- Licenses: `scripts/issue-license.js`. RSA-3072 RS256 keys are verified offline by `services/licenseService.js`.
 
-- `requireTier()` and `requireProEdition()` middleware are no-ops — they always call `next()`
-- `checkTierLimit()` middleware is a no-op
-- All inline tier checks in route business logic have been removed
-- Frontend `hasTierAtLeast()` always returns `true`
-- Frontend `requiresBillingResolution()` always returns `false`
-- Billing/Stripe infrastructure has been stubbed out (returns 410 Gone for checkout/portal)
-- Database migration 106 set all organizations to `tier = 'enterprise'` with `billing_status = 'comped'`
+Currently gated: `sso` (Pro), `connectors` (Pro), `hipaa_sra` (Pro), `scim` and `sso_enforcement` (Enterprise).
 
-## What Remains (Backward Compat Only)
+## Rules for new code
 
-- `organizations.tier` column still exists — value is informational only, not enforced
-- `tierPolicy.js` still exports helper functions — all limits are set to unlimited (`-1`)
-- `edition.js` still exports functions for backward compat — all checks pass through
-- `EDITION` is hardcoded to `'open'`
+- Core GRC stays in Community: frameworks, controls, evidence, assessments, risks, POA&M, policies, reports and the audit trail. Do not gate it.
+- Gate only features listed in `plans.js` `FEATURES`, and only with `requireFeature()`. Add a new feature key there first, and document it in `docs/COMMERCIAL_LICENSING.md`.
+- Gate write or "start" actions, not reads: an organization that downgrades must still see and export its existing data.
+- The legacy `requireTier()`, `requireProEdition()` and `checkTierLimit()` middleware remain no-ops. Do not revive them; use `requireFeature()`.
+- Existing organizations were set to `enterprise` / `comped` by migration 106, so turning on commercial mode never removes features from them.
 
-## Adding New Features
-
-All new features must be available to all authenticated users. Do **not** add `requireTier()` or `requireProEdition()` calls to new routes. The CI pipeline's TEVV-API-6 check no longer enforces tier gating — only RBAC (`requirePermission()`) remains as the access control layer.
-
-The `// @tier: community` comment convention is kept for historical context but has no enforcement effect.
+The `// @tier:` comment convention is historical and has no enforcement effect.

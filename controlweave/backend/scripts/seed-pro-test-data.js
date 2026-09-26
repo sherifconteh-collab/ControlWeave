@@ -427,8 +427,8 @@ async function run() {
       // Link first 8 evidence items to first 8 verified controls
       if (i < verifiedControlIds.length) {
         await client.query(
-          `INSERT INTO evidence_control_links (evidence_id, control_id, notes)
-           VALUES ($1, $2, 'Linked via starter test data seed')
+          `INSERT INTO evidence_control_links (evidence_id, control_id, notes, organization_id)
+           SELECT $1, $2, 'Linked via starter test data seed', e.organization_id FROM evidence e WHERE e.id = $1
            ON CONFLICT (evidence_id, control_id) DO NOTHING`,
           [evId, verifiedControlIds[i].id]
         );

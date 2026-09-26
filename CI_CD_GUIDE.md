@@ -29,14 +29,10 @@ and on every pull request. Six jobs, all mandatory:
 3. **`security`** — Dependency Vulnerability Scan: `npm ci && npm audit --audit-level=high`
    for **both** backend and frontend, full dependency tree (not `--production`-scoped).
    Zero high-severity CVEs required.
-4. **`tevv-api`** — 12 sub-checks (TEVV-API-1 through TEVV-API-12) verifying: every route
-   file is syntactically valid, registered in `server.js`, exports a loadable Express
-   router, applies `authenticate` middleware (with a documented public-route exemption
-   list), has RBAC (`requirePermission`) on compliance-domain routes, has SOD
-   (`requireSod`) on approval-workflow routes, has frontend API client coverage, and — for
-   any *new* route file — imports `express-rate-limit` directly (a large baseline of
-   pre-existing route files is grandfathered against this last check; see the inline
-   comment in `ci.yml` for why CodeQL can't see the custom Redis-backed rate limiter).
+4. **`tevv-api`** — sub-checks TEVV-API-1 to -5, -8, -10 and -11 verifying that every
+   route file is syntactically valid, registered in `server.js` and exports a loadable
+   Express router, and that it has frontend API client coverage. The access-control checks
+   that used to live here (API-6, -7, -9 and -12) moved to `tevv-sec`.
 5. **`tevv-db`** — Runs all migrations against a fresh Postgres 17 service container, then
    checks migration file naming (`NNN_` prefix), flags any *new* duplicate migration
    numbers (a known set of legacy duplicates from parallel merges is grandfathered),
@@ -49,8 +45,29 @@ and on every pull request. Six jobs, all mandatory:
    correct API client wrapper (with documented exceptions for pages that are static
    marketing content, redirect stubs, or consume a different API client than their route
    name would suggest — each exception has an inline comment explaining why).
+7. **`tevv-sec`** — Security and audit invariants: rules that came out of independent code
+   review, enforced so the same class of defect cannot return. One script,
+   `controlweave/backend/scripts/tevv-security-audit.js`, runs them all (`npm run
+   tevv:security` locally, one CI step per check):
 
-None of these six jobs are advisory — a failure in any of them blocks merge.
+   | Check | Rule |
+   |---|---|
+   | SEC-1 (was API-6) | Compliance-domain routes use `requirePermission` |
+   | SEC-2 (was API-7) | Approval workflows apply `requireSod` |
+   | SEC-3 (was API-9) | Every non-public route file uses `authenticate` (exemptions listed with reasons) |
+   | SEC-4 (was API-12) | New route files import `express-rate-limit` (grandfathered baseline) |
+   | SEC-5 | Code that makes outbound HTTP requests sends them through the pinned client (`utils/netGuard` `safeFetch` or `connectors/http` `requestJson`), which checks each address at connect time so DNS rebinding cannot reach a private host; a bare `fetch` after a check fails. Files that only call fixed hosts are listed with the reason |
+   | SEC-6 | Every `jwt.sign` passes `algorithm` and every `jwt.verify` passes an `algorithms` allow-list |
+   | SEC-7 | Every route file that issues sessions calls `ssoPolicy.ssoRequiredFor`, so "Require SSO" has no bypass |
+   | SEC-8 | Route files that query the database reference `organization_id` (exemptions listed with reasons) |
+   | SEC-9 | ERP connectors report whether their extract is complete, and the sync refuses incomplete ones |
+   | SEC-10 | Every route file that issues refresh tokens hands them out through `refreshCookie.deliverRefreshToken` (HttpOnly cookie for the web app), and no JSON response names `refreshToken` without it |
+
+   Adding to an exemption list is a reviewable decision: each entry carries its reason in
+   the script. Before an audit, `npm run tevv:security` gives the reviewer the same answers
+   CI does.
+
+None of these seven jobs are advisory — a failure in any of them blocks merge.
 
 ### 1.2 `.github/workflows/security-pipeline.yml` — SAST/DAST/SBOM/AIBOM pipeline
 
@@ -310,7 +327,7 @@ Typical total time across both pipelines: 20–35 minutes.
 | Failure | Where to look | Fix |
 |---|---|---|
 | Syntax/typecheck/lint error | `backend`/`frontend` job in `ci.yml` | Fix the code; `npm run lint -- --fix` for lint |
-| `tevv-api`/`tevv-db`/`tevv-ui` failure | Job step name tells you which sub-check (e.g. TEVV-API-9 = missing `authenticate` middleware) | Match the route/page/migration to the pattern the check expects — see `.claude/rules/api-design.md`, `database.md` |
+| `tevv-api`/`tevv-db`/`tevv-ui`/`tevv-sec` failure | Job step name tells you which sub-check (e.g. TEVV-SEC-3 = missing `authenticate` middleware); `npm run tevv:security` reproduces any TEVV-SEC failure locally | Match the route/page/migration to the pattern the check expects — see `.claude/rules/api-design.md`, `database.md` |
 | `npm audit` failure | `security` job (`ci.yml`) or `backend-build`/`frontend-build` (`security-pipeline.yml`) | `npm audit fix`, or bump the specific package |
 | Secrets detected | `secrets-scan` (non-blocking, but fix it anyway) | Remove the secret, rotate it, use env vars |
 | High/Critical vulnerability flagged | `vulnerability-analysis` job / consolidated GitHub issue | Fix, or go through the risk-acceptance review (Fix/Mitigate/Accept/False-Positive) so `vulnerability-risk-acceptance.yml` can label it `risk-accepted` |

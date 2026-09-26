@@ -1,8 +1,7 @@
 // ITSM connector — queries incidents and change requests. // ip-hygiene:ignore
 'use strict';
 
-const https = require('https');
-const { URL } = require('url');
+const { requestJson } = require('./connectors/http');
 
 const PRIORITY_MAP = { '1': 'critical', '2': 'high', '3': 'medium', '4': 'low', '5': 'low' };
 
@@ -10,32 +9,17 @@ function severityFromPriority(priority) {
   return PRIORITY_MAP[String(priority)] || 'medium';
 }
 
+// Table API read through the shared connector client: SSRF guard on the
+// tenant-supplied instance URL, a timeout, and an error (never an empty
+// result) for a non-2xx status or a body that is not JSON.
 async function snowRequest(config, table, params) {
-  const base = new URL(config.instanceUrl);
+  const base = String(config.instanceUrl || '').trim().replace(/\/+$/, '');
+  if (!/^[a-z][a-z0-9_]{1,79}$/.test(String(table))) throw new Error('Invalid table name');
   const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
   const qs = new URLSearchParams({ sysparm_limit: '200', sysparm_display_value: 'true', ...params }).toString();
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: base.hostname,
-      path: `/api/now/table/${table}?${qs}`,
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    };
-    const req = https.request(options, (res) => {
-      const chunks = [];
-      res.on('data', (d) => chunks.push(d));
-      res.on('end', () => {
-        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-        catch { resolve({ result: [] }); }
-      });
-    });
-    req.on('error', reject);
-    req.end();
-  });
+  const { data } = await requestJson(`${base}/api/now/table/${table}?${qs}`, { headers: { Authorization: `Basic ${auth}` } });
+  if (!data || !Array.isArray(data.result)) throw new Error('The ITSM instance returned an unexpected response');
+  return data;
 }
 
 async function syncFindings(connectorConfig) {

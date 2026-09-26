@@ -163,10 +163,12 @@ The SSP report pulls from your organization profile. To ensure the SSP is comple
 ### Compliance Percentage Calculation
 
 ```
-Compliance % = (Implemented + Satisfied via Crosswalk) / Total Controls × 100
+Compliance % = (Implemented + Verified + Satisfied via Crosswalk) / (In-scope Controls − Not Applicable) × 100
 ```
 
-Controls with status `implemented` or `satisfied_via_crosswalk` count toward compliance.
+Controls with status `implemented`, `verified` or `satisfied_via_crosswalk` count toward compliance. Controls marked **Not Applicable** are excluded from the denominator, so scoping a control out never lowers the score. When your organization has selected a control baseline (for example NIST 800-53 Moderate), only controls in that baseline are in scope.
+
+Reports, the dashboard, the compliance summary, trend snapshots, the Trust Center and the compliance gate all use this same definition, so the same organization sees the same number everywhere. The QA & Self-Test page verifies this on demand.
 
 ### Crosswalk Credits
 

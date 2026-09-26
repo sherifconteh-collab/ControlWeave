@@ -15,7 +15,7 @@ Webhooks allow ControlWeave to send HTTP POST requests to your endpoint when spe
 1. Go to **Settings** → **Integrations** → **Webhooks**
 2. Click **Add Webhook**
 3. Configure:
-   - **URL**: Your endpoint URL (must be HTTPS)
+   - **URL**: Your endpoint URL. It must use HTTPS and resolve to a public address. The address is checked when each delivery connects, and redirects are not followed. Self-hosted installations delivering to an intranet receiver set `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` (and `WEBHOOK_ALLOW_HTTP=true` for plain HTTP).
    - **Events**: Select which events to subscribe to
    - **Secret**: Optional shared secret for request verification
 4. Click **Save**

@@ -29,3 +29,6 @@ qa-report.md
 doc-sync-report.json
 doc-staleness-report.json
 
+
+# Jest coverage output
+coverage/

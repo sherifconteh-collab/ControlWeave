@@ -49,6 +49,6 @@ Before committing:
 
 ## Pull Request Requirements
 
-- All CI checks must pass (6 TEVV layers)
+- All CI checks must pass (7 TEVV layers; run `npm run tevv:security` in `controlweave/backend` before pushing security-relevant changes)
 - No merge conflicts
 - Descriptive PR title matching conventional commit format

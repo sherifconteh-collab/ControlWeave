@@ -58,9 +58,19 @@ These are fixed platform defaults, not per-organization settings — there's no 
 | Setting | Value | Description |
 |---------|-------|-------------|
 | **Access Token** | 15 minutes | Short-lived; auto-refreshed in the background |
-| **Refresh Token Expiry** | 7 days | How long a login stays valid without re-authenticating |
+| **Refresh Token Expiry** | 7 days | How long a login stays valid without re-authenticating. In the browser the refresh token is an HttpOnly cookie that page scripts cannot read, and it rotates on every use |
 | **Account Lockout** | 5 failed attempts → 15-minute lock | Applies to password sign-in |
 | **Concurrent Sessions** | 10 per user by default | Oldest sessions are evicted once the limit is reached; server-configurable via `MAX_CONCURRENT_SESSIONS`, not adjustable from the UI |
+
+### Where the browser keeps the session
+
+- The access token is held in memory only.
+- The refresh token is an `HttpOnly` cookie (`cw_refresh`, path `/api/v1/auth`, `Secure` in production). No script on the page, including an injected one, can read it.
+- Refresh requests must carry the `X-CW-Client: web` header and come from a `CORS_ORIGIN` origin, so another site cannot use the cookie.
+- Tabs take turns refreshing, so opening several tabs does not trip replay detection.
+- Signing out clears the cookie.
+- Browsers signed in before this change keep their session: the old stored token is exchanged once for the cookie and then deleted.
+- The cookie is `SameSite=None` in production, so the API can be on a different domain from the web app. `REFRESH_COOKIE_SAMESITE=strict` or `lax` tightens this when both are on the same site.
 
 ## Audit Log
 

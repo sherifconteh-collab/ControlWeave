@@ -9,6 +9,7 @@ const pool = require('../config/database');
 const auditService = require('../services/auditService');
 const { decrypt } = require('../utils/encrypt');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { isUuid } = require('../middleware/validate');
 const { requireSod } = require('../middleware/sod');
 const { generatePolicyFromFrameworks } = require('../services/policyService');
 const { createNotification } = require('../services/notificationService');
@@ -20,6 +21,11 @@ const {
 } = require('../services/policyGapService');
 
 router.use(authenticate);
+
+// Policy ids are UUIDs. Anything else under /:id (for example /uploads, which
+// is declared further down) falls through to the later, more specific routes
+// instead of reaching a query that would fail on the cast.
+router.param('id', (req, res, next, id) => (isUuid(id) ? next() : next('route')));
 
 const ALLOWED_POLICY_STATUSES = ['draft', 'under_review', 'approved', 'published', 'archived'];
 const ALLOWED_REVIEW_TYPES = ['annual', 'triggered', 'ad_hoc', 'change_driven'];
@@ -160,12 +166,26 @@ router.get('/:id', requirePermission('controls.read'), async (req, res) => {
       [orgId, policyId]
     );
 
+    const policy = policyResult.rows[0];
+    const attestationResult = await pool.query(
+      `SELECT
+         (SELECT COUNT(DISTINCT a.user_id)::int
+            FROM policy_user_acknowledgments a
+            JOIN users u ON u.id = a.user_id AND u.is_active = true
+           WHERE a.organization_id = $1 AND a.policy_id = $2 AND a.policy_version = $3) AS acknowledged_count,
+         (SELECT COUNT(*)::int FROM users WHERE organization_id = $1 AND is_active = true) AS active_users,
+         EXISTS (SELECT 1 FROM policy_user_acknowledgments
+                  WHERE organization_id = $1 AND policy_id = $2 AND policy_version = $3 AND user_id = $4) AS acknowledged_by_me`,
+      [orgId, policyId, policy.version, req.user.id]
+    );
+
     res.json({
       success: true,
       data: {
-        policy: decryptPolicyEmailFields(policyResult.rows[0]),
+        policy: decryptPolicyEmailFields(policy),
         sections: sectionsResult.rows,
-        recent_reviews: decryptPolicyEmailRows(reviewsResult.rows)
+        recent_reviews: decryptPolicyEmailRows(reviewsResult.rows),
+        attestation: { version: policy.version, ...attestationResult.rows[0] }
       }
     });
   } catch (error) {
@@ -428,7 +448,11 @@ router.patch('/:id', requirePermission('controls.write'), async (req, res) => {
       details: {
         old_status: existing.status,
         new_status: updated.status,
-        policy_name: updated.policy_name
+        policy_name: updated.policy_name,
+        // Administrators may approve their own policy (see middleware/sod.js);
+        // record that the separation-of-duties override was used.
+        sod_override: nextStatus === 'approved' && existing.status !== 'approved' &&
+          String(existing.created_by) === String(req.user.id)
       }
     });
 
@@ -472,13 +496,23 @@ router.post('/:id/sections', requirePermission('controls.write'), async (req, re
     await client.query('BEGIN');
 
     const policyResult = await client.query(
-      `SELECT id FROM organization_policies WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+      `SELECT id, status FROM organization_policies WHERE organization_id = $1 AND id = $2 LIMIT 1`,
       [orgId, policyId]
     );
 
     if (policyResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ success: false, error: 'Policy not found' });
+    }
+
+    // Published and archived text is what employees acknowledged; changing it
+    // in place would make those acknowledgments refer to different wording.
+    if (['published', 'archived'].includes(policyResult.rows[0].status)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        success: false,
+        error: 'Published and archived policies are read-only. Return the policy to draft (a new version) to edit it.'
+      });
     }
 
     if (!section_number || !section_title || !section_content) {
@@ -530,8 +564,8 @@ router.post('/:id/sections', requirePermission('controls.write'), async (req, re
         `UPDATE policy_sections
          SET section_title = $4,
              section_content = $5,
-             framework_family_code = $6,
-             framework_family_name = $7,
+             framework_family_code = COALESCE($6, framework_family_code),
+             framework_family_name = COALESCE($7, framework_family_name),
              display_order = $8,
              updated_at = NOW()
          WHERE organization_id = $1 AND policy_id = $2 AND id = $3
@@ -830,6 +864,44 @@ router.post('/:id/acknowledge', requirePermission('controls.read'), async (req, 
   }
 });
 
+// GET /api/v1/policies/:id/acknowledgments
+// Attestation status for the current policy version: who has acknowledged it
+// and which active users still need to.
+router.get('/:id/acknowledgments', requirePermission('controls.read'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    const policyResult = await pool.query(
+      'SELECT version FROM organization_policies WHERE organization_id = $1 AND id = $2',
+      [orgId, req.params.id]
+    );
+    if (policyResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Policy not found' });
+    }
+    const version = policyResult.rows[0].version;
+    const result = await pool.query(
+      `SELECT u.id AS user_id, u.first_name, u.last_name, u.email, u.role,
+              ack.acknowledged_at, ack.acknowledgment_notes
+         FROM users u
+         LEFT JOIN LATERAL (
+           SELECT a.acknowledged_at, a.acknowledgment_notes
+             FROM policy_user_acknowledgments a
+            WHERE a.organization_id = $1 AND a.policy_id = $2 AND a.policy_version = $3 AND a.user_id = u.id
+            ORDER BY a.acknowledged_at DESC
+            LIMIT 1
+         ) ack ON true
+        WHERE u.organization_id = $1 AND u.is_active = true
+        ORDER BY ack.acknowledged_at IS NOT NULL, u.last_name NULLS LAST, u.first_name
+        LIMIT 1000`,
+      [orgId, req.params.id, version]
+    );
+    const rows = result.rows.map((row) => ({ ...row, email: row.email ? decrypt(row.email) : null }));
+    res.json({ success: true, data: { version, users: rows } });
+  } catch (error) {
+    console.error('List policy acknowledgments error:', error);
+    res.status(500).json({ success: false, error: 'Failed to list acknowledgments' });
+  }
+});
+
 // GET /api/v1/policies/:id/monitoring-alerts
 // Get monitoring alerts for a policy
 router.get('/:id/monitoring-alerts', requirePermission('controls.read'), async (req, res) => {
@@ -860,10 +932,8 @@ router.get('/:id/monitoring-alerts', requirePermission('controls.read'), async (
 });
 
 // Configure multer for policy uploads
-const uploadsDir = path.join(__dirname, '../../uploads/policies');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const storageService = require('../services/storageService');
+const uploadsDir = require('../config/uploads').uploadsSubdir('policies');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
@@ -889,7 +959,7 @@ const upload = multer({
 
 // POST /api/v1/policies/upload
 // Upload policy document for analysis
-router.post('/upload', requirePermission('controls.write'), upload.single('policy'), async (req, res) => {
+router.post('/upload', requirePermission('controls.write'), upload.single('policy'), storageService.persistUploads, async (req, res) => {
   try {
     const orgId = req.user.organization_id;
     
@@ -909,7 +979,7 @@ router.post('/upload', requirePermission('controls.write'), upload.single('polic
     
     if (duplicateCheck.rows.length > 0) {
       // Remove uploaded file
-      fs.unlinkSync(req.file.path);
+      await storageService.removeQuietly(req.file.path);
       return res.status(400).json({
         success: false,
         error: 'This policy document has already been uploaded',
@@ -975,8 +1045,8 @@ router.post('/upload', requirePermission('controls.write'), upload.single('polic
   } catch (error) {
     console.error('Policy upload error:', error);
     // Clean up file on error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (req.file) {
+      await storageService.removeQuietly(req.file.path);
     }
     res.status(500).json({ success: false, error: 'Failed to upload policy' });
   }

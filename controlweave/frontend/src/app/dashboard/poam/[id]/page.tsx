@@ -20,6 +20,7 @@ import { hasPermission } from '@/lib/access';
 import { StatusBadge, PriorityBadge, SlippageIndicator, POAM_STATUS_COLORS } from '@/components/poam/PoamStatusBadge';
 import PoamMilestones from '@/components/poam/PoamMilestones';
 import PoamReviewPanel from '@/components/poam/PoamReviewPanel';
+import PoamTicketPanel from '@/components/poam/PoamTicketPanel';
 import { remediationTerms } from '@/lib/poamTerminology';
 import {
   PoamItem, PoamUpdate, PoamLinkedControl, PoamLinkedRisk, PoamApprovalRequest,
@@ -334,6 +335,16 @@ export default function PoamDetailPage() {
             )}
 
             <PoamMilestones poamItemId={id} canWrite={canWrite} onChange={load} />
+
+            <PoamTicketPanel
+              poamItemId={id}
+              ticketKey={item.external_ticket_key}
+              ticketUrl={item.external_ticket_url}
+              ticketStatus={item.external_ticket_status}
+              ticketSyncedAt={item.external_ticket_synced_at}
+              canManage={hasPermission(user, 'settings.manage')}
+              onChange={load}
+            />
 
             <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 space-y-3">
               <h2 className="text-sm font-semibold text-gray-900">Progress</h2>

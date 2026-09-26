@@ -16,6 +16,9 @@ const { evidenceUploaded } = require('../services/realtimeEventService');
 const ragService = require('../services/orgRagService');
 const aiSecurity = require('../utils/aiSecurity');
 const { log, serializeError } = require('../utils/logger');
+const { isUuid } = require('../middleware/validate');
+const { UPLOADS_DIR, resolveUploadPath } = require('../config/uploads');
+const storageService = require('../services/storageService');
 
 // express-rate-limit applied router-wide, ahead of authenticate, so a cheap
 // IP-based bound is in place before any DB/JWT work runs. Set above the
@@ -40,12 +43,8 @@ async function extractTextForRag(filePath, originalName) {
   return '';
 }
 
-// Configure multer for file uploads
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-const resolvedUploadsDir = path.resolve(uploadsDir);
+// Configure multer for file uploads (config/uploads.js; persisted by storageService)
+const uploadsDir = UPLOADS_DIR;
 
 const ALLOWED_PII_CLASSIFICATIONS = ['none', 'low', 'moderate', 'high', 'critical'];
 const ALLOWED_DATA_SENSITIVITIES = ['public', 'internal', 'confidential', 'restricted'];
@@ -156,27 +155,32 @@ function isAllowedUpload(file) {
 }
 
 function isSafeUploadPath(filePath) {
-  if (!filePath) return false;
-  const resolvedPath = path.resolve(filePath);
-  return resolvedPath.startsWith(`${resolvedUploadsDir}${path.sep}`);
+  return resolveUploadPath(filePath) !== null;
 }
 
 function resolveSafeUploadPath(filePath) {
-  if (!filePath || !isSafeUploadPath(filePath)) {
+  const resolvedPath = resolveUploadPath(filePath);
+  if (!resolvedPath) {
     throw new Error('Stored file path is outside allowed uploads directory');
   }
-
-  return path.resolve(filePath);
+  return resolvedPath;
 }
 
 function uploadFileExists(filePath) {
-  if (!filePath || !isSafeUploadPath(filePath)) {
+  const resolvedPath = resolveUploadPath(filePath);
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- resolved path is constrained to the uploads directory.
+  return resolvedPath !== null && fs.existsSync(resolvedPath);
+}
+
+// Like uploadFileExists, but restores the file from object storage when it is
+// missing locally (for example after a redeploy).
+async function ensureUploadAvailable(filePath) {
+  try {
+    return (await storageService.ensureLocal(filePath)) !== null;
+  } catch (error) {
+    log('error', 'evidence.storage_fetch_failed', { error: serializeError(error) });
     return false;
   }
-
-  const resolvedPath = path.resolve(filePath);
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- resolved path is constrained to the uploads directory.
-  return fs.existsSync(resolvedPath);
 }
 
 function readUploadTextFile(filePath) {
@@ -198,14 +202,10 @@ function createUploadReadStream(filePath) {
 }
 
 function removeUploadFile(filePath) {
-  if (!uploadFileExists(filePath)) {
-    return false;
+  if (!isSafeUploadPath(filePath)) {
+    return Promise.resolve(false);
   }
-
-  const resolvedPath = resolveSafeUploadPath(filePath);
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- resolved path is constrained to the uploads directory.
-  fs.unlinkSync(resolvedPath);
-  return true;
+  return storageService.removeQuietly(filePath);
 }
 
 function sanitizeDownloadName(input) {
@@ -393,7 +393,7 @@ router.get('/',
 });
 
 // POST /evidence/upload
-router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 60 * 1000, max: 20 }), requirePermission('evidence.write'), upload.single('file'), async (req, res) => {
+router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 60 * 1000, max: 20 }), requirePermission('evidence.write'), upload.single('file'), storageService.persistUploads, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file provided' });
@@ -513,7 +513,7 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
     });
 
     // Auto-index evidence for RAG (non-blocking — never fails the upload)
-    if (uploadFileExists(evidence.file_path)) {
+    if (await ensureUploadAvailable(evidence.file_path)) {
       const RAG_INDEXABLE = new Set(['.pdf', '.txt', '.md', '.doc', '.docx', '.csv']);
       const ext = path.extname(evidence.file_name || '').toLowerCase();
       if (RAG_INDEXABLE.has(ext)) {
@@ -583,6 +583,19 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
       }
     }
 
+    await auditService.logFromRequest(req, {
+      eventType: 'evidence.uploaded',
+      resourceType: 'evidence',
+      resourceId: evidence.id,
+      details: {
+        file_name: evidence.file_name,
+        file_size: evidence.file_size,
+        integrity_hash_sha256: evidence.integrity_hash_sha256 || null,
+        pii_classification: evidence.pii_classification || null,
+        data_sensitivity: evidence.data_sensitivity || null
+      }
+    }).catch((auditError) => log('error', 'evidence.upload_audit_failed', { error: serializeError(auditError) }));
+
     res.status(201).json({ success: true, data: evidence });
   } catch (error) {
     console.error('Upload error:', error);
@@ -592,7 +605,7 @@ router.post('/upload', createRateLimiter({ label: 'evidence-upload', windowMs: 6
 
 // POST /evidence/bulk-upload
 // Accepts up to 20 files, classifies each synchronously with AI, and returns per-file results.
-router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', windowMs: 60 * 1000, max: 5 }), requirePermission('evidence.write'), upload.array('files', 20), async (req, res) => {
+router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', windowMs: 60 * 1000, max: 5 }), requirePermission('evidence.write'), upload.array('files', 20), storageService.persistUploads, async (req, res) => {
   const files = req.files;
   if (!files || files.length === 0) {
     return res.status(400).json({ success: false, error: 'No files provided' });
@@ -719,9 +732,7 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
       };
     } catch (err) {
       console.error(`Bulk upload error (${file.originalname}):`, err.message);
-      if (uploadFileExists(file.path)) {
-        try { removeUploadFile(file.path); } catch (_) {}
-      }
+      await removeUploadFile(file.path);
       return { success: false, file_name: file.originalname, error: 'Failed to process file' };
     }
   }));
@@ -744,7 +755,7 @@ router.post('/bulk-upload', createRateLimiter({ label: 'evidence-bulk-upload', w
 // happens to be current (issue #570).
 router.post('/:id/versions',
   createRateLimiter({ label: 'evidence-version-upload', windowMs: 60 * 1000, max: 20 }),
-  requirePermission('evidence.write'), upload.single('file'), async (req, res) => {
+  requirePermission('evidence.write'), upload.single('file'), storageService.persistUploads, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'A replacement file is required' });
@@ -903,7 +914,7 @@ router.get('/:id/versions/:versionNumber/download',
     if (!isSafeUploadPath(version.file_path)) {
       return res.status(400).json({ success: false, error: 'Stored file path is outside allowed uploads directory' });
     }
-    if (!uploadFileExists(version.file_path)) {
+    if (!(await ensureUploadAvailable(version.file_path))) {
       return res.status(404).json({ success: false, error: 'File not found on disk' });
     }
 
@@ -943,7 +954,7 @@ router.get('/:id/integrity-check',
     }
 
     const evidence = result.rows[0];
-    if (!evidence.file_path || !uploadFileExists(evidence.file_path)) {
+    if (!evidence.file_path || !(await ensureUploadAvailable(evidence.file_path))) {
       return res.status(404).json({ success: false, error: 'File not found on disk' });
     }
 
@@ -1028,7 +1039,7 @@ router.get('/:id/download',
     if (!isSafeUploadPath(file.file_path)) {
       return res.status(400).json({ success: false, error: 'Stored file path is outside allowed uploads directory' });
     }
-    if (!uploadFileExists(file.file_path)) {
+    if (!(await ensureUploadAvailable(file.file_path))) {
       return res.status(404).json({ success: false, error: 'File not found on disk' });
     }
 
@@ -1170,9 +1181,7 @@ router.delete('/:id',
 
     // Clean up file from disk
     const filePath = result.rows[0].file_path;
-    if (uploadFileExists(filePath)) {
-      removeUploadFile(filePath);
-    }
+    removeUploadFile(filePath);
 
     res.json({ success: true, message: 'Evidence deleted' });
   } catch (error) {
@@ -1188,8 +1197,18 @@ router.post('/:id/link',
   try {
     const { controlIds, notes } = req.body;
 
-    if (!controlIds || !Array.isArray(controlIds)) {
+    if (!controlIds || !Array.isArray(controlIds) || controlIds.length === 0) {
       return res.status(400).json({ success: false, error: 'controlIds array required' });
+    }
+    if (controlIds.length > 500 || !controlIds.every((cid) => isUuid(cid))) {
+      return res.status(400).json({ success: false, error: 'controlIds must be an array of up to 500 control ids' });
+    }
+    const knownControls = await pool.query(
+      'SELECT id FROM framework_controls WHERE id = ANY($1::uuid[])',
+      [controlIds]
+    );
+    if (knownControls.rows.length !== new Set(controlIds).size) {
+      return res.status(400).json({ success: false, error: 'One or more controlIds do not exist' });
     }
 
     // Verify evidence belongs to org
@@ -1205,6 +1224,13 @@ router.post('/:id/link',
         [req.params.id, cid, notes || null]
       );
     }
+
+    await auditService.logFromRequest(req, {
+      eventType: 'evidence.linked',
+      resourceType: 'evidence',
+      resourceId: req.params.id,
+      details: { control_ids: controlIds }
+    }).catch((auditError) => log('error', 'evidence.link_audit_failed', { error: serializeError(auditError) }));
 
     res.json({ success: true, message: 'Controls linked' });
   } catch (error) {

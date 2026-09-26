@@ -509,10 +509,8 @@ async function getWorkflowItems(orgId, vulnerabilityId) {
 // ---------- Scan Import ----------
 // Upload common compliance artifacts (STIG CKL, ACAS/Nessus, SARIF, Fortify FPR).
 // For supported formats, ingest findings into vulnerability_findings (idempotent upsert by finding_key).
-const scanUploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(scanUploadsDir)) {
-  fs.mkdirSync(scanUploadsDir, { recursive: true });
-}
+const storageService = require('../services/storageService');
+const scanUploadsDir = require('../config/uploads').UPLOADS_DIR;
 
 const SCAN_ALLOWED_EXTENSIONS = new Set(['.nessus', '.ckl', '.cklb', '.xml', '.sarif', '.json', '.fpr', '.zip']);
 
@@ -1147,7 +1145,7 @@ async function upsertVulnerabilityFindings(orgId, evidenceUrl, importedAt, match
 }
 
 // POST /vulnerabilities/import
-router.post('/import', requirePermission('evidence.write'), scanUpload.single('file'), async (req, res) => {
+router.post('/import', requirePermission('evidence.write'), scanUpload.single('file'), storageService.persistUploads, async (req, res) => {
   const orgId = req.user.organization_id;
   const userId = req.user.id;
   const importedAt = new Date();
@@ -1309,68 +1307,95 @@ router.get('/', requirePermission('assets.read'), async (req, res) => {
     const limitIdx = params.length + 1;
     const offsetIdx = params.length + 2;
 
+    // Pick the page first, then compute the per-finding counts for just those
+    // rows. Computing them in the same SELECT evaluated them for every finding
+    // before the sort and LIMIT, which at 20k findings / 100k audit events took
+    // several seconds per page.
     const findingsQuery = `
+      WITH page AS (
+        SELECT
+          vf.*,
+          a.name AS asset_name,
+          a.hostname AS asset_hostname,
+          ac.code AS asset_category_code,
+          e.name AS environment_name,
+          CASE vf.severity
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3
+            WHEN 'low' THEN 4
+            WHEN 'info' THEN 5
+            ELSE 6
+          END AS severity_rank
+        FROM vulnerability_findings vf
+        LEFT JOIN assets a ON a.id = vf.asset_id
+        LEFT JOIN asset_categories ac ON ac.id = a.category_id
+        LEFT JOIN environments e ON e.id = a.environment_id
+        WHERE ${whereClause}
+        ORDER BY
+          severity_rank,
+          COALESCE(vf.cvss_score, 0) DESC,
+          COALESCE(vf.last_seen_at, vf.detected_at, vf.created_at) DESC
+        LIMIT $${limitIdx}
+        OFFSET $${offsetIdx}
+      )
       SELECT
-        vf.*,
-        a.name AS asset_name,
-        a.hostname AS asset_hostname,
-        ac.code AS asset_category_code,
-        e.name AS environment_name,
+        page.*,
+        COALESCE(work_items.total, 0)::int AS control_work_items_total,
+        COALESCE(work_items.open, 0)::int AS control_work_items_open,
+        -- UNION of three index-backed lookups (migration 155); same rows as
+        -- OR-ing the conditions, which the planner could only satisfy by
+        -- filtering the organization's whole audit history.
         (
-          SELECT COUNT(*)
-          FROM vulnerability_control_work_items vw
-          WHERE vw.organization_id = vf.organization_id
-            AND vw.vulnerability_id = vf.id
-        )::int AS control_work_items_total,
-        (
-          SELECT COUNT(*)
-          FROM vulnerability_control_work_items vw
-          WHERE vw.organization_id = vf.organization_id
-            AND vw.vulnerability_id = vf.id
-            AND vw.action_status IN ('open', 'in_progress')
-        )::int AS control_work_items_open,
-        (
-          SELECT COUNT(*)
-          FROM audit_logs al
-          WHERE al.organization_id = vf.organization_id
-            AND (
-              (al.resource_type = 'vulnerability' AND al.resource_id::text = vf.id::text)
-              OR (al.details->>'finding_key') = vf.finding_key
-              OR (al.details->>'vulnerability_id') = vf.vulnerability_id
-            )
+          SELECT COUNT(*) FROM (
+            SELECT al.id FROM audit_logs al
+             WHERE al.organization_id = page.organization_id
+               AND al.resource_type = 'vulnerability' AND al.resource_id = page.id
+            UNION
+            SELECT al.id FROM audit_logs al
+             WHERE al.organization_id = page.organization_id
+               AND (al.details->>'finding_key') = page.finding_key
+            UNION
+            SELECT al.id FROM audit_logs al
+             WHERE al.organization_id = page.organization_id
+               AND (al.details->>'vulnerability_id') = page.vulnerability_id
+          ) linked
         )::int AS linked_audit_events
-      FROM vulnerability_findings vf
-      LEFT JOIN assets a ON a.id = vf.asset_id
-      LEFT JOIN asset_categories ac ON ac.id = a.category_id
-      LEFT JOIN environments e ON e.id = a.environment_id
-      WHERE ${whereClause}
+      FROM page
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE vw.action_status IN ('open', 'in_progress')) AS open
+        FROM vulnerability_control_work_items vw
+        WHERE vw.organization_id = page.organization_id
+          AND vw.vulnerability_id = page.id
+      ) work_items ON true
       ORDER BY
-        CASE vf.severity
-          WHEN 'critical' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'medium' THEN 3
-          WHEN 'low' THEN 4
-          WHEN 'info' THEN 5
-          ELSE 6
-        END,
-        COALESCE(vf.cvss_score, 0) DESC,
-        COALESCE(vf.last_seen_at, vf.detected_at, vf.created_at) DESC
-      LIMIT $${limitIdx}
-      OFFSET $${offsetIdx}
+        page.severity_rank,
+        COALESCE(page.cvss_score, 0) DESC,
+        COALESCE(page.last_seen_at, page.detected_at, page.created_at) DESC
     `;
 
     const findingsResult = await pool.query(findingsQuery, [...params, limit, offset]);
 
+    // Create the control-impact workflow only for active findings on this page
+    // that do not have one yet, and re-read the page only if anything changed
+    // (previously every list view re-ran this for all 100 rows and always
+    // re-queried).
+    let createdWorkflows = 0;
     for (const finding of findingsResult.rows) {
       if (!['open', 'in_progress', 'risk_accepted'].includes(String(finding.status || '').toLowerCase())) continue;
+      if (finding.control_work_items_total > 0) continue;
       try {
         await ensureControlImpactWorkflowForFinding(orgId, req.user.id, finding, vulnerabilityConfig);
+        createdWorkflows += 1;
       } catch (workflowError) {
         console.error('Ensure control impact workflow error:', workflowError.message);
       }
     }
 
-    const refreshedFindingsResult = await pool.query(findingsQuery, [...params, limit, offset]);
+    const refreshedFindingsResult = createdWorkflows > 0
+      ? await pool.query(findingsQuery, [...params, limit, offset])
+      : findingsResult;
 
     const countResult = await pool.query(
       `SELECT COUNT(*)::int AS total

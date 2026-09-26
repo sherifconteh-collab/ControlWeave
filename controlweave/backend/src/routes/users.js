@@ -15,6 +15,7 @@ const {
 } = require('../utils/passwordPolicy');
 const { encrypt, decrypt, hashForLookup } = require('../utils/encrypt');
 const { hasPublicColumn } = require('../utils/schema');
+const { assertSeatAvailable } = require('../services/entitlementService');
 
 router.use(authenticate);
 const ALLOWED_PRIMARY_ROLES = new Set(['admin', 'auditor', 'user']);
@@ -152,6 +153,12 @@ router.post('/', requirePermission('users.manage'), validateBody((body) => {
     }
     if (existing.rows.length > 0) {
       return res.status(409).json({ success: false, error: 'Email already registered' });
+    }
+    try {
+      await assertSeatAvailable(req.user.organization_id);
+    } catch (seatError) {
+      if (seatError.code !== 'SEAT_LIMIT') throw seatError;
+      return res.status(402).json({ success: false, error: seatError.message, code: 'seat_limit' });
     }
 
     const { firstName, lastName } = splitFullName(fullName);
@@ -310,6 +317,18 @@ router.patch('/:userId', requirePermission('users.manage'), validateBody((body, 
       if (req.body.primary_role !== undefined) {
         updates.push(`role = $${idx++}`);
         params.push(nextRole);
+      }
+      if (req.body.is_active === true) {
+        const current = await client.query('SELECT is_active FROM users WHERE id = $1 AND organization_id = $2', [req.params.id, req.user.organization_id]);
+        if (current.rows[0] && !current.rows[0].is_active) {
+          try {
+            await assertSeatAvailable(req.user.organization_id, 1, client);
+          } catch (seatError) {
+            if (seatError.code !== 'SEAT_LIMIT') throw seatError;
+            await client.query('ROLLBACK');
+            return res.status(402).json({ success: false, error: seatError.message, code: 'seat_limit' });
+          }
+        }
       }
       if (req.body.is_active !== undefined) {
         updates.push(`is_active = $${idx++}`);

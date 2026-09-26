@@ -8,6 +8,12 @@ POA&M (Plan of Action & Milestones) items document weaknesses or deficiencies id
 
 ---
 
+## Remediation tickets
+
+If your organization has a Jira connector (see `INTEGRATIONS.md`), users with `settings.manage` can click **Create Jira ticket** on a POA&M item to open a linked ticket. The ticket key, link and last known status appear on the item and in the POA&M list, and the status refreshes on every Jira sync. The POA&M item stays the system of record for milestones, review and closure.
+
+---
+
 ## Understanding POA&M
 
 ### What is a POA&M?

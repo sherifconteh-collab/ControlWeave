@@ -7,11 +7,16 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { enqueueWebhookEvent } = require('../services/webhookService');
 const { enqueueJob } = require('../services/jobService');
 const { getConfigValue } = require('../services/dynamicConfigService');
+const connectors = require('../services/connectors');
+const { requireFeature } = require('../services/entitlementService');
+const { isUuid } = require('../middleware/validate');
 
 router.use(authenticate);
 router.use(requirePermission('settings.manage'));
 
-const DEFAULT_CONNECTOR_TEMPLATES = [
+// Connector types without a sync client yet. They can be saved (so settings
+// are ready) but report "sync coming soon" instead of running.
+const PLANNED_CONNECTOR_TEMPLATES = [
   { type: 'splunk', label: 'Splunk', category: 'SIEM', required: ['baseUrl', 'token'], supports_realtime: true },
   { type: 'acas', label: 'ACAS/Nessus', category: 'Vulnerability Scanner', required: ['baseUrl', 'apiKey'], supports_realtime: false },
   { type: 'sbom_repo', label: 'SBOM Repository', category: 'Software Supply Chain', required: ['baseUrl'], supports_realtime: false },
@@ -23,11 +28,21 @@ const DEFAULT_CONNECTOR_TEMPLATES = [
   { type: 'mitre_attack', label: 'MITRE ATT&CK', category: 'Threat Intelligence', required: [], supports_realtime: false, description: 'Adversary tactics and techniques' },
   { type: 'alienvault_otx', label: 'AlienVault OTX', category: 'Threat Intelligence', required: ['apiKey'], supports_realtime: true, description: 'Open Threat Exchange' },
   { type: 'securityscorecard', label: 'SecurityScorecard', category: 'Vendor Security', required: ['apiKey'], supports_realtime: false, description: 'Third-party security ratings' },
-  { type: 'bitsight', label: 'BitSight', category: 'Vendor Security', required: ['apiKey'], supports_realtime: false, description: 'Continuous security ratings' },
-  { type: 'aws_security_hub', label: 'AWS Security Hub', category: 'Cloud Security', required: ['region', 'accessKeyId', 'secretAccessKey'], optional: ['assumeRoleArn'], supports_realtime: false, description: 'AWS Security Hub findings — maps severity to control status and links findings to NIST/CIS controls' },
-  { type: 'qualys_vmdr', label: 'Qualys VMDR', category: 'Vulnerability Scanner', required: ['baseUrl', 'username', 'password'], optional: ['tagIds'], supports_realtime: false, description: 'Qualys VMDR vulnerability detections mapped to CIS Controls v8 and NIST 800-53' },
-  { type: 'servicenow', label: 'ITSM / Change Management', category: 'ITSM / Change Management', required: ['instanceUrl', 'username', 'password'], optional: ['changeTableName', 'incidentTableName'], supports_realtime: false, description: 'ITSM incident and change records linked to control implementation evidence' } // ip-hygiene:ignore
+  { type: 'bitsight', label: 'BitSight', category: 'Vendor Security', required: ['apiKey'], supports_realtime: false, description: 'Continuous security ratings' }
 ];
+
+function defaultTemplates() {
+  const real = connectors.listTemplates();
+  const known = new Set(real.map((t) => t.type));
+  const planned = PLANNED_CONNECTOR_TEMPLATES
+    .filter((t) => !known.has(t.type))
+    .map((t) => ({ optional: [], ...t, secrets: [...(t.required || []), ...(t.optional || [])].filter((k) => /token|key|secret|password/i.test(k)), sync_available: false }));
+  return [...real, ...planned];
+}
+
+function knownType(type) {
+  return defaultTemplates().some((t) => t.type === type);
+}
 
 function normalizeStatus(value) {
   const v = String(value || '').toLowerCase();
@@ -54,7 +69,7 @@ router.get('/templates', async (req, res) => {
   try {
     const orgId = req.user.organization_id;
     const override = await getConfigValue(orgId, 'integrations', 'connector_templates', null);
-    const templates = Array.isArray(override) ? override : DEFAULT_CONNECTOR_TEMPLATES;
+    const templates = Array.isArray(override) ? override : defaultTemplates();
     res.json({ success: true, data: templates });
   } catch (error) {
     console.error('Integration template error:', error);
@@ -66,14 +81,22 @@ router.get('/templates', async (req, res) => {
 router.get('/connectors', async (req, res) => {
   try {
     const orgId = req.user.organization_id;
-    const connectors = await pool.query(
-      `SELECT *
-       FROM integration_connectors
-       WHERE organization_id = $1
-       ORDER BY updated_at DESC`,
+    const result = await pool.query(
+      `SELECT c.*, lr.status AS last_run_status, lr.finished_at AS last_run_at,
+              lr.result_summary AS last_run_summary, lr.error_message AS last_run_error
+       FROM integration_connectors c
+       LEFT JOIN LATERAL (
+         SELECT r.status, r.finished_at, r.result_summary, r.error_message
+           FROM integration_connector_runs r
+          WHERE r.connector_id = c.id AND r.organization_id = c.organization_id
+          ORDER BY r.created_at DESC
+          LIMIT 1
+       ) lr ON true
+       WHERE c.organization_id = $1
+       ORDER BY c.updated_at DESC`,
       [orgId]
     );
-    res.json({ success: true, data: connectors.rows });
+    res.json({ success: true, data: result.rows.map(connectors.redact) });
   } catch (error) {
     console.error('List connectors error:', error);
     res.status(500).json({ success: false, error: 'Failed to load integration connectors' });
@@ -81,13 +104,23 @@ router.get('/connectors', async (req, res) => {
 });
 
 // POST /api/v1/integrations-hub/connectors
-router.post('/connectors', async (req, res) => {
+router.post('/connectors', requireFeature('connectors'), async (req, res) => {
   try {
     const orgId = req.user.organization_id;
     const { name, connector_type, status, auth_config = {}, connector_config = {} } = req.body || {};
     if (!name || !connector_type) {
       return res.status(400).json({ success: false, error: 'name and connector_type are required' });
     }
+    if (!knownType(connector_type)) {
+      return res.status(400).json({ success: false, error: `Unknown connector type: ${String(connector_type).slice(0, 50)}` });
+    }
+    const { auth, settings } = connectors.prepareConfig(connector_type, { authConfig: auth_config, connectorConfig: connector_config });
+    const missing = connectors.missingRequired(connector_type, auth, settings);
+    if (missing.length) {
+      return res.status(400).json({ success: false, error: `Missing required settings: ${missing.join(', ')}` });
+    }
+    const urlError = await connectors.validateUrlSettings(settings);
+    if (urlError) return res.status(400).json({ success: false, error: urlError });
 
     const inserted = await pool.query(
       `INSERT INTO integration_connectors (
@@ -97,11 +130,11 @@ router.post('/connectors', async (req, res) => {
        RETURNING *`,
       [
         orgId,
-        name,
+        String(name).slice(0, 200),
         connector_type,
         normalizeStatus(status),
-        JSON.stringify(auth_config || {}),
-        JSON.stringify(connector_config || {}),
+        JSON.stringify(auth),
+        JSON.stringify(settings),
         req.user.id
       ]
     );
@@ -119,7 +152,7 @@ router.post('/connectors', async (req, res) => {
       name
     });
 
-    res.status(201).json({ success: true, data: inserted.rows[0] });
+    res.status(201).json({ success: true, data: connectors.redact(inserted.rows[0]) });
   } catch (error) {
     console.error('Create connector error:', error);
     res.status(500).json({ success: false, error: 'Failed to create integration connector' });
@@ -144,24 +177,39 @@ router.patch('/connectors/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Integration connector not found' });
     }
 
+    const current = existing.rows[0];
+    let nextAuth = null;
+    let nextSettings = null;
+    if (patch.auth_config !== undefined || patch.connector_config !== undefined) {
+      const prepared = connectors.prepareConfig(
+        current.connector_type,
+        { authConfig: patch.auth_config || {}, connectorConfig: patch.connector_config || {} },
+        current.auth_config || {}
+      );
+      nextAuth = prepared.auth;
+      nextSettings = patch.connector_config === undefined ? current.connector_config : prepared.settings;
+    }
+    if (nextSettings) {
+      const urlError = await connectors.validateUrlSettings(nextSettings);
+      if (urlError) return res.status(400).json({ success: false, error: urlError });
+    }
+
     const updated = await pool.query(
       `UPDATE integration_connectors
        SET name = COALESCE($3, name),
-           connector_type = COALESCE($4, connector_type),
-           status = COALESCE($5, status),
-           auth_config = COALESCE($6::jsonb, auth_config),
-           connector_config = COALESCE($7::jsonb, connector_config),
+           status = COALESCE($4, status),
+           auth_config = COALESCE($5::jsonb, auth_config),
+           connector_config = COALESCE($6::jsonb, connector_config),
            updated_at = NOW()
        WHERE organization_id = $1 AND id = $2
        RETURNING *`,
       [
         orgId,
         id,
-        patch.name || null,
-        patch.connector_type || null,
+        patch.name ? String(patch.name).slice(0, 200) : null,
         patch.status === undefined ? null : normalizeStatus(patch.status),
-        patch.auth_config === undefined ? null : JSON.stringify(patch.auth_config),
-        patch.connector_config === undefined ? null : JSON.stringify(patch.connector_config)
+        nextAuth === null ? null : JSON.stringify(nextAuth),
+        nextSettings === null ? null : JSON.stringify(nextSettings)
       ]
     );
 
@@ -177,7 +225,7 @@ router.patch('/connectors/:id', async (req, res) => {
       status: updated.rows[0].status
     });
 
-    res.json({ success: true, data: updated.rows[0] });
+    res.json({ success: true, data: connectors.redact(updated.rows[0]) });
   } catch (error) {
     console.error('Update connector error:', error);
     res.status(500).json({ success: false, error: 'Failed to update integration connector' });
@@ -216,75 +264,150 @@ router.delete('/connectors/:id', async (req, res) => {
 });
 
 // POST /api/v1/integrations-hub/connectors/:id/run
-router.post('/connectors/:id/run', async (req, res) => {
+// Every result recorded here comes from the external system. A connector type
+// without a sync client is reported as unavailable, never given simulated
+// counts (which previously appeared in run history and audit logs as real).
+router.post('/connectors/:id/run', requireFeature('connectors'), async (req, res) => {
   try {
     const orgId = req.user.organization_id;
     const id = req.params.id;
+    if (!isUuid(id)) return res.status(400).json({ success: false, error: 'Invalid connector id' });
 
     const connector = await pool.query(
-      `SELECT *
-       FROM integration_connectors
-       WHERE organization_id = $1 AND id = $2
-       LIMIT 1`,
+      'SELECT * FROM integration_connectors WHERE organization_id = $1 AND id = $2 LIMIT 1',
       [orgId, id]
     );
     if (connector.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Integration connector not found' });
     }
+    const row = connector.rows[0];
+    if (!connectors.templateFor(row.connector_type)) {
+      return res.status(422).json({
+        success: false,
+        error: `On-demand sync is not available yet for ${row.connector_type} connectors.`,
+        code: 'connector_sync_unavailable'
+      });
+    }
 
     const runStart = await pool.query(
-      `INSERT INTO integration_connector_runs (
-         organization_id, connector_id, run_type, status, started_at, created_by
-       )
+      `INSERT INTO integration_connector_runs (organization_id, connector_id, run_type, status, started_at, created_by)
        VALUES ($1, $2, 'manual', 'running', NOW(), $3)
        RETURNING *`,
       [orgId, id, req.user.id]
     );
-
-    const row = connector.rows[0];
-    const simulatedResult = {
-      connector_type: row.connector_type,
-      synced_assets: row.connector_type.includes('scanner') ? 12 : 5,
-      findings_ingested: row.connector_type.includes('acas') ? 31 : 9,
-      completed_at: new Date().toISOString()
-    };
-
+    const outcome = await connectors.runSync(row, req.user.id);
+    if (outcome.busy) {
+      await pool.query(
+        `UPDATE integration_connector_runs SET status = 'failed', error_message = $2, finished_at = NOW() WHERE id = $1`,
+        [runStart.rows[0].id, 'Another sync of this connector is already running']
+      );
+      return res.status(409).json({ success: false, error: 'This connector is already syncing. Try again when it finishes.' });
+    }
+    const failed = outcome.failed;
     const runFinish = await pool.query(
       `UPDATE integration_connector_runs
-       SET status = 'success',
-           result_summary = $2::jsonb,
-           finished_at = NOW()
+       SET status = $2, result_summary = $3::jsonb, error_message = $4, finished_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [runStart.rows[0].id, JSON.stringify(simulatedResult)]
+      [runStart.rows[0].id, failed ? 'failed' : 'success', JSON.stringify(outcome.summary), failed ? outcome.error : null]
     );
-
     await pool.query(
       `UPDATE integration_connectors
-       SET status = 'active',
-           last_sync_at = NOW(),
+       SET status = $2::text,
+           last_sync_at = CASE WHEN $2::text = 'active' THEN NOW() ELSE last_sync_at END,
            updated_at = NOW()
-       WHERE id = $1`,
-      [id]
+       WHERE id = $1 AND organization_id = $3`,
+      [id, failed ? 'error' : 'active', orgId]
     );
 
     await auditService.logFromRequest(req, {
       eventType: 'integration_connector_run',
       resourceType: 'integration_connector',
       resourceId: id,
-      details: simulatedResult
+      details: { ...outcome.summary, status: failed ? 'failed' : 'success' },
+      success: !failed
     });
-
     await emitConnectorEvent(orgId, req.user.id, 'integration.connector.run', {
       connector_id: id,
       run_id: runFinish.rows[0].id,
-      result: simulatedResult
+      result: outcome.summary
     });
 
+    if (failed) {
+      return res.status(502).json({
+        success: false,
+        error: `Sync failed: ${outcome.error}`,
+        data: runFinish.rows[0]
+      });
+    }
     res.json({ success: true, data: runFinish.rows[0] });
   } catch (error) {
     console.error('Run connector error:', error);
     res.status(500).json({ success: false, error: 'Failed to run integration connector' });
+  }
+});
+
+// POST /api/v1/integrations-hub/connectors/:id/poam/:poamId/ticket
+// Open a Jira ticket for a POA&M item and link it. The ticket's status is
+// refreshed on every sync of the connector.
+router.post('/connectors/:id/poam/:poamId/ticket', requireFeature('connectors'), async (req, res) => {
+  try {
+    const orgId = req.user.organization_id;
+    if (!isUuid(req.params.id) || !isUuid(req.params.poamId)) {
+      return res.status(400).json({ success: false, error: 'Invalid id' });
+    }
+    const [connector, poam] = await Promise.all([
+      pool.query('SELECT * FROM integration_connectors WHERE organization_id = $1 AND id = $2', [orgId, req.params.id]),
+      pool.query(
+        `SELECT p.*, fc.control_id AS control_code
+           FROM poam_items p LEFT JOIN framework_controls fc ON fc.id = p.control_id
+          WHERE p.organization_id = $1 AND p.id = $2`,
+        [orgId, req.params.poamId]
+      )
+    ]);
+    if (!connector.rows.length || connector.rows[0].connector_type !== 'jira') {
+      return res.status(404).json({ success: false, error: 'Jira connector not found' });
+    }
+    if (!poam.rows.length) return res.status(404).json({ success: false, error: 'POA&M item not found' });
+    const item = poam.rows[0];
+    if (item.external_ticket_key) {
+      return res.status(409).json({ success: false, error: `Already linked to ${item.external_ticket_key}` });
+    }
+    const priorityMap = { critical: 'Highest', high: 'High', medium: 'Medium', low: 'Low' };
+    const ticket = await require('../services/connectors/jira').createIssue(connectors.runtimeConfig(connector.rows[0]), {
+      summary: `[POA&M] ${item.title}`,
+      description: [
+        item.description,
+        item.control_code ? `Control: ${item.control_code}` : null,
+        item.remediation_plan ? `Remediation plan: ${item.remediation_plan}` : null,
+        `Tracked in ControlWeave POA&M ${item.id}.`
+      ].filter(Boolean).join('\n\n'),
+      priority: priorityMap[item.priority],
+      dueDate: item.due_date ? new Date(item.due_date).toISOString().slice(0, 10) : undefined,
+      labels: ['poam']
+    });
+    const updated = await pool.query(
+      `UPDATE poam_items
+          SET external_ticket_system = 'jira', external_ticket_key = $3, external_ticket_url = $4,
+              external_ticket_status = 'Created', external_ticket_synced_at = NOW(),
+              external_ticket_connector_id = $5, updated_at = NOW()
+        WHERE organization_id = $1 AND id = $2
+        RETURNING id, external_ticket_key, external_ticket_url, external_ticket_status`,
+      [orgId, item.id, ticket.key, ticket.url, req.params.id]
+    );
+    await auditService.logFromRequest(req, {
+      eventType: 'poam.ticket_created',
+      resourceType: 'poam_item',
+      resourceId: item.id,
+      details: { system: 'jira', ticket: ticket.key, connector_id: req.params.id }
+    });
+    res.status(201).json({ success: true, data: updated.rows[0] });
+  } catch (error) {
+    if (error && error.name === 'ConnectorHttpError') {
+      return res.status(502).json({ success: false, error: `Jira: ${error.message}` });
+    }
+    console.error('Create POA&M ticket error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create the ticket' });
   }
 });
 

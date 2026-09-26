@@ -5,6 +5,7 @@ const { createRateLimiter } = require('../middleware/rateLimit')
 const {
   DEMO_ACCOUNT_BY_INDUSTRY,
   DEFAULT_DEMO_ACCOUNT_EMAIL,
+  isDemoModeEnabled,
   resolveDemoAccountPassword
 } = require('../../scripts/lib/demo-account-config')
 const {
@@ -75,7 +76,8 @@ const publicContactLimiter = createRateLimiter({
 // follow-up email instead — working credentials are never emailed based on
 // the repo's built-in default password.
 function demoAccountDeliveryEnabled() {
-  return String(process.env.DEMO_ACCOUNT_DELIVERY_ENABLED || '').toLowerCase() === 'true'
+  return isDemoModeEnabled()
+    && String(process.env.DEMO_ACCOUNT_DELIVERY_ENABLED || '').toLowerCase() === 'true'
     && String(process.env.DEMO_ACCOUNT_PASSWORD || '').trim().length > 0
 }
 

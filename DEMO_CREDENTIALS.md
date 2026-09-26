@@ -8,7 +8,13 @@
 
 ## Demo Accounts
 
-Every account below uses the password `ControlWeave!2026`. There is one demo
+**Local development only.** On a local stack every account below uses the
+default development password `ControlWeave!2026`. That default is published in
+this repository and is refused in production: a production instance only seeds
+demo accounts when `DEMO_AUTO_SEED=true` is set explicitly, and then requires
+its own `DEMO_ACCOUNT_PASSWORD` (see `controlweave/backend/.env.example`).
+
+There is one demo
 organization per industry vertical, plus one external audit firm, so every
 scenario can be exercised against data that fits the vertical.
 

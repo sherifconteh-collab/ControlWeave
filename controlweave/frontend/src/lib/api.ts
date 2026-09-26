@@ -2,7 +2,7 @@
 // @tier: community
 import axios from 'axios';
 import { getApiBaseUrl } from './apiBase';
-import { getAccessToken, setAccessToken, clearAccessToken } from './tokenStore';
+import { getAccessToken, setAccessToken, clearSession, hasSessionHint, markSession, takeLegacyRefreshToken } from './tokenStore';
 
 export const API_BASE_URL = getApiBaseUrl();
 
@@ -11,6 +11,9 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    // Opts into the HttpOnly refresh-token cookie; a custom header also means
+    // a cross-site page cannot send these requests without a CORS preflight.
+    'X-CW-Client': 'web',
   },
   withCredentials: true,
   timeout: 30_000, // 30s default timeout for non-AI requests
@@ -21,10 +24,21 @@ const AI_REQUEST_TIMEOUT = 180_000; // 3 minutes for individual AI analysis
 const AI_SWARM_TIMEOUT = 300_000;   // 5 minutes for parallel swarm execution
 const UPLOAD_TIMEOUT = 120_000;     // 2 minutes for file uploads/imports
 
-// Request interceptor - add auth token from in-memory store (not localStorage)
+// Request interceptor - add auth token from in-memory store (not localStorage).
+// The access token lives only in memory, so after a reload every component's
+// first request used to go out unauthenticated, fail with 401, and retry after
+// a refresh. When a session exists but no access token is in memory, restore
+// it once (shared single-flight) before sending instead.
 api.interceptors.request.use(
-  (config) => {
-    const token = getAccessToken();
+  async (config) => {
+    let token = getAccessToken();
+    if (!token && hasSessionHint()) {
+      try {
+        token = await refreshAccessToken();
+      } catch {
+        // Leave the request unauthenticated; the 401 handler clears the session.
+      }
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -32,6 +46,61 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+// The refresh token is an HttpOnly cookie that rotates on every use (a
+// replayed old one revokes the session), so tabs must not refresh in parallel:
+// concurrent callers in a tab share one request, and tabs take turns through a
+// Web Lock where the browser supports it.
+let refreshInFlight: Promise<string> | null = null;
+
+async function exchangeRefreshToken(): Promise<string> {
+  // Raw axios, not the intercepted instance, so a 401 here cannot recurse.
+  // A refresh token left in localStorage by an earlier release is sent once
+  // in the body; the API answers with the cookie and it is never stored again.
+  const legacy = takeLegacyRefreshToken();
+  const response = await axios.post(
+    `${API_BASE_URL}/auth/refresh`,
+    legacy ? { refreshToken: legacy } : {},
+    { withCredentials: true, headers: { 'X-CW-Client': 'web' } }
+  );
+  const { accessToken, sessionExpiresAt } = response.data.data as { accessToken: string; sessionExpiresAt?: string };
+  setAccessToken(accessToken);
+  markSession(sessionExpiresAt);
+  return accessToken;
+}
+
+async function refreshWithRetry(): Promise<string> {
+  try {
+    return await exchangeRefreshToken();
+  } catch (err) {
+    // Another tab may have rotated the cookie while this request was in
+    // flight; the browser now holds the new one, so try once more.
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status !== 401) throw err;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    return exchangeRefreshToken();
+  }
+}
+
+async function performRefresh(): Promise<string> {
+  const locks = typeof navigator !== 'undefined' ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
+  if (!locks) return refreshWithRetry();
+  let token = '';
+  await locks.request('cw-refresh', async () => {
+    token = await refreshWithRetry();
+  });
+  return token;
+}
+
+/** Refreshes the access token once, sharing the result with concurrent callers. */
+export function refreshAccessToken(): Promise<string> {
+  if (!refreshInFlight) {
+    refreshInFlight = performRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
 
 // Response interceptor - handle token refresh
 api.interceptors.response.use(
@@ -44,26 +113,14 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token');
-        }
-
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken } = response.data.data;
-        // Store the new access token in memory only, never in localStorage
-        setAccessToken(accessToken);
+        const accessToken = await refreshAccessToken();
 
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed - clear tokens and redirect to login
-        clearAccessToken();
-        localStorage.removeItem('refreshToken');
+        clearSession();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
@@ -134,18 +191,15 @@ export const authAPI = {
   resetPassword: (data: { token: string; password: string }) =>
     api.post('/auth/reset-password', data),
 
-  logout: (refreshToken?: string) =>
-    api.post('/auth/logout', refreshToken ? { refreshToken } : undefined),
+  logout: () => api.post('/auth/logout'),
 
   getCurrentUser: () => api.get('/auth/me'),
 
   getMyOrganizations: () => api.get('/auth/my-organizations'),
 
-  switchOrganization: (orgId: string, refreshToken?: string) =>
-    api.post(`/auth/switch-organization/${orgId}`, refreshToken ? { refreshToken } : undefined),
+  switchOrganization: (orgId: string) => api.post(`/auth/switch-organization/${orgId}`),
 
-  refreshToken: (refreshToken: string) =>
-    api.post('/auth/refresh', { refreshToken }),
+  refreshToken: () => refreshAccessToken(),
 
   validateInvite: (token: string) =>
     api.get(`/auth/invite/${token}`),
@@ -1802,12 +1856,124 @@ export const ssoAPI = {
   getProviders: () => api.get('/sso/providers'),
   getConfig: () => api.get('/sso/config'),
   saveConfig: (data: Record<string, unknown>) => api.put('/sso/config', data),
+  verifyDomain: (domain: string) => api.post('/sso/domains/verify', { domain }),
   getSocialLogins: () => api.get('/sso/social-logins'),
   unlinkSocial: (provider: string) => api.delete(`/sso/social-logins/${provider}`),
   socialLoginUrl: (provider: string) =>
     `${API_BASE_URL}/sso/social/${provider}`,
   orgSsoUrl: (orgId: string) =>
     `${API_BASE_URL}/sso/login/org?org_id=${encodeURIComponent(orgId)}`,
+  exchangeCode: (code: string, totpCode?: string) =>
+    api.post('/sso/exchange', totpCode ? { code, totp_code: totpCode } : { code }),
+  discover: (email: string) => api.get('/sso/discover', { params: { email } }),
+};
+
+// SCIM provisioning tokens (backend: routes/scim.js)
+export const scimAPI = {
+  listTokens: () => api.get('/scim/tokens'),
+  createToken: (name: string) => api.post('/scim/tokens', { name }),
+  revokeToken: (id: string) => api.delete(`/scim/tokens/${id}`),
+};
+
+// QA / self-test APIs (platform acceptance testing)
+export const qaAPI = {
+  getChecks: () => api.get('/qa/checks'),
+  run: (suites?: string[]) =>
+    api.post('/qa/runs', suites && suites.length ? { suites } : {}, { timeout: AI_REQUEST_TIMEOUT }),
+  listRuns: (limit = 20) => api.get('/qa/runs', { params: { limit } }),
+  getRun: (id: string) => api.get(`/qa/runs/${id}`),
+  exportRun: (id: string, format: 'csv' | 'json') =>
+    api.get(`/qa/runs/${id}/export`, { params: { format }, responseType: 'blob' }),
+};
+
+// Policy management APIs (backend: routes/policies.js)
+export type PolicyStatus = 'draft' | 'under_review' | 'approved' | 'published' | 'archived';
+
+export const policiesAPI = {
+  list: (params?: { status?: PolicyStatus; policy_type?: string; limit?: number; offset?: number }) =>
+    api.get('/policies', { params }),
+  get: (id: string) => api.get(`/policies/${id}`),
+  create: (data: {
+    policy_name: string;
+    policy_type: string;
+    description?: string;
+    version?: string;
+    status?: PolicyStatus;
+    effective_date?: string;
+    review_frequency_days?: number;
+  }) => api.post('/policies', data),
+  generate: (data: { policy_name: string; policy_type: string; framework_ids?: string[]; include_all_frameworks?: boolean }) =>
+    api.post('/policies/generate', data, { timeout: AI_REQUEST_TIMEOUT }),
+  update: (id: string, data: {
+    policy_name?: string;
+    policy_type?: string;
+    description?: string;
+    version?: string;
+    status?: PolicyStatus;
+    effective_date?: string;
+    review_frequency_days?: number;
+  }) => api.patch(`/policies/${id}`, data),
+  saveSection: (id: string, data: {
+    section_number: string;
+    section_title: string;
+    section_content: string;
+    display_order?: number;
+  }) => api.post(`/policies/${id}/sections`, data),
+  getSectionControls: (id: string, sectionId: string) => api.get(`/policies/${id}/sections/${sectionId}/controls`),
+  addReview: (id: string, data: {
+    review_type: 'annual' | 'triggered' | 'ad_hoc' | 'change_driven';
+    review_date?: string;
+    review_status: 'scheduled' | 'in_progress' | 'completed' | 'overdue';
+    review_notes?: string;
+    changes_made?: boolean;
+    requires_user_acknowledgment?: boolean;
+  }) => api.post(`/policies/${id}/reviews`, data),
+  acknowledge: (id: string, data?: { acknowledgment_notes?: string }) => api.post(`/policies/${id}/acknowledge`, data || {}),
+  getAcknowledgments: (id: string) => api.get(`/policies/${id}/acknowledgments`),
+  getAlerts: (id: string) => api.get(`/policies/${id}/monitoring-alerts`),
+  upload: (file: File) => {
+    const form = new FormData();
+    form.append('policy', file);
+    return api.post('/policies/upload', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT });
+  },
+  listUploads: () => api.get('/policies/uploads'),
+  analyzeUpload: (uploadId: string, frameworkIds: string[]) =>
+    api.post(`/policies/uploads/${uploadId}/analyze`, { framework_ids: frameworkIds }, { timeout: AI_REQUEST_TIMEOUT }),
+  getUploadGaps: (uploadId: string) => api.get(`/policies/uploads/${uploadId}/gaps`),
+};
+
+// HIPAA Security Risk Assessment APIs (backend: routes/hipaaSra.js)
+export type HipaaSraAnswer = 'implemented' | 'partially_implemented' | 'not_implemented' | 'not_applicable';
+export type HipaaAddressableDecision = 'implemented' | 'alternative_measure' | 'not_reasonable';
+
+export const hipaaSraAPI = {
+  list: () => api.get('/hipaa-sra'),
+  create: (data: { name: string; scope?: { entity_type?: string; locations?: string; ephi_systems?: string; assessor?: string } }) =>
+    api.post('/hipaa-sra', data),
+  get: (id: string) => api.get(`/hipaa-sra/${id}`),
+  saveResponse: (id: string, controlId: string, data: {
+    answer: HipaaSraAnswer | null;
+    addressable_decision?: HipaaAddressableDecision | null;
+    threat?: string | null;
+    vulnerability?: string | null;
+    likelihood?: number | null;
+    impact?: number | null;
+    notes?: string | null;
+  }) => api.put(`/hipaa-sra/${id}/responses/${controlId}`, data),
+  complete: (id: string, promoteRisks = true) => api.post(`/hipaa-sra/${id}/complete`, { promote_risks: promoteRisks }),
+  exportCsv: (id: string) => api.get(`/hipaa-sra/${id}/export`, { responseType: 'blob' }),
+};
+
+// Dependency tracker (platform owner; backend: routes/dependencies.js)
+export type DependencyDecision = 'open' | 'planned' | 'accepted' | 'snoozed' | 'done';
+
+export const dependenciesAPI = {
+  getReport: () => api.get('/platform/dependencies'),
+  runCheck: () => api.post('/platform/dependencies/check', {}, { timeout: AI_REQUEST_TIMEOUT }),
+  setDecision: (data: { component: string; name: string; status: DependencyDecision; note?: string; target_version?: string; snooze_until?: string }) =>
+    api.put('/platform/dependencies/decision', data),
+  createPoam: (component: string, name: string) => api.post('/platform/dependencies/poam', { component, name }),
+  exportCsv: () => api.get('/platform/dependencies/export', { responseType: 'blob' }),
 };
 
 // SIEM APIs
@@ -2028,6 +2194,9 @@ export const billingAPI = {
     api.post('/billing/cancel', data),
   downgradeToFree: () =>
     api.post('/billing/downgrade-to-free'),
+  getEntitlements: () => api.get('/billing/entitlements'),
+  startCheckout: (plan: 'pro' | 'enterprise', interval: 'monthly' | 'annual') =>
+    api.post('/billing/checkout', { plan, interval }),
 };
 
 // License API (self-hosted / community edition)
@@ -2107,6 +2276,8 @@ export const integrationsHubAPI = {
   deleteConnector: (id: string) => api.delete(`/integrations-hub/connectors/${id}`),
   runConnector: (id: string) => api.post(`/integrations-hub/connectors/${id}/run`),
   getConnectorRuns: (id: string) => api.get(`/integrations-hub/connectors/${id}/runs`),
+  createPoamTicket: (connectorId: string, poamId: string) =>
+    api.post(`/integrations-hub/connectors/${connectorId}/poam/${poamId}/ticket`),
 };
 
 // AI Continuous Monitoring API (rules engine, anomaly events, baselines)

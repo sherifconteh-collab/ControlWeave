@@ -5,7 +5,8 @@ const { Issuer } = require('openid-client');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const pool = require('../config/database');
-const { encrypt, decrypt } = require('../utils/encrypt');
+const { encrypt, decrypt, hashForLookup } = require('../utils/encrypt');
+const { hasPublicColumn } = require('../utils/schema');
 
 // ─── Social provider base configs ────────────────────────────────────────────
 
@@ -126,6 +127,46 @@ async function saveOrgSsoConfig(organizationId, data) {
   );
 }
 
+/**
+ * SAML identity provider settings and the SSO enforcement flag. Stored
+ * separately from the OIDC fields so an OIDC save does not clear them.
+ */
+async function saveSamlSettings(organizationId, data) {
+  await pool.query(
+    `UPDATE sso_configurations
+        SET saml_entry_point = $2, saml_idp_issuer = $3,
+            saml_idp_cert = COALESCE($4, saml_idp_cert),
+            saml_email_attribute = $5, saml_name_attribute = $6,
+            saml_allow_idp_initiated = $7, enforce_sso = $8, updated_at = NOW()
+      WHERE organization_id = $1`,
+    [
+      organizationId,
+      data.saml_entry_point || null,
+      data.saml_idp_issuer || null,
+      data.saml_idp_cert || null,
+      data.saml_email_attribute || null,
+      data.saml_name_attribute || null,
+      data.saml_allow_idp_initiated === true,
+      data.enforce_sso === true
+    ]
+  );
+}
+
+/** Enabled SSO configuration whose verified email domain matches, or null. */
+async function findSsoByEmail(email) {
+  const domain = String(email || '').toLowerCase().split('@')[1];
+  if (!domain) return null;
+  const { rows } = await pool.query(
+    `SELECT c.organization_id, c.provider_type, c.display_name, c.enforce_sso
+       FROM sso_email_domains d
+       JOIN sso_configurations c ON c.organization_id = d.organization_id AND c.enabled = true
+      WHERE d.domain = $1 AND d.verified_at IS NOT NULL
+      LIMIT 1`,
+    [domain]
+  );
+  return rows[0] || null;
+}
+
 // ─── OIDC flow helpers ────────────────────────────────────────────────────────
 
 async function getOidcAuthUrl(discoveryUrl, clientId, clientSecret, redirectUri, state, nonce, scopes) {
@@ -157,16 +198,29 @@ function splitFullName(name, fallbackEmail) {
   };
 }
 
-async function provisionUser(organizationId, email, name, role, provider, providerUserId, accessToken, refreshToken, expiresAt) {
+async function provisionUser(organizationId, email, name, role, provider, providerUserId, accessToken, refreshToken, expiresAt, { autoProvision = true } = {}) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // Look for existing user in the org
-    let userRow = await client.query(
-      `SELECT id, is_active FROM users WHERE email = $1 AND organization_id = $2 LIMIT 1`,
-      [email.toLowerCase(), organizationId]
-    );
+    // users.email is field-level encrypted; email_hash is the lookup key.
+    // Pre-encryption rows (email_hash IS NULL) still match on plaintext.
+    const normalizedEmail = email.toLowerCase();
+    const emailHash = (await hasPublicColumn('users', 'email_hash')) ? hashForLookup(normalizedEmail) : null;
+    let userRow = { rows: [] };
+    if (emailHash) {
+      userRow = await client.query(
+        `SELECT id, is_active FROM users WHERE email_hash = $1 AND organization_id = $2 LIMIT 1`,
+        [emailHash, organizationId]
+      );
+    }
+    if (userRow.rows.length === 0) {
+      userRow = await client.query(
+        `SELECT id, is_active FROM users
+         WHERE email = $1 AND organization_id = $2 AND email_hash IS NULL LIMIT 1`,
+        [normalizedEmail, organizationId]
+      );
+    }
 
     let userId;
     if (userRow.rows.length > 0) {
@@ -174,16 +228,26 @@ async function provisionUser(organizationId, email, name, role, provider, provid
         throw new Error('Account is disabled');
       }
       userId = userRow.rows[0].id;
+    } else if (!autoProvision) {
+      throw new Error('Account not provisioned');
     } else {
+      await require('./entitlementService').assertSeatAvailable(organizationId, 1, client);
       // Auto-provision new user
       const { firstName, lastName } = splitFullName(name, email);
       const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 14);
-      const newUser = await client.query(
-        `INSERT INTO users (email, first_name, last_name, organization_id, role, is_active, password_hash)
-         VALUES ($1, $2, $3, $4, $5, true, $6)
-         RETURNING id`,
-        [email.toLowerCase(), firstName, lastName, organizationId, role || 'user', passwordHash]
-      );
+      const newUser = emailHash
+        ? await client.query(
+          `INSERT INTO users (email, email_hash, first_name, last_name, organization_id, role, is_active, password_hash)
+           VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+           RETURNING id`,
+          [encrypt(normalizedEmail), emailHash, firstName, lastName, organizationId, role || 'user', passwordHash]
+        )
+        : await client.query(
+          `INSERT INTO users (email, first_name, last_name, organization_id, role, is_active, password_hash)
+           VALUES ($1, $2, $3, $4, $5, true, $6)
+           RETURNING id`,
+          [normalizedEmail, firstName, lastName, organizationId, role || 'user', passwordHash]
+        );
       userId = newUser.rows[0].id;
     }
 
@@ -235,19 +299,23 @@ async function exchangeGitHubCode(code, redirectUri) {
   });
   const user = await userRes.json();
 
-  let email = user.email;
-  if (!email) {
-    const emailsRes = await fetch(cfg.emailUrl, {
-      headers: { Authorization: `Bearer ${tokenData.access_token}`, 'User-Agent': 'ControlWeave' },
-    });
-    const emails = await emailsRes.json();
-    const primary = Array.isArray(emails) ? emails.find(e => e.primary && e.verified) : null;
-    email = primary?.email || null;
-  }
+  // The profile email is user-editable and not necessarily verified, so the
+  // verified-address list is the source of truth for account linking.
+  const emailsRes = await fetch(cfg.emailUrl, {
+    headers: { Authorization: `Bearer ${tokenData.access_token}`, 'User-Agent': 'ControlWeave' },
+  });
+  const emailList = await emailsRes.json();
+  const verified = Array.isArray(emailList) ? emailList.filter((e) => e && e.verified) : [];
+  const profileMatch = user.email
+    ? verified.find((e) => String(e.email).toLowerCase() === String(user.email).toLowerCase())
+    : null;
+  const chosen = profileMatch || verified.find((e) => e.primary) || null;
+  const email = chosen?.email || user.email || null;
 
   return {
     providerUserId: String(user.id),
     email,
+    emailVerified: Boolean(chosen),
     name: user.name || user.login,
     accessToken: tokenData.access_token,
   };
@@ -257,6 +325,8 @@ module.exports = {
   SOCIAL_PROVIDERS,
   getOrgSsoConfig,
   saveOrgSsoConfig,
+  saveSamlSettings,
+  findSsoByEmail,
   getOidcAuthUrl,
   exchangeOidcCode,
   getGitHubAuthUrl,

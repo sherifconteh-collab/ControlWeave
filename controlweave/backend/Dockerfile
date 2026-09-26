@@ -1,6 +1,11 @@
 # Backend Dockerfile for ControlWeave
 FROM node:20-alpine3.21 AS base
 RUN apk update && apk upgrade --no-cache
+# The npm bundled with the Node 20 image ships tar 6.2.1 (CVE-2026-59873,
+# critical, fixed in tar 7.5.19). npm 11.20.0 bundles tar 7.5.22 and still
+# supports Node 20. Every stage inherits this, including the runner, where
+# Railway's preDeploy and start commands call npm.
+RUN npm install -g npm@11.20.0 && npm cache clean --force
 
 # Install production dependencies
 FROM base AS deps

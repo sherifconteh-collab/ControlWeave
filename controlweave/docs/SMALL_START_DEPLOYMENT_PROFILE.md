@@ -15,7 +15,7 @@ Recommended deployment configuration for small teams and initial ControlWeave ad
 | Database | PostgreSQL 17+ (managed, e.g., Railway, Supabase) |
 | Backend | Single Node.js instance, 512 MB RAM minimum |
 | Frontend | Next.js, static export or Vercel/Railway |
-| Storage | Local filesystem or S3-compatible for evidence uploads |
+| Storage | S3-compatible bucket (`S3_BUCKET`) or a persistent volume at `UPLOADS_DIR`; see `docs/runbooks/file-storage.md` |
 
 ## Getting Started
 

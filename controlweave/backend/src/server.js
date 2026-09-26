@@ -32,6 +32,7 @@ const cors = require('cors');
 const compression = require('compression');
 const pool = require('./config/database');
 const { attachRequestContext } = require('./middleware/requestContext');
+const { auditBaseline } = require('./middleware/auditLog');
 const { createRateLimiter } = require('./middleware/rateLimit');
 const { log, requestLogger, serializeError, installConsoleBridge } = require('./utils/logger');
 
@@ -49,7 +50,11 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 const { performanceTracker } = require('./middleware/performanceMonitoring');
-const { DEMO_ADMIN_ACCOUNTS } = require('../scripts/lib/demo-account-config');
+const {
+  DEMO_ADMIN_ACCOUNTS,
+  isDemoModeEnabled,
+  resolveDemoAccountPassword
+} = require('../scripts/lib/demo-account-config');
 const { hashForLookup } = require('./utils/encrypt');
 // safeRequire is defined here (before any conditional imports) so it can be used
 // for services and routes that are absent in the community/public-mirror build.
@@ -78,7 +83,15 @@ const { getRedisAdapterStatus } = require('./services/websocketService');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const corsOrigins = SECURITY_CONFIG.corsOrigins;
-const allowAnyOrigin = corsOrigins.includes('*');
+// A wildcard origin combined with credentials: true reflects every origin
+// with credentialed CORS, letting any site make authenticated calls. Refuse it
+// in production; outside production it stays available for local tooling.
+const allowAnyOrigin = corsOrigins.includes('*') && !SECURITY_CONFIG.isProduction;
+if (corsOrigins.includes('*') && SECURITY_CONFIG.isProduction) {
+  log('error', 'server.cors.wildcard_rejected', {
+    detail: 'CORS_ORIGIN contains "*", which is ignored in production. List explicit origins instead.'
+  });
+}
 const databaseConfigured = Boolean(pool.isConfigured);
 
 function loadOptionalRoute(modulePath, routeLabel, enabled) {
@@ -98,8 +111,29 @@ function loadOptionalRoute(modulePath, routeLabel, enabled) {
   }
 }
 
+// Every rate limiter and audit record keys on req.ip, which Express only
+// derives from X-Forwarded-For when trust proxy is set. Production deploys
+// (Railway and most PaaS) sit behind one proxy hop, so that is the default;
+// TRUST_PROXY=false opts out for a directly internet-facing server.
 if (process.env.TRUST_PROXY !== undefined) {
-  app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : process.env.TRUST_PROXY);
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy === 'true') app.set('trust proxy', 1);
+  else if (trustProxy !== 'false') app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+} else if (SECURITY_CONFIG.isProduction) {
+  app.set('trust proxy', 1);
+}
+
+// Without Redis each instance keeps its own rate-limit counters, so limits
+// multiply by the replica count. RATE_LIMIT_REQUIRE_REDIS=true makes that a
+// hard startup failure for multi-replica deployments.
+if (SECURITY_CONFIG.isProduction && !process.env.REDIS_URL && !process.env.REDIS_HOST) {
+  if (String(process.env.RATE_LIMIT_REQUIRE_REDIS || '').toLowerCase() === 'true') {
+    log('error', 'server.startup.redis_required', { detail: 'RATE_LIMIT_REQUIRE_REDIS=true but REDIS_URL/REDIS_HOST is not set.' });
+    process.exit(1);
+  }
+  log('warn', 'server.startup.redis_not_configured', {
+    detail: 'Rate limits are per-instance. Set REDIS_URL before running more than one replica.'
+  });
 }
 
 const loginRateLimiter = createRateLimiter({
@@ -147,7 +181,7 @@ app.use(cors({
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-CW-Client'],
   credentials: true
 }));
 app.use((req, res, next) => {
@@ -201,6 +235,8 @@ app.use('/api/v1/auth/refresh', refreshRateLimiter);
 app.use('/api/v1/auth/forgot-password', passwordRecoveryRateLimiter);
 app.use('/api/v1/auth/reset-password', passwordRecoveryRateLimiter);
 app.use('/api/v1', apiRateLimiter);
+// Baseline audit trail for every state-changing API call (see middleware/auditLog.js).
+app.use('/api/v1', auditBaseline);
 
 // Validate edition at startup
 validateEdition();
@@ -430,6 +466,10 @@ const auditorWorkspaceRoutes = require('./routes/auditorWorkspace');
 const opsRoutes = require('./routes/ops');
 const passkeyRoutes = safeRequire('./routes/passkeys');
 const ssoRoutes = safeRequire('./routes/sso');
+const scimRoutes = require('./routes/scim');
+const dependencyRoutes = require('./routes/dependencies');
+const qaRoutes = safeRequire('./routes/qa');
+const hipaaSraRoutes = require('./routes/hipaaSra');
 const siemRoutes = safeRequire('./routes/siem');
 const performanceRoutes = require('./routes/performance');
 const externalAiRoutes = safeRequire('./routes/externalAi');
@@ -500,6 +540,7 @@ const _absentPaidRoutes = [
   ['dataGovernance',   dataGovernanceRoutes],
   ['passkeys',         passkeyRoutes],
   ['sso',              ssoRoutes],
+  ['qa',               qaRoutes],
   ['siem',             siemRoutes],
   ['externalAi',       externalAiRoutes],
   ['externalAiKeys',   externalAiKeysRoutes],
@@ -525,6 +566,10 @@ if (passkeyRoutes) app.use('/api/v1/auth/passkey', passkeyRoutes);
 app.use('/api/v1/auth/totp', totpRoutes);
 app.use('/api/v1/auth', authRoutes);
 if (ssoRoutes) app.use('/api/v1/sso', ssoRoutes);
+app.use('/api/v1/scim', scimRoutes);
+app.use('/api/v1/platform/dependencies', dependencyRoutes);
+if (qaRoutes) app.use('/api/v1/qa', qaRoutes);
+app.use('/api/v1/hipaa-sra', hipaaSraRoutes);
 if (siemRoutes) app.use('/api/v1/siem', siemRoutes);
 if (dashboardRoutes) app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/frameworks', frameworksRoutes);
@@ -654,21 +699,63 @@ app.use((req, res) => {
 // Auto-provision platform admin on startup if env vars are set
 // Set PLATFORM_ADMIN_EMAIL (+ optionally PLATFORM_ADMIN_PASSWORD,
 // PLATFORM_ADMIN_FIRST_NAME, PLATFORM_ADMIN_LAST_NAME, PLATFORM_ADMIN_ORG)
-// in Railway Variables and the account is created/updated on every deploy.
+// in Railway Variables. The account is created on first deploy; later deploys
+// only rotate the password when PLATFORM_ADMIN_PASSWORD is set. A deactivated
+// platform admin is never silently re-activated, and a generated password is
+// never written to logs -- a new account without PLATFORM_ADMIN_PASSWORD gets
+// an unusable random hash and must complete the password-reset flow.
+async function findPlatformAdminUser(client, email, emailHash) {
+  if (emailHash) {
+    const byHash = await client.query(
+      'SELECT id, is_active FROM users WHERE email_hash = $1 LIMIT 1',
+      [emailHash]
+    );
+    if (byHash.rows.length > 0) return byHash.rows[0];
+  }
+  // Pre-encryption rows (email_hash IS NULL) still hold the plaintext email.
+  const byPlain = await client.query(
+    'SELECT id, is_active FROM users WHERE email = $1 AND email_hash IS NULL LIMIT 1',
+    [email]
+  );
+  return byPlain.rows[0] || null;
+}
+
 async function ensurePlatformAdmin() {
   const email = String(process.env.PLATFORM_ADMIN_EMAIL || '').trim().toLowerCase();
   if (!email) return; // env var not set — skip silently
 
   const { randomBytes } = require('crypto');
   const bcrypt = require('bcryptjs');
+  const { encrypt } = require('./utils/encrypt');
+  const { hasPublicColumn } = require('./utils/schema');
   const firstName = String(process.env.PLATFORM_ADMIN_FIRST_NAME || 'Platform').trim();
   const lastName  = String(process.env.PLATFORM_ADMIN_LAST_NAME  || 'Admin').trim();
   const orgName   = String(process.env.PLATFORM_ADMIN_ORG        || 'ControlWeave Platform').trim();
-  let password = String(process.env.PLATFORM_ADMIN_PASSWORD || '').trim();
+  const password = String(process.env.PLATFORM_ADMIN_PASSWORD || '').trim();
+  const emailHash = (await hasPublicColumn('users', 'email_hash')) ? hashForLookup(email) : null;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    const existing = await findPlatformAdminUser(client, email, emailHash);
+    if (existing) {
+      if (password) {
+        await client.query(
+          'UPDATE users SET password_hash = $1, is_platform_admin = true WHERE id = $2',
+          [await bcrypt.hash(password, 14), existing.id]
+        );
+      } else {
+        await client.query('UPDATE users SET is_platform_admin = true WHERE id = $1', [existing.id]);
+      }
+      await client.query('COMMIT');
+      log(existing.is_active ? 'info' : 'warn', 'platform.admin.updated', {
+        email,
+        passwordRotated: Boolean(password),
+        isActive: Boolean(existing.is_active)
+      });
+      return;
+    }
 
     let orgId;
     const existingOrg = await client.query(
@@ -685,30 +772,21 @@ async function ensurePlatformAdmin() {
       orgId = orgRes.rows[0].id;
     }
 
-    const existingUser = await client.query(
-      'SELECT id FROM users WHERE email = $1 LIMIT 1',
-      [email]
-    );
-    const isExistingUser = existingUser.rows.length > 0;
-    const shouldGeneratePassword = !password && !isExistingUser;
-    const shouldUpdatePassword = Boolean(password) || shouldGeneratePassword;
-
-    if (shouldGeneratePassword) {
-      password = `CW-${randomBytes(9).toString('base64url')}!1`;
-    }
-
-    const hash = shouldUpdatePassword ? await bcrypt.hash(password, 14) : null;
+    // Without an explicit password the account gets a random secret nobody
+    // knows; the operator sets a real one through the password-reset flow.
+    const hash = await bcrypt.hash(password || randomBytes(32).toString('hex'), 14);
+    const insertCols = emailHash
+      ? 'organization_id, email, email_hash, password_hash, first_name, last_name, role, is_active, is_platform_admin'
+      : 'organization_id, email, password_hash, first_name, last_name, role, is_active, is_platform_admin';
+    const insertVals = emailHash
+      ? [orgId, encrypt(email), emailHash, hash, firstName, lastName]
+      : [orgId, email, hash, firstName, lastName];
+    const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
     const result = await client.query(
-      `INSERT INTO users
-         (organization_id, email, password_hash, first_name, last_name, role, is_active, is_platform_admin)
-       VALUES ($1,$2,$3,$4,$5,'admin',true,true)
-       ON CONFLICT (email) DO UPDATE SET
-         organization_id=EXCLUDED.organization_id,
-         password_hash=COALESCE(EXCLUDED.password_hash, users.password_hash),
-         first_name=EXCLUDED.first_name, last_name=EXCLUDED.last_name,
-         role='admin', is_active=true, is_platform_admin=true
-       RETURNING id, email, (xmax=0) AS inserted`,
-      [orgId, email, hash, firstName, lastName]
+      `INSERT INTO users (${insertCols})
+       VALUES (${placeholders}, 'admin', true, true)
+       RETURNING id`,
+      insertVals
     );
     const userId = result.rows[0].id;
 
@@ -726,12 +804,12 @@ async function ensurePlatformAdmin() {
 
     await client.query('COMMIT');
 
-    const mode = result.rows[0].inserted ? 'created' : 'updated';
-    log('info', 'platform.admin.provisioned', { email, status: mode, org: orgName });
-    if (shouldGeneratePassword) {
-      log('info', 'platform.admin.generated_password', { email, password });
-    } else if (!password && isExistingUser) {
-      log('info', 'platform.admin.password_preserved', { email });
+    log('info', 'platform.admin.provisioned', { email, status: 'created', org: orgName });
+    if (!password) {
+      log('warn', 'platform.admin.password_reset_required', {
+        email,
+        detail: 'No PLATFORM_ADMIN_PASSWORD set. Use "Forgot password" on the login page to set one.'
+      });
     }
   } catch (err) {
     await client.query('ROLLBACK');
@@ -792,9 +870,15 @@ async function ensurePlatformAdminSelfAssessment() {
 }
 
 async function ensureDemoAccountsSeeded() {
-  const demoAutoSeedEnabled = String(process.env.DEMO_AUTO_SEED || 'true').trim().toLowerCase() !== 'false';
-  if (!demoAutoSeedEnabled) {
-    log('info', 'demo.seed.skipped', { reason: 'disabled_by_env' });
+  // Opt-in in production (DEMO_AUTO_SEED=true); on by default elsewhere.
+  if (!isDemoModeEnabled()) {
+    log('info', 'demo.seed.skipped', { reason: 'demo_mode_disabled' });
+    return;
+  }
+  try {
+    resolveDemoAccountPassword({ value: process.env.DEMO_ACCOUNT_PASSWORD, label: 'DEMO_ACCOUNT_PASSWORD' });
+  } catch (err) {
+    log('error', 'demo.seed.skipped', { reason: 'invalid_demo_password', error: err.message });
     return;
   }
 
@@ -1067,6 +1151,8 @@ ensureLicenseFromDb()
         health: `http://localhost:${PORT}/health`,
         environment: process.env.NODE_ENV || 'development'
       });
+      const storageInfo = require('./services/storageService').warnIfEphemeral();
+      log('info', 'storage.configured', { driver: storageInfo.driver, durable: storageInfo.durable });
 
       // Initialize WebSocket server after HTTP server is ready
       const { initializeWebSocket } = require('./services/websocketService');
@@ -1083,6 +1169,7 @@ ensureLicenseFromDb()
           stopReminders = startReminderScheduler ? startReminderScheduler() : () => {};
           stopReportScheduler = startReportScheduler ? startReportScheduler() : () => {};
           stopRetentionScheduler = startRetentionScheduler ? startRetentionScheduler() : () => {};
+          require('./services/dependencyScheduler').startDependencyScheduler();
         }
 
         // Start scheduled database backups if enabled.

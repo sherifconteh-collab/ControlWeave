@@ -170,9 +170,10 @@ export default function AIKeysPage() {
     setTestingProvider(provider.id);
     setError(null);
     try {
-      await settingsAPI.testLLMKey({ provider: provider.id, apiKey: key?.trim() || '' });
-      setSuccess(`${provider.name} connection test passed.`);
-      setTimeout(() => setSuccess(null), 3000);
+      const res = await settingsAPI.testLLMKey({ provider: provider.id, apiKey: key?.trim() || '' });
+      const message = (res.data as { message?: unknown } | undefined)?.message;
+      setSuccess(typeof message === 'string' ? message : `${provider.name} connection test passed.`);
+      setTimeout(() => setSuccess(null), 6000);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setError(msg || `${provider.name} connection test failed.`);

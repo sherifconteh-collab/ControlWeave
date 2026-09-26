@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
+const { invalidateDashboardCache } = require('../utils/dashboardCache');
 const auditService = require('../services/auditService');
 const crosswalkCredits = require('../services/crosswalkCreditService');
 const { authenticate, requirePermission } = require('../middleware/auth');
@@ -338,16 +339,23 @@ router.patch('/:id/status',
       return res.status(400).json(poamGate.justificationRequiredResponse());
     }
 
-    const result = await pool.query(`
+    const updateSql = `
       UPDATE control_implementations SET status = $1, notes = COALESCE($2, notes),
         implementation_date = CASE WHEN $4 = 'implemented' THEN CURRENT_DATE ELSE implementation_date END
       WHERE id = $3 AND organization_id = $5 RETURNING *
-    `, [status, notes || null, req.params.id, status, req.user.organization_id]);
+    `;
+    const updateParams = [status, notes || null, req.params.id, status, req.user.organization_id];
 
+    // A compliance claim and the POA&M record an auditor reviews must commit
+    // together: previously the status update committed first, so a failure
+    // recording the justification left a control marked compliant with
+    // nothing on file.
+    let result;
     let poamItem = null;
     if (isComplianceChange && poamJustification) {
-      poamItem = await poamGate.inTransaction((client) =>
-        poamGate.recordComplianceTransition(client, {
+      await poamGate.inTransaction(async (client) => {
+        result = await client.query(updateSql, updateParams);
+        poamItem = await poamGate.recordComplianceTransition(client, {
           orgId: req.user.organization_id,
           userId: req.user.id,
           controlId: existing.rows[0].control_id,
@@ -356,9 +364,13 @@ router.patch('/:id/status',
           justification: poamJustification,
           frameworkSpecificType: req.body.framework_specific_type,
           frameworkSpecificData: req.body.framework_specific_data
-        })
-      );
+        });
+      });
+    } else {
+      result = await pool.query(updateSql, updateParams);
+    }
 
+    if (isComplianceChange && poamJustification) {
       await poamGate.notifyComplianceTransition({
         orgId: req.user.organization_id,
         userId: req.user.id,
@@ -373,7 +385,10 @@ router.patch('/:id/status',
     // not_applicable, so this path can also drop a source out of a crediting
     // status and must withdraw whatever it was holding up.
     let withdrawnCredits = 0;
-    if (crosswalkCredits.CREDITING_STATUSES.includes(oldStatus)) {
+    let crosswalk = { crosswalkedControls: [], appliedCredits: [], propagatedEvidenceLinks: 0 };
+    const wasCrediting = crosswalkCredits.CREDITING_STATUSES.includes(oldStatus);
+    const isCrediting = crosswalkCredits.CREDITING_STATUSES.includes(status);
+    if (wasCrediting && !isCrediting) {
       const withdrawal = await crosswalkCredits.handleSourceStatusChange({
         organizationId: req.user.organization_id,
         controlId: existing.rows[0].control_id,
@@ -381,6 +396,14 @@ router.patch('/:id/status',
         actorUserId: req.user.id
       });
       withdrawnCredits = withdrawal.withdrawn || 0;
+    } else if (isCrediting && !wasCrediting) {
+      // Implementing a control credits its equivalent controls in the other
+      // frameworks the organization pursues, exactly as PUT /controls/:id does.
+      crosswalk = await crosswalkCredits.applyCreditsForSource({
+        organizationId: req.user.organization_id,
+        sourceControlId: existing.rows[0].control_id,
+        actorUserId: req.user.id
+      });
     }
 
     // Log audit — resource_id uses the framework_control id (not the
@@ -389,7 +412,13 @@ router.patch('/:id/status',
       eventType: 'control_status_changed',
       resourceType: 'control',
       resourceId: existing.rows[0].control_id,
-      details: { old_status: oldStatus, status, notes, withdrawn_crosswalk_credits: withdrawnCredits }
+      details: {
+        old_status: oldStatus,
+        status,
+        notes,
+        withdrawn_crosswalk_credits: withdrawnCredits,
+        crosswalk_credits_applied: crosswalk.appliedCredits.length
+      }
     });
 
     // Notify org when a control reaches 'verified'
@@ -416,12 +445,18 @@ router.patch('/:id/status',
     // Invalidate AI caches when control status changes
     // This ensures gap analysis and compliance forecasting reflect the latest data
     invalidateAICache(req.user.organization_id);
+    invalidateDashboardCache(req.user.organization_id);
 
     res.json({
       success: true,
       data: result.rows[0],
       poam_item: poamItem,
-      requires_auditor_review: isComplianceChange
+      requires_auditor_review: isComplianceChange,
+      crosswalk: {
+        credited_controls: crosswalk.crosswalkedControls.filter((c) => c.credited),
+        credits_applied: crosswalk.appliedCredits.length,
+        credits_withdrawn: withdrawnCredits
+      }
     });
   } catch (error) {
     log('error', 'update_status_error', { error: error?.message || String(error) });

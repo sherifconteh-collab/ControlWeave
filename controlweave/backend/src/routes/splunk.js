@@ -13,10 +13,8 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireTier('pro'));
 
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const uploadsDir = require('../config/uploads').UPLOADS_DIR;
+const storageService = require('../services/storageService');
 
 function parseTags(input) {
   if (!input) return [];
@@ -199,7 +197,7 @@ router.post('/splunk/import-evidence', requirePermission('evidence.write'), vali
     const fileName = `${fileNameRoot}.json`;
     const diskName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-splunk.json`;
     const filePath = path.join(uploadsDir, diskName);
-    fs.writeFileSync(filePath, fileBody);
+    await storageService.writeFile(filePath, fileBody, { contentType: 'application/json' });
 
     const description = req.body.description
       || `Imported from Splunk (${searchResult.results.length} result${searchResult.results.length === 1 ? '' : 's'})`;

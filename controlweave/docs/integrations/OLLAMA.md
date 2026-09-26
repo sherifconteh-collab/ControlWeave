@@ -64,6 +64,12 @@ ollama pull qwen2.5:7b-q4_K_M
 3. Enter the Ollama server URL:
    - Local (same machine): `http://localhost:11434`
    - Remote server: `http://your-server-ip:11434`
+
+   ControlWeave treats this URL like any other address an organization types in: by default it
+   must use https and point to a public host, so an organization cannot aim the server at the
+   cloud metadata service or the database. Self-hosted deployments that run Ollama on the same
+   machine or a private network set `CONNECTOR_ALLOW_PRIVATE_HOSTS=true` on the backend; that
+   also allows plain http. The server operator's own `OLLAMA_BASE_URL` is not restricted.
 4. Select your model from the dropdown (or type the model name)
 5. Click **Test Connection** to verify connectivity
 6. Click **Save**

@@ -152,9 +152,9 @@ ControlWeave SaaS Stack
 |   └── Amazon SES     🔌  (set SMTP_HOST=email-smtp.<region>.amazonaws.com)
 |
 ├── 📁 Storage
-|   ├── AWS S3         🔜  (planned — S3-compatible storage integration)
-|   ├── Cloudflare R2  🔜  (planned — S3-compatible object storage)
-|   ├── Google Cloud   🔜  (planned — GCS S3-compatible storage)
+|   ├── AWS S3         ✅  (S3_BUCKET — evidence and uploads, write-through; docs/runbooks/file-storage.md)
+|   ├── Cloudflare R2  ✅  (S3_ENDPOINT — S3-compatible; also MinIO, Backblaze B2)
+|   ├── Google Cloud   🔌  (GCS S3-interoperability endpoint via S3_ENDPOINT)
 |   ├── Supabase       ❌  (not used — self-managed storage)
 |   └── Uploadcare     🔜  (roadmap)
 |       ├── multer     ✅  (local/temp upload middleware, bonus)
@@ -278,7 +278,7 @@ Items marked **bonus** are ControlWeave capabilities that go beyond the referenc
 | Auth | ✅ Full | Custom JWT + bcryptjs + WebAuthn + OIDC (no third-party vendor needed) |
 | Payments | ✅ Core | Stripe — subscriptions, billing, webhooks |
 | Emails | ✅ Full | nodemailer SMTP — Resend, SendGrid, Mailgun, Postmark, SES via `.env` |
-| Storage | 🔜 Roadmap | multer local uploads ✅; S3 / Cloudflare R2 / GCS integrations planned |
+| Storage | ✅ Core | Local volume (UPLOADS_DIR) or any S3-compatible bucket (S3_BUCKET) — see docs/runbooks/file-storage.md |
 | Deployment | ✅ Core | Railway ✅; Vercel / Netlify / Render / AWS plug-in ready |
 | Domains and DNS | 🔌 Plug-in | Infrastructure-agnostic — use any DNS provider |
 | Analytics | 🔜 Roadmap | PostHog, Plausible, Google Analytics, Mixpanel, DataFast planned |

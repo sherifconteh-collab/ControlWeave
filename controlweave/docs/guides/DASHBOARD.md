@@ -17,7 +17,7 @@ The top-level metric showing your organization's compliance posture:
 - **Total Controls** — all controls from active frameworks
 - **Implemented** — controls marked as fully implemented
 - **Satisfied via Crosswalk** — controls satisfied through crosswalk mappings
-- **Compliance Percentage** — `(Implemented + Crosswalked) / Total × 100`
+- **Compliance Percentage** — `(Implemented + Verified + Crosswalked) / (Total − Not Applicable) × 100`, measured against your selected baseline. Not Applicable controls never lower the score, and every screen and report uses this same calculation.
 
 > **💡 Tip**: Compliance percentage includes crosswalk credits. Implementing one high-coverage control may satisfy requirements across multiple frameworks simultaneously.
 

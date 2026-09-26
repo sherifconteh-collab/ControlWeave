@@ -20,10 +20,8 @@ router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 router.use(authenticate);
 router.use(requireTier('pro'));
 
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const uploadsDir = require('../config/uploads').UPLOADS_DIR;
+const storageService = require('../services/storageService');
 
 function parseTags(input) {
   if (!input) return [];
@@ -161,7 +159,7 @@ router.post('/github/import-evidence', requirePermission('evidence.write'), vali
     const fileName = `${fileNameRoot}.json`;
     const diskName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-github.json`;
     const filePath = path.join(uploadsDir, diskName);
-    await fs.promises.writeFile(filePath, fileBody);
+    await storageService.writeFile(filePath, fileBody, { contentType: 'application/json' });
 
     const description = req.body.description
       || `Imported from GitHub (${evidenceResult.event_type}, ${evidenceResult.results.length} result${evidenceResult.results.length === 1 ? '' : 's'})`;

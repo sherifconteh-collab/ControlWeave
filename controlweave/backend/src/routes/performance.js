@@ -4,22 +4,28 @@
  * Provides endpoints for monitoring application performance on Railway
  * 
  * Security:
- * - All endpoints require admin permission
+ * - Deployment-wide metrics (every tenant's traffic, database size, slow
+ *   query previews), so only platform owners may read them. Previously the
+ *   router checked requireAdmin without authenticate, so req.user was never
+ *   set and every request was refused.
  * - Protected by application-wide API rate limiter (configured in server.js)
  */
 
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { requireAdmin } = require('../middleware/auth');
+const { authenticate, requirePlatformOwner } = require('../middleware/auth');
 const { getPerformanceStats, getRecentRequests } = require('../middleware/performanceMonitoring');
+
+router.use(authenticate);
+router.use(requirePlatformOwner);
 
 /**
  * GET /api/v1/performance/stats
  * Get current performance statistics
  * Requires admin permission
  */
-router.get('/stats', requireAdmin, async (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const stats = getPerformanceStats();
     
@@ -63,7 +69,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
  * Get recent request history
  * Requires admin permission
  */
-router.get('/requests', requireAdmin, async (req, res) => {
+router.get('/requests', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
     const requests = getRecentRequests(Math.min(limit, 500));
@@ -89,7 +95,7 @@ router.get('/requests', requireAdmin, async (req, res) => {
  * Get database performance metrics
  * Requires admin permission
  */
-router.get('/database', requireAdmin, async (req, res) => {
+router.get('/database', async (req, res) => {
   try {
     const metrics = {};
 
@@ -190,7 +196,7 @@ router.get('/database', requireAdmin, async (req, res) => {
  * Get system resource metrics
  * Requires admin permission
  */
-router.get('/system', requireAdmin, (req, res) => {
+router.get('/system', (req, res) => {
   try {
     const memory = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

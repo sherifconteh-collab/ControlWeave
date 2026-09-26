@@ -23,6 +23,10 @@
  */
 const pool = require('../config/database');
 const { log, serializeError } = require('../utils/logger');
+const { getConfigValue } = require('./dynamicConfigService');
+
+// Mapping types strict enough to justify crediting a target automatically.
+const STRICT_CROSSWALK_MAPPING_TYPES = ['equivalent', 'exact'];
 
 // Source statuses that justify crediting mapped controls. A source that leaves
 // this set has its credits withdrawn.
@@ -205,8 +209,171 @@ async function getCreditsForControl(organizationId, controlId) {
   return result.rows;
 }
 
+/**
+ * Credits mapped controls when a source control becomes implemented: every
+ * not_started control in a framework the organization pursues that maps to the
+ * source as "equivalent"/"exact" (or at 100% similarity) at or above the
+ * organization's threshold becomes satisfied_via_crosswalk, with the credit
+ * recorded so it can be explained and withdrawn later. Optionally propagates
+ * the source's evidence links to strictly-mapped targets.
+ *
+ * Shared by every endpoint that can mark a control implemented. Crediting used
+ * to live only in PUT /controls/:id, so marking a control implemented from the
+ * control page (PATCH /implementations/:id/status) never granted credit.
+ */
+async function applyCreditsForSource({ organizationId, sourceControlId, actorUserId, propagateEvidence, executor = pool }) {
+  const crosswalkedControls = [];
+  let propagatedEvidenceLinks = 0;
+  const appliedCredits = [];
+  const thresholdConfig = await getConfigValue(organizationId, 'crosswalk', 'inheritance_min_similarity', { value: 90 });
+  const similarityThreshold = Number(
+    thresholdConfig && typeof thresholdConfig === 'object'
+      ? thresholdConfig.value
+      : thresholdConfig
+  ) || 90;
+
+  const evidencePropagationConfig = await getConfigValue(organizationId, 'crosswalk', 'auto_propagate_evidence_exact', { value: false });
+  const shouldPropagateEvidence = typeof propagateEvidence === 'boolean'
+    ? propagateEvidence
+    : Boolean(
+      evidencePropagationConfig && typeof evidencePropagationConfig === 'object'
+        ? evidencePropagationConfig.value
+        : evidencePropagationConfig
+    );
+
+  const mappings = await executor.query(`
+    SELECT 
+      cm.id,
+      cm.source_control_id,
+      cm.target_control_id,
+      cm.similarity_score,
+      cm.mapping_type,
+      CASE 
+        WHEN cm.source_control_id = $1 THEN cm.target_control_id
+        ELSE cm.source_control_id
+      END AS mapped_control_id,
+      fc.control_id as mapped_control_code,
+      fc.title as mapped_title,
+      f.name as framework_name,
+      f.code as framework_code
+    FROM control_mappings cm
+    JOIN framework_controls fc ON fc.id = CASE 
+      WHEN cm.source_control_id = $1 THEN cm.target_control_id
+      ELSE cm.source_control_id
+    END
+    JOIN frameworks f ON f.id = fc.framework_id
+    WHERE (cm.source_control_id = $1 OR cm.target_control_id = $1)
+      AND cm.similarity_score >= $2
+      AND (
+        COALESCE(LOWER(cm.mapping_type), '') = ANY($3::text[])
+        OR cm.similarity_score = 100
+      )
+      AND cm.source_control_id != cm.target_control_id
+      -- Credit only frameworks the organization is actually pursuing;
+      -- satisfying controls in a framework they have not adopted inflates
+      -- the posture the dashboards report. Organizations that have never
+      -- populated organization_frameworks have declared no scope, so the
+      -- original unrestricted behavior stands for them.
+      AND (
+        NOT EXISTS (SELECT 1 FROM organization_frameworks scope WHERE scope.organization_id = $4)
+        OR EXISTS (
+          SELECT 1 FROM organization_frameworks scope
+          WHERE scope.organization_id = $4 AND scope.framework_id = fc.framework_id
+        )
+      )
+  `, [sourceControlId, similarityThreshold, STRICT_CROSSWALK_MAPPING_TYPES, organizationId]);
+
+  for (const mapping of mappings.rows) {
+    const mappedControlId = mapping.mapped_control_id;
+
+    // The CTE reads the target's status before the upsert rewrites it, so
+    // the ledger can record what to restore on withdrawal and so a target
+    // that was already satisfied by someone's own work is not logged as
+    // crosswalk credit.
+    const credited = await executor.query(`
+      WITH prior AS (
+        SELECT status FROM control_implementations
+        WHERE control_id = $1 AND organization_id = $2
+      ),
+      upserted AS (
+        INSERT INTO control_implementations (control_id, organization_id, status, notes)
+        VALUES ($1, $2, 'satisfied_via_crosswalk', $3)
+        ON CONFLICT (control_id, organization_id) DO UPDATE SET
+          status = CASE WHEN control_implementations.status = 'not_started' THEN 'satisfied_via_crosswalk' ELSE control_implementations.status END,
+          notes = CASE WHEN control_implementations.status = 'not_started'
+            THEN COALESCE(control_implementations.notes || E'\n', '') || $3
+            ELSE control_implementations.notes END
+        RETURNING status
+      )
+      SELECT COALESCE((SELECT status FROM prior), 'not_started') AS previous_status,
+             (SELECT status FROM upserted) AS new_status
+    `, [mappedControlId, organizationId, `Auto-satisfied via crosswalk (${mapping.similarity_score}% ${mapping.mapping_type || 'mapped'} match)`]);
+
+    const creditApplied = credited.rows[0]?.new_status === 'satisfied_via_crosswalk';
+    if (creditApplied) {
+      appliedCredits.push({
+        targetControlId: mappedControlId,
+        similarityScore: mapping.similarity_score,
+        mappingType: mapping.mapping_type,
+        previousStatus: credited.rows[0].previous_status
+      });
+    }
+
+    if (shouldPropagateEvidence) {
+      const propagated = await executor.query(
+        `INSERT INTO evidence_control_links (evidence_id, control_id, notes, organization_id)
+         SELECT DISTINCT ecl.evidence_id, $2::uuid, $3, e.organization_id
+         FROM evidence_control_links ecl
+         JOIN evidence e ON e.id = ecl.evidence_id
+         WHERE ecl.control_id = $4::uuid
+           AND e.organization_id = $1
+         ON CONFLICT (evidence_id, control_id) DO NOTHING`,
+        [
+          organizationId,
+          mappedControlId,
+          `Auto-propagated via strict crosswalk from control ${sourceControlId}`,
+          sourceControlId
+        ]
+      );
+      propagatedEvidenceLinks += propagated.rowCount || 0;
+    }
+
+    crosswalkedControls.push({
+      controlId: mapping.mapped_control_code,
+      title: mapping.mapped_title,
+      framework: mapping.framework_name,
+      similarity: mapping.similarity_score,
+      mappingType: mapping.mapping_type || null,
+      // False when the target was already implemented, verified, or
+      // otherwise claimed by human work — the mapping matched, but no
+      // credit was applied and nothing was recorded in the ledger.
+      credited: creditApplied
+    });
+  }
+
+  // Record provenance for every credit applied, so it can be explained to
+  // an assessor and withdrawn if this source stops being implemented.
+  // Bookkeeping must never fail the status change the user asked for.
+  try {
+    await recordCredits(executor, {
+      organizationId,
+      sourceControlId,
+      credits: appliedCredits,
+      actorUserId
+    });
+  } catch (creditError) {
+    log('error', 'crosswalk.record_credits_failed', {
+      organizationId, sourceControlId, error: creditError?.message || String(creditError)
+    });
+  }
+
+  return { crosswalkedControls, appliedCredits, propagatedEvidenceLinks };
+}
+
 module.exports = {
   CREDITING_STATUSES,
+  STRICT_CROSSWALK_MAPPING_TYPES,
+  applyCreditsForSource,
   recordCredits,
   withdrawCredits,
   handleSourceStatusChange,

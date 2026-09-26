@@ -9,6 +9,7 @@ router.use(authenticate);
 
 const { getCached } = require('../utils/redisCache');
 const { BASELINE_SCOPE_PREDICATE, baselineScopeJoin } = require('../services/baselineScope');
+const { compliancePercentage: compliancePercentage_ } = require('../services/complianceMetrics');
 const DASHBOARD_CACHE_TTL_MS = Math.max(1000, parseInt(process.env.DASHBOARD_CACHE_TTL_MS || '30000', 10));
 const DASHBOARD_CACHE_TTL_S = Math.ceil(DASHBOARD_CACHE_TTL_MS / 1000);
 
@@ -41,7 +42,7 @@ async function queryDashboardStats(orgId) {
       COUNT(DISTINCT fc.id) as total_controls,
       COUNT(DISTINCT CASE WHEN ci.status IN ('implemented', 'verified') THEN ci.id END) as implemented,
       COUNT(DISTINCT CASE WHEN ci.status = 'satisfied_via_crosswalk' THEN ci.id END) as satisfied_via_crosswalk,
-      COUNT(DISTINCT fc.id) as total_applicable
+      COUNT(DISTINCT CASE WHEN ci.status = 'not_applicable' THEN ci.id END) as not_applicable
     FROM organization_frameworks of2
     JOIN framework_controls fc ON fc.framework_id = of2.framework_id
     ${baselineScopeJoin('$1')}
@@ -54,21 +55,23 @@ async function queryDashboardStats(orgId) {
   const totalControls = toInt(overall.total_controls);
   const implemented = toInt(overall.implemented);
   const crosswalked = toInt(overall.satisfied_via_crosswalk);
-  const compliancePercentage = totalControls > 0
-    ? Math.round(((implemented + crosswalked) / totalControls) * 1000) / 10
-    : 0;
+  const notApplicable = toInt(overall.not_applicable);
+  const compliancePercentage = compliancePercentage_(implemented + crosswalked, totalControls, notApplicable);
 
   const frameworkResult = await pool.query(`
     SELECT
       f.id, f.name, f.code,
       COUNT(DISTINCT fc.id) as total_controls,
       COUNT(DISTINCT CASE WHEN ci.status IN ('implemented', 'verified') THEN ci.id END) as implemented,
-      COUNT(DISTINCT CASE WHEN ci.status = 'satisfied_via_crosswalk' THEN ci.id END) as crosswalked
+      COUNT(DISTINCT CASE WHEN ci.status = 'satisfied_via_crosswalk' THEN ci.id END) as crosswalked,
+      COUNT(DISTINCT CASE WHEN ci.status = 'not_applicable' THEN ci.id END) as not_applicable
     FROM organization_frameworks of2
     JOIN frameworks f ON f.id = of2.framework_id
     JOIN framework_controls fc ON fc.framework_id = f.id
+    ${baselineScopeJoin('$1')}
     LEFT JOIN control_implementations ci ON ci.control_id = fc.id AND ci.organization_id = $1
     WHERE of2.organization_id = $1
+    ${BASELINE_SCOPE_PREDICATE}
     GROUP BY f.id, f.name, f.code
     ORDER BY f.name
   `, [orgId]);
@@ -84,9 +87,7 @@ async function queryDashboardStats(orgId) {
       totalControls: total,
       implemented: implementedCount,
       crosswalked: crosswalkedCount,
-      compliancePercentage: total > 0
-        ? Math.round(((implementedCount + crosswalkedCount) / total) * 1000) / 10
-        : 0
+      compliancePercentage: compliancePercentage_(implementedCount + crosswalkedCount, total, toInt(fw.not_applicable))
     };
   });
 
@@ -95,7 +96,8 @@ async function queryDashboardStats(orgId) {
       totalControls,
       implemented,
       satisfiedViaCrosswalk: crosswalked,
-      totalApplicable: totalControls,
+      totalApplicable: totalControls - notApplicable,
+      notApplicable,
       compliancePercentage
     },
     frameworks
@@ -519,8 +521,10 @@ router.get('/compliance-summary', requirePermission('dashboard.read'), async (re
         FROM organization_frameworks of2
         JOIN frameworks f ON f.id = of2.framework_id
         JOIN framework_controls fc ON fc.framework_id = f.id
+        ${baselineScopeJoin('$1')}
         LEFT JOIN control_implementations ci ON ci.control_id = fc.id AND ci.organization_id = $1
         WHERE of2.organization_id = $1
+        ${BASELINE_SCOPE_PREDICATE}
         GROUP BY f.id, f.name, f.code
         ORDER BY f.name
       `, [orgId]);
@@ -543,9 +547,7 @@ router.get('/compliance-summary', requirePermission('dashboard.read'), async (re
           crosswalked: cross,
           notApplicable: na,
           notStarted: notStarted,
-          compliancePercentage: total > 0
-            ? Math.round((compliant / total) * 1000) / 10
-            : 0,
+          compliancePercentage: compliancePercentage_(compliant, total, na),
           statusDistribution: {
             implemented: impl,
             in_progress: inProg,
@@ -558,11 +560,10 @@ router.get('/compliance-summary', requirePermission('dashboard.read'), async (re
 
       const totalControls = frameworks.reduce((s, fw) => s + fw.totalControls, 0);
       const totalCompliant = frameworks.reduce((s, fw) => s + fw.implemented + fw.crosswalked, 0);
+      const totalNotApplicable = frameworks.reduce((s, fw) => s + fw.notApplicable, 0);
 
       return {
-        overallCompliancePercentage: totalControls > 0
-          ? Math.round((totalCompliant / totalControls) * 1000) / 10
-          : 0,
+        overallCompliancePercentage: compliancePercentage_(totalCompliant, totalControls, totalNotApplicable),
         totalFrameworks: frameworks.length,
         totalControls,
         totalCompliant,

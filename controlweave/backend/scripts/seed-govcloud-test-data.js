@@ -457,8 +457,8 @@ async function run() {
       // Link first 8 evidence items to verified controls
       if (i < 8 && i < verifiedControlIds.length) {
         await client.query(
-          `INSERT INTO evidence_control_links (evidence_id, control_id, notes)
-           VALUES ($1, $2, $3)
+          `INSERT INTO evidence_control_links (evidence_id, control_id, notes, organization_id)
+           SELECT $1, $2, $3, e.organization_id FROM evidence e WHERE e.id = $1
            ON CONFLICT (evidence_id, control_id) DO NOTHING`,
           [evId, verifiedControlIds[i].id,
            `${ev.fileName} — evidence collected for NERC CIP ${i < 4 ? 'CIP-007' : i < 6 ? 'CIP-005' : 'CIP-004'} control verification.`]

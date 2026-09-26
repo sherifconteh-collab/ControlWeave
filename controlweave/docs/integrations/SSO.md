@@ -17,23 +17,24 @@ SSO enables your team to log in to ControlWeave using your existing corporate id
 
 ## Configuration Steps
 
-### Step 1: Get Service Provider (SP) Metadata from ControlWeave
+The full reference, including OpenID Connect, SCIM provisioning and Require SSO, is [Enterprise SSO](../guides/ENTERPRISE_SSO.md).
 
-1. Go to **Settings** → **Security** → **SSO/SAML**
-2. Click **Download SP Metadata** or copy the SP values:
-   - **Entity ID (SP)**: `https://app.controlweave.com/saml/metadata`
-   - **ACS URL**: `https://app.controlweave.com/saml/callback`
-   - **Name ID Format**: `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`
+### Step 1: Copy the service provider values from ControlWeave
 
-### Step 2: Configure Your Identity Provider
+1. Go to **Settings** → **Security** → **Single sign-on** and choose **SAML 2.0**.
+2. Copy the values shown. They are specific to your organization:
+   - **Entity ID / metadata URL**: `https://<backend>/api/v1/sso/saml/<organization id>/metadata`
+   - **ACS URL**: `https://<backend>/api/v1/sso/saml/<organization id>/acs`
+   - **Name ID format**: `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`
+
+### Step 2: Configure your identity provider
 
 #### Okta
 1. In Okta Admin: **Applications** → **Create App Integration** → **SAML 2.0**
-2. **Single sign-on URL**: Your ACS URL
-3. **Audience URI (SP Entity ID)**: Your Entity ID
+2. **Single sign-on URL**: your ACS URL
+3. **Audience URI (SP Entity ID)**: your Entity ID
 4. **Name ID format**: EmailAddress
-5. **Attribute Statements**: Add `email`, `firstName`, `lastName`
-6. Download the IdP metadata XML
+5. **Attribute Statements**: add `email`, `firstName`, `lastName`
 
 #### Azure AD / Entra ID
 1. In Azure Portal: **Enterprise Applications** → **New Application** → **Create your own**
@@ -41,32 +42,30 @@ SSO enables your team to log in to ControlWeave using your existing corporate id
 3. Go to **Single Sign-On** → **SAML**
 4. Enter the SP Entity ID and ACS URL
 5. Map attributes: `user.mail` → `email`, `user.givenname` → `firstName`
-6. Download the Federation Metadata XML
 
 #### Google Workspace
 1. In Google Admin: **Apps** → **Web and mobile apps** → **Add app** → **Add custom SAML app**
-2. Enter ACS URL and Entity ID
+2. Enter the ACS URL and Entity ID
 3. Map attributes: `Basic Information > Primary Email` → `email`
-4. Download the IdP metadata
 
-### Step 3: Configure ControlWeave with IdP Metadata
+### Step 3: Enter the IdP settings in ControlWeave
 
-1. Return to **Settings** → **Security** → **SSO/SAML**
-2. Upload the IdP metadata XML file (or paste the metadata URL)
-3. Map attributes:
-   - **Email Attribute**: `email` (or IdP-specific attribute name)
-   - **First Name**: `firstName` or `givenName`
-   - **Last Name**: `lastName` or `sn`
-4. (Optional) Configure **Default Role** for new SSO users
-5. Click **Save Configuration**
+1. Return to **Settings** → **Security** → **Single sign-on**.
+2. Enter the **IdP sign-on URL** (HTTP-Redirect), the **IdP entity ID / issuer** (recommended), and paste the **IdP signing certificate**.
+3. Optionally set the **Email attribute**. By default ControlWeave reads `email`, `mail` or the NameID.
+4. Choose the **Default role** for users created on first sign-in.
+5. Leave **Allow IdP-initiated sign-in** off unless you need the IdP dashboard tile. When it is on, each assertion is still accepted only once.
+6. Click **Save**.
 
-### Step 4: Test the SSO Connection
+### Step 4: Verify your email domains
 
-1. Click **Test SSO Login**
-2. A new browser window opens the IdP login page
-3. Authenticate with your corporate credentials
-4. On success, you'll see a confirmation message
-5. Enable SSO for your organization
+"Sign in with SSO" finds your organization from the user's email domain, but only for **verified** domains.
+
+1. Add the domains under **Email domains** and save.
+2. For each domain, publish the DNS TXT record shown: `_controlweave-verification.<domain>` with the value `controlweave-verification=<token>`.
+3. Select **Verify**.
+
+A domain can be verified by one organization only. See [Enterprise SSO](../guides/ENTERPRISE_SSO.md#email-domains).
 
 ## Attribute Mapping Reference
 
@@ -75,7 +74,6 @@ SSO enables your team to log in to ControlWeave using your existing corporate id
 | Email (required) | `email`, `mail`, `emailAddress` |
 | First Name | `firstName`, `givenName`, `given_name` |
 | Last Name | `lastName`, `sn`, `family_name` |
-| Role | `role`, `controlweaveRole` (optional) |
 
 ## JIT (Just-In-Time) Provisioning
 
@@ -89,9 +87,12 @@ With JIT provisioning enabled:
 **SAML response invalid**: Ensure ACS URL and Entity ID exactly match in both IdP and SP  
 **Attribute not found**: Check attribute name mapping (case-sensitive)  
 **Login redirect loop**: Clear browser cookies and try again  
-**Certificate expired**: Update the IdP certificate in ControlWeave settings
+**Certificate expired**: Update the IdP certificate in ControlWeave settings  
+**"Sign in with SSO" says SSO is not set up for my email**: The email domain is not verified yet; publish its TXT record and select **Verify**  
+**Assertion was already used**: A SAML response can be posted only once; start the sign-in again from the IdP or ControlWeave
 
 ## Related Guides
 
+- [Enterprise SSO](../guides/ENTERPRISE_SSO.md) - SAML, OIDC, SCIM and Require SSO in detail
 - [Security Settings](../guides/SECURITY.md) - Security configuration overview
 - [User Management](../guides/USERS.md) - Managing users and roles

@@ -18,6 +18,8 @@ const { createRateLimiter } = require('../middleware/rateLimit');
 const rateLimit = require('express-rate-limit');
 const { log } = require('../utils/logger');
 const { BASELINE_SCOPE_PREDICATE, baselineScopeJoin } = require('../services/baselineScope');
+const { complianceAggregateSql } = require('../services/complianceMetrics');
+const GATE_COMPLIANCE = complianceAggregateSql({ precision: 2 });
 
 // Three layers, in this specific order: (1) a cheap per-process IP-based
 // limiter first, so unauthenticated requests are bounded before they reach
@@ -159,11 +161,7 @@ router.get('/gate', async (req, res) => {
          f.name AS framework_name,
          COUNT(fc.id)::int AS total_controls,
          COUNT(ci.id) FILTER (WHERE ci.status IN ('implemented', 'verified', 'satisfied_via_crosswalk'))::int AS implemented,
-         CASE WHEN COUNT(fc.id) > 0
-              THEN ROUND((COUNT(ci.id) FILTER (WHERE ci.status IN ('implemented', 'verified', 'satisfied_via_crosswalk'))::numeric
-                          / COUNT(fc.id)::numeric) * 100, 2)
-              ELSE 0
-         END AS compliance_pct
+         ${GATE_COMPLIANCE.percentage} AS compliance_pct
        FROM organization_frameworks of2
        JOIN frameworks f ON f.id = of2.framework_id
        JOIN framework_controls fc ON fc.framework_id = of2.framework_id

@@ -36,6 +36,8 @@ Content-Type: application/json
 }
 ```
 
+API clients get the refresh token in the body, as above, and renew with `POST /api/v1/auth/refresh` `{ "refreshToken": "..." }`. Every refresh returns a new refresh token; reusing an old one after 30 seconds revokes the session. The web app sends `X-CW-Client: web` instead and receives the refresh token only as an HttpOnly cookie, never in the body.
+
 ### Using the Token
 
 ```http

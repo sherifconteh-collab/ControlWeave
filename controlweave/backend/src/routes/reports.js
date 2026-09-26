@@ -5,40 +5,61 @@ const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { authenticate, requireTier, requirePermission } = require('../middleware/auth');
+const { BASELINE_SCOPE_PREDICATE, baselineScopeJoin } = require('../services/baselineScope');
+const { compliancePercentage } = require('../services/complianceMetrics');
 
 router.use(authenticate);
 router.use(requireTier('pro'));
 
 // Helper: get compliance data for an org
 async function getComplianceData(orgId) {
+  // Counts and percentages follow services/complianceMetrics.js so a report
+  // shows the same numbers as the dashboard: verified controls count as
+  // implemented, Not Applicable is excluded from the denominator, and the
+  // organization's selected baseline scopes the control set.
   const overallResult = await pool.query(`
     SELECT
       COUNT(DISTINCT fc.id) as total_controls,
-      COUNT(DISTINCT CASE WHEN ci.status = 'implemented' THEN ci.id END) as implemented,
+      COUNT(DISTINCT CASE WHEN ci.status IN ('implemented', 'verified') THEN ci.id END) as implemented,
       COUNT(DISTINCT CASE WHEN ci.status = 'satisfied_via_crosswalk' THEN ci.id END) as crosswalked,
       COUNT(DISTINCT CASE WHEN ci.status = 'in_progress' THEN ci.id END) as in_progress,
-      COUNT(DISTINCT CASE WHEN ci.status = 'needs_review' THEN ci.id END) as needs_review
+      COUNT(DISTINCT CASE WHEN ci.status = 'needs_review' THEN ci.id END) as needs_review,
+      COUNT(DISTINCT CASE WHEN ci.status = 'not_applicable' THEN ci.id END) as not_applicable
     FROM organization_frameworks of2
     JOIN framework_controls fc ON fc.framework_id = of2.framework_id
+    ${baselineScopeJoin('$1')}
     LEFT JOIN control_implementations ci ON ci.control_id = fc.id AND ci.organization_id = $1
     WHERE of2.organization_id = $1
+    ${BASELINE_SCOPE_PREDICATE}
   `, [orgId]);
 
   const frameworkResult = await pool.query(`
     SELECT
       f.name, f.code,
       COUNT(DISTINCT fc.id) as total_controls,
-      COUNT(DISTINCT CASE WHEN ci.status = 'implemented' THEN ci.id END) as implemented,
+      COUNT(DISTINCT CASE WHEN ci.status IN ('implemented', 'verified') THEN ci.id END) as implemented,
       COUNT(DISTINCT CASE WHEN ci.status = 'satisfied_via_crosswalk' THEN ci.id END) as crosswalked,
-      COUNT(DISTINCT CASE WHEN ci.status = 'in_progress' THEN ci.id END) as in_progress
+      COUNT(DISTINCT CASE WHEN ci.status = 'in_progress' THEN ci.id END) as in_progress,
+      COUNT(DISTINCT CASE WHEN ci.status = 'not_applicable' THEN ci.id END) as not_applicable
     FROM organization_frameworks of2
     JOIN frameworks f ON f.id = of2.framework_id
     JOIN framework_controls fc ON fc.framework_id = f.id
+    ${baselineScopeJoin('$1')}
     LEFT JOIN control_implementations ci ON ci.control_id = fc.id AND ci.organization_id = $1
     WHERE of2.organization_id = $1
+    ${BASELINE_SCOPE_PREDICATE}
     GROUP BY f.id, f.name, f.code
     ORDER BY f.name
   `, [orgId]);
+
+  const withPercent = (row) => ({
+    ...row,
+    compliance_percent: compliancePercentage(
+      toNumber(row.implemented) + toNumber(row.crosswalked),
+      toNumber(row.total_controls),
+      toNumber(row.not_applicable)
+    )
+  });
 
   const controlsResult = await pool.query(`
     SELECT fc.control_id, fc.title, fc.priority,
@@ -56,8 +77,8 @@ async function getComplianceData(orgId) {
   `, [orgId]);
 
   return {
-    overall: overallResult.rows[0],
-    frameworks: frameworkResult.rows,
+    overall: withPercent(overallResult.rows[0] || {}),
+    frameworks: frameworkResult.rows.map(withPercent),
     controls: controlsResult.rows
   };
 }
@@ -158,9 +179,7 @@ async function getSspData(orgId) {
   const controlsCrosswalked = toNumber(overall.crosswalked);
   const controlsInProgress = toNumber(overall.in_progress);
   const controlsNeedsReview = toNumber(overall.needs_review);
-  const compliancePercent = controlsTotal > 0
-    ? Math.round(((controlsImplemented + controlsCrosswalked) / controlsTotal) * 100)
-    : 0;
+  const compliancePercent = toNumber(overall.compliance_percent);
 
   const assetSummary = assetSummaryResult.rows[0] || {};
   const vulnerabilitySummary = vulnerabilitySummaryResult.rows[0] || {};
@@ -248,7 +267,7 @@ router.get('/compliance/pdf', requirePermission('reports.read'), async (req, res
     const total = parseInt(overall.total_controls) || 1;
     const implemented = parseInt(overall.implemented) || 0;
     const crosswalked = parseInt(overall.crosswalked) || 0;
-    const compliancePct = Math.round(((implemented + crosswalked) / total) * 100);
+    const compliancePct = overall.compliance_percent;
 
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
@@ -289,7 +308,7 @@ router.get('/compliance/pdf', requirePermission('reports.read'), async (req, res
     for (const fw of data.frameworks) {
       const fwTotal = parseInt(fw.total_controls);
       const fwImpl = parseInt(fw.implemented) + parseInt(fw.crosswalked);
-      const fwPct = fwTotal > 0 ? Math.round((fwImpl / fwTotal) * 100) : 0;
+      const fwPct = fw.compliance_percent;
 
       doc.fontSize(13).fillColor('#1f2937').text(`${fw.name} (${fw.code})`);
       doc.fontSize(10).fillColor('#6b7280')
@@ -370,7 +389,7 @@ router.get('/compliance/excel', requirePermission('reports.read'), async (req, r
 
     summarySheet.addRow({ metric: 'Organization', value: orgName });
     summarySheet.addRow({ metric: 'Report Date', value: new Date().toLocaleDateString() });
-    summarySheet.addRow({ metric: 'Overall Compliance', value: `${Math.round(((implemented + crosswalked) / total) * 100)}%` });
+    summarySheet.addRow({ metric: 'Overall Compliance', value: `${overall.compliance_percent}%` });
     summarySheet.addRow({ metric: 'Total Controls', value: total });
     summarySheet.addRow({ metric: 'Implemented', value: implemented });
     summarySheet.addRow({ metric: 'Crosswalked', value: crosswalked });
@@ -401,7 +420,7 @@ router.get('/compliance/excel', requirePermission('reports.read'), async (req, r
         implemented: parseInt(fw.implemented),
         crosswalked: parseInt(fw.crosswalked),
         in_progress: parseInt(fw.in_progress) || 0,
-        pct: fwTotal > 0 ? `${Math.round((fwDone / fwTotal) * 100)}%` : '0%'
+        pct: `${fw.compliance_percent}%`
       });
     }
 
@@ -538,7 +557,7 @@ router.get('/ssp/pdf', requirePermission('reports.read'), async (req, res) => {
       frameworks.slice(0, 20).forEach((framework) => {
         const totalControls = toNumber(framework.total_controls);
         const implemented = toNumber(framework.implemented) + toNumber(framework.crosswalked);
-        const pct = totalControls > 0 ? Math.round((implemented / totalControls) * 100) : 0;
+        const pct = toNumber(framework.compliance_percent);
         doc.fontSize(10).fillColor('#374151').text(`- ${framework.name} (${framework.code}): ${implemented}/${totalControls} (${pct}%)`);
       });
     } else {

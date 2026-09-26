@@ -1,11 +1,20 @@
 # Frontend Dockerfile for ControlWeave
 FROM node:20-alpine3.21 AS base
 RUN apk update && apk upgrade --no-cache
+# The npm bundled with the Node 20 image ships tar 6.2.1 (CVE-2026-59873,
+# critical, fixed in tar 7.5.19). npm 11.20.0 bundles tar 7.5.22 and still
+# supports Node 20. Every stage inherits this, including the runner, where
+# Railway's preDeploy and start commands call npm.
+RUN npm install -g npm@11.20.0 && npm cache clean --force
 
 # Install dependencies
 FROM base AS deps
 WORKDIR /app
-COPY package*.json ./
+# .npmrc carries legacy-peer-deps=true (@sentry/nextjs peer range vs Next 16).
+# Without it here a strict `npm ci` fails on the peer conflict inside the
+# image even though it passes in CI. The `|| npm install` fallback stays until
+# strict installs have proven stable on Railway.
+COPY package*.json .npmrc ./
 COPY scripts ./scripts
 RUN npm ci || npm install
 

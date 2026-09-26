@@ -16,6 +16,7 @@ const aiSecurity = require('../../utils/aiSecurity');
 const { buildGrcSystem, GRC_SYSTEM } = require('./prompts');
 const { resolveTaskModel } = require('./providerConfig');
 const {
+  AI_PROVIDER_TIMEOUT_MS,
   GEMINI_API_BASE,
   VALID_PROVIDERS,
   getClient,
@@ -44,6 +45,8 @@ const buildRagContext = (...args) => {
 // WARNING: PHI_REDACT_ONLY=true may not satisfy all HIPAA requirements — use only
 // when routing exclusively to HIPAA-BAA-covered providers.
 const PHI_REDACT_ONLY = process.env.PHI_REDACT_ONLY === 'true';
+// Upper bound for one chat() call across all retries and provider fallbacks.
+const AI_TOTAL_DEADLINE_MS = Math.max(10000, parseInt(process.env.AI_TOTAL_DEADLINE_MS || '120000', 10));
 
 // ---------- AIDEFEND shared pipeline helpers ----------
 
@@ -221,8 +224,12 @@ async function chat({ provider = 'claude', model, messages, systemPrompt, organi
   const providerChain = buildProviderAttemptChain(provider);
   let lastError = null;
   let noKeyError = null;
+  // Hard ceiling across every retry and provider fallback, so a slow or
+  // unreachable provider can never hold a request (and the user) indefinitely.
+  const deadline = Date.now() + AI_TOTAL_DEADLINE_MS;
 
   for (const candidateProvider of providerChain) {
+    if (Date.now() >= deadline) break;
     const candidateModel = candidateProvider === provider ? model : null;
     const resolved = await resolveApiKey(candidateProvider, organizationId);
     const client = getClient(candidateProvider, resolved.key);
@@ -235,6 +242,7 @@ async function chat({ provider = 'claude', model, messages, systemPrompt, organi
 
     // Per-provider retry loop with exponential backoff
     for (let attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
+      if (Date.now() >= deadline) break;
       try {
         recordAIAttempt(candidateProvider, candidateModel, true);
         const effectiveModel = candidateModel || getDefaultModelForProvider(candidateProvider);
@@ -263,8 +271,14 @@ async function chat({ provider = 'claude', model, messages, systemPrompt, organi
         if (!isRetryableProviderError(err)) {
           throw err;
         }
+        // A timeout already consumed the full per-call budget; retrying the
+        // same provider would multiply the wait, so move to the next one.
+        if (/timed out|timeout/i.test(String(err && err.message))) {
+          console.warn(`[LLM] ${candidateProvider} timed out; moving to next provider`);
+          break;
+        }
         if (attempt < AI_MAX_RETRIES) {
-          const delay = AI_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+          const delay = Math.min(AI_RETRY_BASE_DELAY_MS * Math.pow(2, attempt), Math.max(0, deadline - Date.now()));
           console.warn(`[LLM] ${candidateProvider} failed (retryable, attempt ${attempt + 1}/${AI_MAX_RETRIES}): ${err.message}; retrying in ${delay}ms`);
           await sleep(delay);
         } else {
@@ -301,6 +315,11 @@ async function chat({ provider = 'claude', model, messages, systemPrompt, organi
     }
   }
 
+  if (Date.now() >= deadline && lastError) {
+    const timeoutError = new Error('The AI provider did not respond in time. Please try again, or choose a different provider in Settings.');
+    timeoutError.statusCode = 504;
+    throw timeoutError;
+  }
   if (lastError) throw lastError;
   if (noKeyError) throw noKeyError;
   throw new Error('Unsupported provider');
@@ -397,10 +416,24 @@ async function* chatStream({ provider = 'claude', model, messages, systemPrompt,
     };
     if (safeStreamSystemPrompt) payload.systemInstruction = { parts: [{ text: safeStreamSystemPrompt }] };
 
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/${encodeURIComponent(chosenModel)}:streamGenerateContent?key=${client.apiKey}&alt=sse`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-    );
+    // Bound the wait for the first response only; once the stream is open,
+    // tokens keep flowing for as long as the answer takes.
+    const connectController = new AbortController();
+    const connectTimer = setTimeout(() => connectController.abort(), AI_PROVIDER_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(
+        `${GEMINI_API_BASE}/models/${encodeURIComponent(chosenModel)}:streamGenerateContent?key=${client.apiKey}&alt=sse`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: connectController.signal }
+      );
+    } catch (fetchError) {
+      if (fetchError && fetchError.name === 'AbortError') {
+        throw new Error(`Gemini streaming request timed out after ${AI_PROVIDER_TIMEOUT_MS}ms`);
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(connectTimer);
+    }
     if (!response.ok) {
       throw new Error(`Gemini streaming failed with status ${response.status}`);
     }

@@ -19,10 +19,8 @@ const splunk = require('../services/splunkService');
 router.use(authenticate);
 router.use(requireTier('pro'));
 
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const uploadsDir = require('../config/uploads').UPLOADS_DIR;
+const storageService = require('../services/storageService');
 
 // ─── helpers ──────────────────────────────────────────────────────────
 const SCAN_TIME_WINDOW = '-24h@h';
@@ -381,7 +379,7 @@ router.post(
       const fileName = `${safeName}-${new Date().toISOString().split('T')[0]}.json`;
       const diskName = `${stamp}-${randomBytes(8).toString('hex')}-approved.json`;
       const filePath = path.join(uploadsDir, diskName);
-      await fs.promises.writeFile(filePath, fileBody);
+      await storageService.writeFile(filePath, fileBody, { contentType: 'application/json' });
 
       const retentionUntil = getDefaultRetentionDate();
       const description = pe.ai_description || `AI-suggested evidence from ${pe.source_type}`;

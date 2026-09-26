@@ -5,6 +5,7 @@ import { useEffect, useEffectEvent, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
+import EnterpriseSsoPanel from '@/components/settings/EnterpriseSsoPanel';
 import api, { aiAPI, aiDecisionsAPI, auditAPI, billingAPI, dynamicConfigAPI, integrationsAPI, licenseAPI, notificationsAPI, opsAPI, passkeyAPI, platformAdminAPI, rolesAPI, settingsAPI, siemAPI, ssoAPI, totpAPI, trustCenterAPI, usersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission, isPlatformAdmin } from '@/lib/access';
@@ -771,42 +772,14 @@ function SettingsPageInner() {
     }
   };
 
-  // SSO config state
-  const [ssoConfig, setSsoConfig] = useState<any>(null);
-  const [ssoSaving, setSsoSaving] = useState(false);
-  const [ssoMsg, setSsoMsg] = useState('');
+  // SSO config lives in EnterpriseSsoPanel
   const [socialLogins, setSocialLogins] = useState<{ id: string; provider: string; email: string | null }[]>([]);
-
-  const loadSsoConfig = async () => {
-    if (!canUseSso) {
-      setSsoConfig(null);
-      return;
-    }
-    try {
-      const res = await ssoAPI.getConfig();
-      setSsoConfig(res.data?.data || null);
-    } catch { /* not configured */ }
-  };
 
   const loadSocialLogins = async () => {
     try {
       const res = await ssoAPI.getSocialLogins();
       setSocialLogins(res.data?.data || []);
     } catch { /* silently fail */ }
-  };
-
-  const handleSsoSave = async () => {
-    if (!ssoConfig) return;
-    setSsoSaving(true);
-    setSsoMsg('');
-    try {
-      await ssoAPI.saveConfig(ssoConfig);
-      setSsoMsg('SSO configuration saved.');
-    } catch (err: any) {
-      setSsoMsg(err?.response?.data?.error || 'Failed to save SSO config.');
-    } finally {
-      setSsoSaving(false);
-    }
   };
 
   const handleUnlinkSocial = async (provider: string) => {
@@ -1107,7 +1080,6 @@ function SettingsPageInner() {
     if (activeTab === 'security') {
       loadSocialLogins();
       if (canUseSso) {
-        loadSsoConfig();
       }
     }
     if (activeTab === 'security' && !totpStatusLoaded) {
@@ -1558,12 +1530,9 @@ function SettingsPageInner() {
     }
     setTestingProvider(provider);
     try {
-      if (!key) {
-        showToast('Key already configured - save new key to test it');
-        return;
-      }
-      await settingsAPI.testLLMKey({ provider, apiKey: key });
-      showToast(`${provider} key verified!`);
+      // With no key typed, the server tests the key already saved.
+      const res = await settingsAPI.testLLMKey({ provider, apiKey: key });
+      showToast(res.data?.message || `${provider} key verified!`);
     } catch (err: any) {
       setError(err.response?.data?.details || err.response?.data?.error || 'Key validation failed');
     } finally {
@@ -4574,99 +4543,10 @@ function SettingsPageInner() {
             {/* SSO config (pro+ admins only) */}
             {canManageSettings && !canUseSso && (
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-sm">
-                Single sign-on (OIDC) requires the <strong>Professional</strong> plan or higher.
+                Single sign-on requires the <strong>Professional</strong> plan or higher.
               </div>
             )}
-            {canUseSso && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Single Sign-On (OIDC)</h2>
-                <p className="text-sm text-gray-500 mb-4">
-                  Configure OIDC single sign-on for your organization. Works with Okta, Azure AD,
-                  Auth0, Keycloak, PingIdentity, OneLogin, and any OIDC-compliant IdP.
-                </p>
-
-                {ssoMsg && (
-                  <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
-                    ssoMsg.includes('saved') ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
-                  }`}>{ssoMsg}</div>
-                )}
-
-                <div className="space-y-4 max-w-lg">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-                    <input
-                      type="text"
-                      value={ssoConfig?.display_name || ''}
-                      onChange={e => setSsoConfig((p: any) => ({ ...p, display_name: e.target.value }))}
-                      placeholder="Acme Corp SSO"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">OIDC Discovery URL</label>
-                    <input
-                      type="url"
-                      value={ssoConfig?.discovery_url || ''}
-                      onChange={e => setSsoConfig((p: any) => ({ ...p, discovery_url: e.target.value, provider_type: 'oidc' }))}
-                      placeholder="https://your-idp.example.com/.well-known/openid-configuration"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Okta: https://yourorg.okta.com/.well-known/openid-configuration<br/>
-                      Azure: https://login.microsoftonline.com/TENANT_ID/v2.0/.well-known/openid-configuration
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                    <input
-                      type="text"
-                      value={ssoConfig?.client_id || ''}
-                      onChange={e => setSsoConfig((p: any) => ({ ...p, client_id: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Client Secret <span className="text-gray-400 font-normal">(leave blank to keep existing)</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={ssoConfig?.client_secret_input || ''}
-                      onChange={e => setSsoConfig((p: any) => ({ ...p, client_secret_input: e.target.value, client_secret: e.target.value }))}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={ssoConfig?.enabled !== false}
-                        onChange={e => setSsoConfig((p: any) => ({ ...p, enabled: e.target.checked }))}
-                        className="rounded border-gray-300 text-purple-600"
-                      />
-                      Enabled
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={ssoConfig?.auto_provision !== false}
-                        onChange={e => setSsoConfig((p: any) => ({ ...p, auto_provision: e.target.checked }))}
-                        className="rounded border-gray-300 text-purple-600"
-                      />
-                      Auto-provision new users
-                    </label>
-                  </div>
-                  <button
-                    onClick={handleSsoSave}
-                    disabled={ssoSaving || !ssoConfig?.discovery_url}
-                    className="px-6 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
-                  >
-                    {ssoSaving ? 'Saving...' : 'Save SSO Config'}
-                  </button>
-                </div>
-              </div>
-            )}
+            {canUseSso && canManageSettings && <EnterpriseSsoPanel />}
           </div>
         )}
 

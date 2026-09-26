@@ -9,6 +9,7 @@
 'use strict';
 
 const {
+  AI_PROVIDER_TIMEOUT_MS,
   GEMINI_API_BASE,
   VALID_PROVIDERS,
   getDefaultModelForProvider,
@@ -128,14 +129,23 @@ async function executeProviderChat({ provider, client, model, messages, systemPr
       payload.systemInstruction = { parts: [{ text: systemPrompt }] };
     }
 
-    const response = await fetch(
-      `${GEMINI_API_BASE}/models/${encodeURIComponent(chosenModel)}:generateContent?key=${client.apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    let response;
+    try {
+      response = await fetch(
+        `${GEMINI_API_BASE}/models/${encodeURIComponent(chosenModel)}:generateContent?key=${client.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(AI_PROVIDER_TIMEOUT_MS)
+        }
+      );
+    } catch (fetchError) {
+      if (fetchError && (fetchError.name === 'TimeoutError' || fetchError.name === 'AbortError')) {
+        throw new Error(`Gemini request timed out after ${AI_PROVIDER_TIMEOUT_MS}ms`);
       }
-    );
+      throw fetchError;
+    }
 
     if (!response.ok) {
       let errorText = `Gemini request failed with status ${response.status}`;

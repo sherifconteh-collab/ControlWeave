@@ -400,8 +400,8 @@ async function run() {
       // Link evidence items to implemented controls
       if (i < implementedControlIds.length) {
         await client.query(
-          `INSERT INTO evidence_control_links (evidence_id, control_id, notes)
-           VALUES ($1, $2, 'Linked via free-tier test data seed')
+          `INSERT INTO evidence_control_links (evidence_id, control_id, notes, organization_id)
+           SELECT $1, $2, 'Linked via free-tier test data seed', e.organization_id FROM evidence e WHERE e.id = $1
            ON CONFLICT (evidence_id, control_id) DO NOTHING`,
           [evId, implementedControlIds[i].id]
         );

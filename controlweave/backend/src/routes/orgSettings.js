@@ -7,6 +7,8 @@ const router = express.Router();
 const pool = require('../config/database');
 const auditService = require('../services/auditService');
 const llm = require('../services/llmService');
+const { validateProviderKey, PROVIDER_LABELS } = require('../services/ai/keyValidation');
+const { log } = require('../utils/logger');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireSod } = require('../middleware/sod');
 const { validateBody } = require('../middleware/validate');
@@ -263,105 +265,40 @@ router.put('/llm', requirePermission('settings.manage'), validateBody((body) => 
 });
 
 // ---------- POST /api/v1/settings/llm/test ----------
-// Test an API key by making a minimal LLM call
+// Validate a provider credential by listing its models (free, fast, and
+// independent of any model name). With no apiKey in the body, the key already
+// saved for the organization is tested instead.
 router.post('/llm/test', requirePermission('settings.manage'), validateBody((body) => {
   const errors = [];
   if (!body.provider) errors.push('provider is required');
-  if (!body.apiKey) errors.push('apiKey is required');
   return errors;
 }), async (req, res) => {
   try {
-    const { provider, apiKey } = req.body;
-
-    if (provider === 'claude') {
-      const Anthropic = require('@anthropic-ai/sdk');
-      const client = new Anthropic.default({ apiKey });
-      const resp = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'Say "API key verified" in exactly those words.' }]
-      });
-      return res.json({ success: true, message: 'Anthropic API key is valid', response: resp.content[0].text });
-    }
-
-    if (provider === 'openai') {
-      const OpenAI = require('openai');
-      const client = new OpenAI.default({ apiKey });
-      const resp = await client.chat.completions.create({
-        model: 'gpt-5.4-mini',
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'Say "API key verified" in exactly those words.' }]
-      });
-      return res.json({ success: true, message: 'OpenAI API key is valid', response: resp.choices[0].message.content });
-    }
-
-    if (provider === 'gemini') {
-      const payload = {
-        contents: [{ role: 'user', parts: [{ text: 'Say API key verified in exactly those words.' }] }],
-        generationConfig: { maxOutputTokens: 50 }
-      };
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error?.message || `Gemini key test failed (${response.status})`);
+    const { provider } = req.body;
+    let credential = typeof req.body.apiKey === 'string' ? req.body.apiKey.trim() : '';
+    if (!credential) {
+      credential = await llm.getOrgApiKey(req.user.organization_id, provider).catch(() => null);
+      if (!credential && provider !== 'ollama') {
+        return res.status(400).json({ success: false, error: 'No key entered and none saved for this provider.' });
       }
-
-      const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).filter(Boolean).join('\n') || '';
-      return res.json({ success: true, message: 'Gemini API key is valid', response: text });
     }
 
-    if (provider === 'grok') {
-      const OpenAI = require('openai');
-      const client = new OpenAI.default({ apiKey, baseURL: process.env.XAI_API_BASE || 'https://api.x.ai/v1' });
-      const resp = await client.chat.completions.create({
-        model: 'grok-4.1-fast',
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'Say "API key verified" in exactly those words.' }]
-      });
-      return res.json({ success: true, message: 'xAI Grok API key is valid', response: resp.choices[0].message.content });
+    const result = await validateProviderKey(provider, credential);
+    if (!result.valid) {
+      return res.status(400).json({ success: false, error: result.error, details: result.error, data: result });
     }
-
-    if (provider === 'groq') {
-      const OpenAI = require('openai');
-      const client = new OpenAI.default({ apiKey, baseURL: 'https://api.groq.com/openai/v1' });
-      const resp = await client.chat.completions.create({
-        model: 'openai/gpt-oss-20b',
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'Say "API key verified" in exactly those words.' }]
-      });
-      return res.json({ success: true, message: 'Groq API key is valid', response: resp.choices[0].message.content });
-    }
-
-    if (provider === 'ollama') {
-      // For Ollama, apiKey field contains the base URL
-      const baseURL = apiKey || process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
-      const OpenAI = require('openai');
-      const client = new OpenAI.default({ apiKey: 'ollama', baseURL });
-      const resp = await client.chat.completions.create({
-        model: 'llama3.2',
-        max_tokens: 50,
-        messages: [{ role: 'user', content: 'Say "connected" in one word.' }]
-      });
-      return res.json({ success: true, message: 'Ollama connection verified', response: resp.choices[0].message.content });
-    }
-
-    res.status(400).json({ success: false, error: 'Unsupported provider' });
-  } catch (err) {
-    console.error('LLM test error:', err);
-    res.status(400).json({
-      success: false,
-      error: 'API key validation failed',
-      details: err.message
+    const label = PROVIDER_LABELS[provider] || provider;
+    const note = result.defaultModelAvailable === false
+      ? ` Note: the default model ${result.defaultModel} is not available to this key; choose a model in AI settings.`
+      : '';
+    return res.json({
+      success: true,
+      message: `${label} key is valid (${result.modelCount} models available, ${result.latencyMs}ms).${note}`,
+      data: result
     });
+  } catch (err) {
+    log('error', 'llm.key_test_failed', { error: err.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

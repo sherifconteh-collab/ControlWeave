@@ -503,8 +503,8 @@ async function run() {
       // Link evidence to verified controls (distribute across them)
       if (i < verifiedControlIds.length) {
         await client.query(
-          `INSERT INTO evidence_control_links (evidence_id, control_id, notes)
-           VALUES ($1, $2, $3)
+          `INSERT INTO evidence_control_links (evidence_id, control_id, notes, organization_id)
+           SELECT $1, $2, $3, e.organization_id FROM evidence e WHERE e.id = $1
            ON CONFLICT (evidence_id, control_id) DO NOTHING`,
           [evId, verifiedControlIds[i].id, `Linked via ${SEED_TAG}`]
         );

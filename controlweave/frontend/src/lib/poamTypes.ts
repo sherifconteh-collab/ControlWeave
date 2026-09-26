@@ -35,6 +35,11 @@ export interface PoamItem {
   created_at: string;
   updated_at?: string | null;
 
+  external_ticket_key?: string | null;
+  external_ticket_url?: string | null;
+  external_ticket_status?: string | null;
+  external_ticket_synced_at?: string | null;
+
   // Joined by the list and detail queries.
   control_code?: string | null;
   control_title?: string | null;

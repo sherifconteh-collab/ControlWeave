@@ -1503,7 +1503,9 @@ async function inviteAndAcceptUser(adminToken, { email, primaryRole, fullName, p
     }, proToken);
     assert('24.3', 'Patch connector to active returns 200', connectorPatch.s === 200 && connectorPatch.b.data?.status === 'active');
     const connectorRun = await req('POST', `/api/v1/integrations-hub/connectors/${connectorId}/run`, null, proToken);
-    assert('24.4', 'Run connector returns 200 success', connectorRun.s === 200 && connectorRun.b.data?.status === 'success');
+    // Splunk has no sync client yet: the run must be refused rather than
+    // reporting fabricated results.
+    assert('24.4', 'Run connector without a sync client returns 422 connector_sync_unavailable', connectorRun.s === 422 && connectorRun.b.code === 'connector_sync_unavailable');
     const connectorRuns = await req('GET', `/api/v1/integrations-hub/connectors/${connectorId}/runs`, null, proToken);
     assert('24.5', 'Connector run history returns 200', connectorRuns.s === 200);
     const connectorDelete = await req('DELETE', `/api/v1/integrations-hub/connectors/${connectorId}`, null, proToken);

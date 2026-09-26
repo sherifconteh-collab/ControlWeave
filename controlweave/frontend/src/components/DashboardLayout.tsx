@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { requiresOrganizationOnboarding, hasPermission } from '@/lib/access';
+import { requiresOrganizationOnboarding } from '@/lib/access';
 import { getStoredPendingBillingPlan, requiresBillingResolution } from '@/lib/billing';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import { WebSocketStatusIndicator } from './WebSocketStatusIndicator';
@@ -48,7 +48,6 @@ export default function DashboardLayout({
   // No provider configured modal state
   const [setupModalOpen, setSetupModalOpen] = useState(false);
 
-  const canManageSettings = hasPermission(user, 'settings.manage');
   
   const mustCompleteOnboarding = Boolean(
     user && requiresOrganizationOnboarding(user) && !user.onboardingCompleted
@@ -121,29 +120,43 @@ export default function DashboardLayout({
     };
   }, []);
 
-  // Fetch update check data once when the user has settings.manage access.
-  // Required updates always re-surface even if a prior optional banner was dismissed.
+  // Update notices are an operator concern: only platform admins (the people
+  // who deploy upgrades) see them. The result is cached for the browser session
+  // so the check runs once per session instead of on every page mount, which
+  // previously tripped the license route's rate limiter on normal navigation.
+  const isPlatformAdmin = Boolean(user?.isPlatformAdmin);
   useEffect(() => {
-    if (!isAuthenticated || !canManageSettings) return;
+    if (!isAuthenticated || !isPlatformAdmin) return;
+
+    const CACHE_KEY = 'cw_update_check_result';
+    const applyResult = (d: UpdateCheckData) => {
+      if (d.updateRequired) {
+        // Required updates are always shown — ignore any prior dismissal.
+        setUpdateData(d);
+        setBannerDismissed(false);
+      } else if (d.updateAvailable) {
+        const dismissed = sessionStorage.getItem('cw_update_check_dismissed') === '1';
+        if (!dismissed) setUpdateData(d);
+      }
+    };
+
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        applyResult(JSON.parse(cached) as UpdateCheckData);
+        return;
+      }
+    } catch { /* storage unavailable — fall through to a live check */ }
 
     licenseAPI.checkUpdates()
       .then((res) => {
         const d: UpdateCheckData = res.data?.data;
         if (!d) return;
-        if (d.updateRequired) {
-          // Required updates are always shown — ignore any prior dismissal.
-          setUpdateData(d);
-          setBannerDismissed(false);
-        } else if (d.updateAvailable) {
-          const SESSION_KEY = 'cw_update_check_dismissed';
-          const dismissed = typeof window !== 'undefined' && sessionStorage.getItem(SESSION_KEY) === '1';
-          if (!dismissed) {
-            setUpdateData(d);
-          }
-        }
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(d)); } catch { /* non-fatal */ }
+        applyResult(d);
       })
       .catch(() => { /* non-fatal — banner simply won't show */ });
-  }, [isAuthenticated, canManageSettings]);
+  }, [isAuthenticated, isPlatformAdmin]);
 
   if (loading) {
     return (

@@ -8,6 +8,9 @@ const { generateReportFile } = require('./scheduledReportService');
 const { sendReportEmail } = require('./emailService');
 const { log, serializeError } = require('../utils/logger');
 const { BASELINE_SCOPE_PREDICATE } = require('./baselineScope');
+const { complianceAggregateSql } = require('./complianceMetrics');
+// Snapshot percentages use the shared definition (services/complianceMetrics.js).
+const SNAPSHOT_COMPLIANCE = complianceAggregateSql({ precision: 2 });
 
 const SCHEDULE_INTERVAL_MS = Object.freeze({
   daily: 24 * 60 * 60 * 1000,
@@ -83,12 +86,10 @@ async function runRetentionCleanup({ organizationId }) {
       [organizationId, row.id]
     );
 
-    if (row.file_path && fs.existsSync(row.file_path)) {
-      try {
-        fs.unlinkSync(row.file_path);
-      } catch (error) {
-        // Ignore file delete errors, DB record is removed.
-      }
+    if (row.file_path) {
+      // Removes the local copy and the object-storage copy; failures are
+      // logged and ignored because the DB record is already removed.
+      await require('./storageService').removeQuietly(row.file_path);
     }
 
     removed += 1;
@@ -269,7 +270,14 @@ async function runJob(jobRow) {
       }
       return runAuditLogRetention({ organizationId: jobRow.organization_id });
     case 'integration_sync':
-      return { synced: true, connector_id: payload.connectorId || null, mode: payload.mode || 'manual' };
+      // Background connector sync is not implemented; never report a sync
+      // that did not happen. Connectors run on demand via the integrations hub.
+      return {
+        noop: true,
+        synced: false,
+        connector_id: payload.connectorId || null,
+        reason: 'Background integration sync is not implemented; use POST /integrations-hub/connectors/:id/run.'
+      };
     case 'evidence_auto_collect':
       if (!jobRow.organization_id) {
         return { noop: true, reason: 'No organization_id on job.' };
@@ -307,11 +315,7 @@ async function runComplianceSnapshot({ organizationId }) {
        COUNT(ci.id) FILTER (WHERE ci.status IN ('implemented', 'verified', 'satisfied_via_crosswalk'))::int AS implemented,
        COUNT(ci.id) FILTER (WHERE ci.status = 'partial')::int AS partial,
        COUNT(ci.id) FILTER (WHERE ci.status NOT IN ('implemented','verified','satisfied_via_crosswalk','partial') OR ci.id IS NULL)::int AS not_implemented,
-       CASE WHEN COUNT(fc.id) > 0
-            THEN ROUND((COUNT(ci.id) FILTER (WHERE ci.status IN ('implemented', 'verified', 'satisfied_via_crosswalk'))::numeric
-                        / COUNT(fc.id)::numeric) * 100, 2)
-            ELSE 0
-       END AS compliance_pct
+       ${SNAPSHOT_COMPLIANCE.percentage} AS compliance_pct
      FROM organization_frameworks of2
      JOIN frameworks f ON f.id = of2.framework_id
      JOIN framework_controls fc ON fc.framework_id = of2.framework_id
@@ -389,10 +393,8 @@ async function runScheduledReport({ scheduledReportId, organizationId }) {
 async function runScheduledEvidenceCollection({ organizationId }) {
   const splunkService = require('./splunkService');
 
-  const uploadsDir = path.join(__dirname, '../../uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
+  const uploadsDir = require('../config/uploads').UPLOADS_DIR;
+  const storageService = require('./storageService');
 
   // Atomically claim up to 20 due rules using FOR UPDATE SKIP LOCKED so that
   // concurrent job workers cannot process the same rule twice.
@@ -460,7 +462,7 @@ async function runScheduledEvidenceCollection({ organizationId }) {
         const fileName = `${safeName}-${new Date().toISOString().split('T')[0]}.json`;
         const diskName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-auto.json`;
         const filePath = path.join(uploadsDir, diskName);
-        fs.writeFileSync(filePath, fileBody);
+        await storageService.writeFile(filePath, fileBody, { contentType: 'application/json' });
 
         const retentionDays = Number(process.env.EVIDENCE_DEFAULT_RETENTION_DAYS || 365);
         const retentionDate = new Date();

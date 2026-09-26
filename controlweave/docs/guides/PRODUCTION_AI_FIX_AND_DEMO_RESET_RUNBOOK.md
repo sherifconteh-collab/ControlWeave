@@ -43,6 +43,11 @@ railway run -- node -e "require('dotenv').config(); const { Client } = require('
 
 ## 3) Reset Demo Org Tiers (4 demo admins)
 
+> Demo accounts are opt-in in production. Set `DEMO_AUTO_SEED=true` and a
+> private `DEMO_ACCOUNT_PASSWORD` in Railway Variables; the published
+> development default is refused in production. Without `DEMO_AUTO_SEED=true`
+> demo accounts are neither seeded nor exempted from lockout and MFA.
+
 Dry run:
 
 ```powershell
@@ -52,7 +57,7 @@ railway run -- npm --prefix controlweave/backend run seed:demo:tiers:reset
 Apply changes (recommended password standardization included):
 
 ```powershell
-railway run -- npm --prefix controlweave/backend run seed:demo:tiers:reset -- --apply --password "ControlWeave!2026"
+railway run -- npm --prefix controlweave/backend run seed:demo:tiers:reset -- --apply --password "$env:DEMO_ACCOUNT_PASSWORD"
 ```
 
 Expected mapping:
@@ -67,7 +72,7 @@ Expected mapping:
 API smoke check for 4 accounts:
 
 ```powershell
-node -e "const base='https://controlweaver-pro-production.up.railway.app/api/v1'; const accts=['admin@community.com','admin@pro.com','admin@enterprise.com','admin@govcloud.com']; (async()=>{ for (const email of accts){ const login=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password:'ControlWeave!2026'})}); const lj=await login.json(); const token=lj?.data?.tokens?.accessToken; const me=await fetch(base+'/auth/me',{headers:{authorization:'Bearer '+token}}); const mj=await me.json(); console.log(email,'tier=',mj?.data?.organization?.tier,'status=',me.status); } })();"
+node -e "const base='https://controlweaver-pro-production.up.railway.app/api/v1'; const accts=['admin@community.com','admin@pro.com','admin@enterprise.com','admin@govcloud.com']; (async()=>{ for (const email of accts){ const login=await fetch(base+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password:process.env.DEMO_ACCOUNT_PASSWORD})}); const lj=await login.json(); const token=lj?.data?.tokens?.accessToken; const me=await fetch(base+'/auth/me',{headers:{authorization:'Bearer '+token}}); const mj=await me.json(); console.log(email,'tier=',mj?.data?.organization?.tier,'status=',me.status); } })();"
 ```
 
 Critical endpoints to confirm:
@@ -85,7 +90,7 @@ Create/update platform admin user:
 $env:PLATFORM_ADMIN_EMAIL='<set-in-railway-env>'
 $env:PLATFORM_ADMIN_FIRST_NAME='Platform'
 $env:PLATFORM_ADMIN_LAST_NAME='Admin'
-$env:PLATFORM_ADMIN_PASSWORD='ControlWeave!2026'
+$env:PLATFORM_ADMIN_PASSWORD='<strong-unique-password>'  # never reuse the demo password
 railway run -- npm --prefix controlweave/backend run seed:platform-admin
 ```
 

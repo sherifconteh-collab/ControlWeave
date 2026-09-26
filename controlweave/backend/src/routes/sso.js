@@ -4,17 +4,27 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const dns = require('dns').promises;
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const { authenticate, requirePermission, requireTier } = require('../middleware/auth');
 const SSO_TIER = 'pro'; // SSO available on pro+
 const sso = require('../services/ssoService');
+const ssoPolicy = require('../services/ssoPolicy');
 const auditService = require('../services/auditService');
-const { JWT_SECRET } = require('../config/security');
+const { JWT_SECRET, JWT_ALGORITHM } = require('../config/security');
 const { validateBody, requireFields } = require('../middleware/validate');
-const { hashForLookup } = require('../utils/encrypt');
+const { hashForLookup, hashToken } = require('../utils/encrypt');
+const { verifyTotpOrBackupCode } = require('../services/secondFactorService');
+const { createRateLimiter } = require('../middleware/rateLimit');
+const { log } = require('../utils/logger');
+const refreshCookie = require('../utils/refreshCookie');
 const { hasPublicColumn } = require('../utils/schema');
 const { resolveExpiryTimestampFromNow } = require('../utils/sessionExpiry');
+const { X509Certificate } = require('crypto');
+const saml = require('../services/samlService');
+const { isUuid } = require('../middleware/validate');
+const { requireFeature, hasFeature, commercialMode } = require('../services/entitlementService');
 
 const ACCESS_EXPIRY = process.env.JWT_ACCESS_EXPIRY || '15m';
 const REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
@@ -27,9 +37,28 @@ function escapeLike(str) {
 }
 
 function issueTokens(userId) {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: ACCESS_EXPIRY });
-  const refreshToken = jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: REFRESH_EXPIRY });
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { algorithm: JWT_ALGORITHM, expiresIn: ACCESS_EXPIRY });
+  const refreshToken = jwt.sign({ userId, type: 'refresh', jti: crypto.randomBytes(16).toString('hex') }, JWT_SECRET, { algorithm: JWT_ALGORITHM, expiresIn: REFRESH_EXPIRY });
   return { accessToken, refreshToken };
+}
+
+// Single-use code the SSO callback hands to the frontend in place of tokens.
+// Tokens are only released by POST /sso/exchange, which also enforces TOTP.
+const HANDOFF_TTL_SECONDS = 60;
+
+async function redirectWithHandoffCode(res, userId, authMethod) {
+  const code = crypto.randomBytes(32).toString('base64url');
+  await pool.query(
+    `INSERT INTO sso_handoff_codes (code_hash, user_id, auth_method, expires_at)
+     VALUES ($1, $2, $3, NOW() + ($4::int * INTERVAL '1 second'))`,
+    [hashToken(code), userId, authMethod, HANDOFF_TTL_SECONDS]
+  );
+  return res.redirect(`${FRONTEND_URL}/login/sso-callback#code=${encodeURIComponent(code)}`);
+}
+
+// OIDC providers send email_verified as a boolean; Apple sends the string "true".
+function isEmailVerifiedClaim(value) {
+  return value === true || value === 'true';
 }
 
 // email_hash column availability cache for SSO route (checked once per process)
@@ -41,8 +70,9 @@ async function hasSsoEmailHashCol() {
   return ssoEmailHashColumnAvailable;
 }
 
+// SHA-384 (CNSA Suite 1.0), matching the /auth/refresh lookup.
 function hashRefreshToken(token) {
-  return crypto.createHash('sha256').update(String(token)).digest('hex');
+  return hashToken(token);
 }
 
 async function storeSession(userId, refreshToken) {
@@ -60,16 +90,94 @@ function callbackUrl(provider) {
 // ─── SSO Config management (admin only) ─────────────────────────────────────
 
 // GET /sso/config
+function validateSsoInput(body) {
+  if (!['oidc', 'saml'].includes(body.provider_type)) return 'provider_type must be oidc or saml';
+  if (body.provider_type === 'saml') {
+    if (!/^https:\/\//i.test(String(body.saml_entry_point || ''))) return 'SAML sign-on URL must be an https URL';
+    if (body.saml_idp_cert) {
+      try {
+        const b64 = saml.normalizeCert(body.saml_idp_cert);
+        // eslint-disable-next-line no-new
+        new X509Certificate(`-----BEGIN CERTIFICATE-----\n${b64}\n-----END CERTIFICATE-----`);
+      } catch {
+        return 'SAML signing certificate is not a valid X.509 certificate';
+      }
+    }
+  }
+  return null;
+}
+
+// Email domains route "Sign in with SSO" to this organization once verified.
+// A claim is pending until the organization proves control of the domain with
+// a DNS TXT record (POST /sso/domains/verify); pending claims are never used
+// for discovery and do not block other organizations, so nobody can squat a
+// domain or route its users to an IdP they run.
+const DOMAIN_PATTERN = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+const DOMAIN_TXT_PREFIX = '_controlweave-verification';
+
+function domainTxtRecord(domain, token) {
+  return { name: `${DOMAIN_TXT_PREFIX}.${domain}`, value: `controlweave-verification=${token}` };
+}
+
+async function saveEmailDomains(req, input) {
+  if (input === undefined) return null;
+  const domains = [...new Set((Array.isArray(input) ? input : String(input).split(/[\s,]+/))
+    .map((d) => String(d).trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean))];
+  const invalid = domains.filter((d) => !DOMAIN_PATTERN.test(d));
+  if (invalid.length) return `Invalid domain: ${invalid.join(', ')}`;
+  if (domains.length > 50) return 'At most 50 email domains';
+  const taken = await pool.query(
+    'SELECT domain FROM sso_email_domains WHERE domain = ANY($1::text[]) AND organization_id <> $2 AND verified_at IS NOT NULL',
+    [domains, req.user.organization_id]
+  );
+  if (taken.rows.length) return `Already verified by another organization: ${taken.rows.map((r) => r.domain).join(', ')}`;
+  await pool.query('DELETE FROM sso_email_domains WHERE organization_id = $1 AND NOT (domain = ANY($2::text[]))', [req.user.organization_id, domains]);
+  for (const domain of domains) {
+    await pool.query(
+      `INSERT INTO sso_email_domains (domain, organization_id, created_by, verification_token) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (domain, organization_id) DO NOTHING`,
+      [domain, req.user.organization_id, req.user.id, crypto.randomBytes(16).toString('hex')]
+    );
+  }
+  return null;
+}
+
+async function listEmailDomains(organizationId) {
+  const { rows } = await pool.query(
+    'SELECT domain, verification_token, verified_at FROM sso_email_domains WHERE organization_id = $1 ORDER BY domain',
+    [organizationId]
+  );
+  return rows.map((row) => ({
+    domain: row.domain,
+    verified: Boolean(row.verified_at),
+    verified_at: row.verified_at,
+    txt_record: domainTxtRecord(row.domain, row.verification_token)
+  }));
+}
+
 router.get('/config', authenticate, requireTier(SSO_TIER), requirePermission('settings.manage'), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, provider_type, display_name, discovery_url, client_id,
-              scopes, metadata_url, sp_entity_id, auto_provision, default_role, enabled
+              scopes, metadata_url, sp_entity_id, auto_provision, default_role, enabled,
+              saml_entry_point, saml_idp_issuer, (saml_idp_cert IS NOT NULL) AS saml_idp_cert_set,
+              saml_email_attribute, saml_name_attribute, saml_allow_idp_initiated, enforce_sso
        FROM sso_configurations
        WHERE organization_id = $1 LIMIT 1`,
       [req.user.organization_id]
     );
-    return res.json({ data: result.rows[0] || null });
+    const domains = await listEmailDomains(req.user.organization_id);
+    const urls = saml.spUrls(req.user.organization_id);
+    return res.json({
+      data: result.rows[0] ? { ...result.rows[0], email_domains: domains.map((d) => d.domain), email_domain_status: domains } : null,
+      service_provider: {
+        entity_id: (result.rows[0] && result.rows[0].sp_entity_id) || urls.entityId,
+        acs_url: urls.acsUrl,
+        metadata_url: urls.metadataUrl,
+        oidc_redirect_uri: callbackUrl('org')
+      }
+    });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to retrieve SSO configuration' });
   }
@@ -81,10 +189,22 @@ router.put(
   authenticate,
   requireTier(SSO_TIER),
   requirePermission('settings.manage'),
+  requireFeature('sso'),
   validateBody((body) => requireFields(body, ['provider_type'])),
   async (req, res) => {
     try {
+      const validationError = validateSsoInput(req.body);
+      if (validationError) return res.status(400).json({ error: validationError });
+      if (req.body.enforce_sso === true && commercialMode() && !(await hasFeature(req.user.organization_id, 'sso_enforcement'))) {
+        return res.status(402).json({ error: 'Requiring SSO is part of the Enterprise plan.', code: 'plan_upgrade_required', feature: 'sso_enforcement' });
+      }
+      const domainError = await saveEmailDomains(req, req.body.email_domains);
+      if (domainError) return res.status(409).json({ error: domainError });
       await sso.saveOrgSsoConfig(req.user.organization_id, req.body);
+      await sso.saveSamlSettings(req.user.organization_id, {
+        ...req.body,
+        saml_idp_cert: req.body.saml_idp_cert ? saml.normalizeCert(req.body.saml_idp_cert) : null
+      });
       
       // Log SSO configuration change
       const context = auditService.extractAuditContext(req);
@@ -104,6 +224,73 @@ router.put(
       return res.json({ data: { saved: true } });
     } catch (err) {
       return res.status(500).json({ error: 'Failed to save SSO configuration' });
+    }
+  }
+);
+
+// POST /sso/domains/verify { domain } -- check the TXT record that proves this
+// organization controls the domain, and mark the claim verified. The first
+// organization to verify holds the domain; other organizations' pending
+// claims for it are removed.
+const domainVerifyLimiter = createRateLimiter({ label: 'sso-domain-verify', windowMs: 60 * 1000, max: 20 });
+
+async function txtRecordMatches(record) {
+  let answers;
+  try {
+    answers = await dns.resolveTxt(record.name);
+  } catch (error) {
+    if (['ENOTFOUND', 'ENODATA', 'ESERVFAIL', 'ETIMEOUT', 'EREFUSED'].includes(error.code)) return false;
+    throw error;
+  }
+  return answers.some((chunks) => chunks.join('').trim() === record.value);
+}
+
+router.post(
+  '/domains/verify',
+  authenticate,
+  domainVerifyLimiter,
+  requireTier(SSO_TIER),
+  requirePermission('settings.manage'),
+  requireFeature('sso'),
+  async (req, res) => {
+    const domain = String((req.body && req.body.domain) || '').trim().toLowerCase();
+    if (!DOMAIN_PATTERN.test(domain)) return res.status(400).json({ error: 'A valid domain is required' });
+    try {
+      const { rows: [claim] } = await pool.query(
+        'SELECT domain, verification_token, verified_at FROM sso_email_domains WHERE organization_id = $1 AND domain = $2',
+        [req.user.organization_id, domain]
+      );
+      if (!claim) return res.status(404).json({ error: 'Add the domain to your SSO configuration first' });
+      const record = domainTxtRecord(domain, claim.verification_token);
+      if (claim.verified_at) return res.json({ success: true, data: { domain, verified: true, verified_at: claim.verified_at, txt_record: record } });
+      if (!(await txtRecordMatches(record))) {
+        return res.status(422).json({ error: `TXT record not found. Publish ${record.name} with the value ${record.value}, allow time for DNS to update, then try again.`, code: 'domain_txt_missing', txt_record: record });
+      }
+      const client = await pool.connect();
+      let verifiedAt;
+      try {
+        await client.query('BEGIN');
+        const { rows: [updated] } = await client.query(
+          'UPDATE sso_email_domains SET verified_at = NOW() WHERE organization_id = $1 AND domain = $2 AND verified_at IS NULL RETURNING verified_at',
+          [req.user.organization_id, domain]
+        );
+        verifiedAt = updated && updated.verified_at;
+        await client.query('DELETE FROM sso_email_domains WHERE domain = $1 AND organization_id <> $2 AND verified_at IS NULL', [domain, req.user.organization_id]);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        if (error.code === '23505') return res.status(409).json({ error: 'Another organization has already verified this domain' });
+        throw error;
+      } finally {
+        client.release();
+      }
+      await auditService.logFromRequest(req, {
+        eventType: 'sso.domain_verified', resourceType: 'sso_email_domain', details: { domain }, success: true
+      });
+      return res.json({ success: true, data: { domain, verified: true, verified_at: verifiedAt, txt_record: record } });
+    } catch (error) {
+      log('error', 'sso.domain_verify_failed', { error: error.message });
+      return res.status(500).json({ error: 'Failed to verify the domain' });
     }
   }
 );
@@ -142,7 +329,10 @@ router.get('/login/org', async (req, res) => {
       return res.redirect(authUrl);
     }
 
-    return res.status(400).json({ error: 'SAML not yet implemented via this endpoint.' });
+    if (saml.isSamlReady(config)) {
+      return res.redirect(await saml.getAuthorizeUrl(config, ''));
+    }
+    return res.redirect(`${FRONTEND_URL}/login?error=sso_not_configured`);
   } catch (err) {
     return res.status(500).json({ error: 'Failed to initiate SSO login' });
   }
@@ -190,8 +380,10 @@ router.get('/callback/org', async (req, res) => {
       org_id, email,
       userinfo.name || userinfo.preferred_username || email,
       config.default_role,
-      `oidc:${config.id}`, userinfo.sub,
-      null, null, null
+      // provider is varchar(32): keep it short and scope the subject by config.
+      'oidc', `${config.id}:${userinfo.sub}`,
+      null, null, null,
+      { autoProvision: config.auto_provision !== false }
     );
 
     // Log successful SSO authentication
@@ -206,11 +398,7 @@ router.get('/callback/org', async (req, res) => {
       actorName: userinfo.name || email
     });
 
-    const { accessToken, refreshToken } = issueTokens(userId);
-    await storeSession(userId, refreshToken);
-    return res.redirect(
-      `${FRONTEND_URL}/login/sso-callback#at=${encodeURIComponent(accessToken)}&rt=${encodeURIComponent(refreshToken)}`
-    );
+    return redirectWithHandoffCode(res, userId, 'sso');
   } catch (err) {
     console.error('SSO callback error:', err);
     
@@ -234,8 +422,82 @@ router.get('/callback/org', async (req, res) => {
     
     const errorCode = err.message === 'Account is disabled'
       ? 'account_disabled'
-      : 'sso_failed';
+      : err.message === 'Account not provisioned' ? 'not_provisioned' : err.code === 'SEAT_LIMIT' ? 'seat_limit' : 'sso_failed';
     return res.redirect(`${FRONTEND_URL}/login?error=${errorCode}`);
+  }
+});
+
+// ─── SSO discovery and SAML ──────────────────────────────────────────────────
+
+const discoverLimiter = createRateLimiter({ label: 'sso-discover', windowMs: 60 * 1000, max: 30 });
+
+// GET /sso/discover?email= -- is this email's domain signed in through an
+// organization's IdP? Answers by domain only, so it reveals nothing about
+// whether a particular account exists.
+router.get('/discover', discoverLimiter, async (req, res) => {
+  try {
+    const match = await sso.findSsoByEmail(req.query.email);
+    if (!match) return res.json({ data: { sso: false } });
+    return res.json({
+      data: {
+        sso: true,
+        enforced: match.enforce_sso,
+        display_name: match.display_name,
+        login_url: `${BACKEND_URL}/api/v1/sso/login/org?org_id=${match.organization_id}`
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'SSO discovery failed' });
+  }
+});
+
+// GET /sso/saml/:orgId/metadata -- service provider metadata for the IdP admin.
+router.get('/saml/:orgId/metadata', async (req, res) => {
+  try {
+    if (!isUuid(req.params.orgId)) return res.status(404).end();
+    const { rows } = await pool.query('SELECT * FROM sso_configurations WHERE organization_id = $1', [req.params.orgId]);
+    const config = rows[0] || { organization_id: req.params.orgId };
+    res.type('application/samlmetadata+xml');
+    return res.send(saml.metadata({ ...config, organization_id: req.params.orgId }));
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to generate SAML metadata' });
+  }
+});
+
+// POST /sso/saml/:orgId/acs -- assertion consumer service (HTTP-POST binding).
+router.post('/saml/:orgId/acs', createRateLimiter({ label: 'saml-acs', windowMs: 60 * 1000, max: 60 }), async (req, res) => {
+  const context = auditService.extractAuditContext(req);
+  const orgId = req.params.orgId;
+  let identity = {};
+  try {
+    if (!isUuid(orgId) || !req.body || typeof req.body.SAMLResponse !== 'string') {
+      return res.redirect(`${FRONTEND_URL}/login?error=sso_failed`);
+    }
+    const config = await sso.getOrgSsoConfig(orgId);
+    if (!saml.isSamlReady(config)) return res.redirect(`${FRONTEND_URL}/login?error=sso_not_configured`);
+    const profile = await saml.validateResponse(config, req.body);
+    identity = saml.identityFromProfile(profile, config);
+    if (!identity.email) return res.redirect(`${FRONTEND_URL}/login?error=no_email`);
+    const userId = await sso.provisionUser(
+      orgId, identity.email, identity.name, config.default_role,
+      'saml', `${config.id}:${identity.subject || identity.email}`,
+      null, null, null,
+      { autoProvision: config.auto_provision !== false }
+    );
+    await auditService.logAuthentication({
+      organizationId: orgId, userId, email: identity.email, authMethod: 'sso',
+      ssoProvider: config.display_name || 'saml', success: true, ...context, actorName: identity.name
+    });
+    return redirectWithHandoffCode(res, userId, 'sso');
+  } catch (err) {
+    log('warn', 'sso.saml_failed', { detail: err.message });
+    await auditService.logAuthentication({
+      organizationId: isUuid(orgId) ? orgId : null, userId: null, email: identity.email || 'unknown', authMethod: 'sso',
+      ssoProvider: 'saml', success: false, failureReason: err.message, ...context
+    }).catch(() => {});
+    const code = err.message === 'Account is disabled' ? 'account_disabled'
+      : err.message === 'Account not provisioned' ? 'not_provisioned' : err.code === 'SEAT_LIMIT' ? 'seat_limit' : 'sso_failed';
+    return res.redirect(`${FRONTEND_URL}/login?error=${code}`);
   }
 });
 
@@ -307,11 +569,11 @@ router.get('/callback/:provider', async (req, res) => {
     const cfg = sso.SOCIAL_PROVIDERS[provider];
     if (!cfg) return res.redirect(`${FRONTEND_URL}/login?error=unknown_provider`);
 
-    let name, providerUserId, accessToken;
+    let name, providerUserId, accessToken, emailVerified;
 
     if (provider === 'github') {
       const ghUser = await sso.exchangeGitHubCode(code, callbackUrl(provider));
-      ({ email, name, providerUserId, accessToken } = ghUser);
+      ({ email, name, providerUserId, accessToken, emailVerified } = ghUser);
     } else {
       const { tokenSet, userinfo } = await sso.exchangeOidcCode(
         cfg.discoveryUrl,
@@ -325,6 +587,7 @@ router.get('/callback/:provider', async (req, res) => {
       name = userinfo.name || userinfo.preferred_username;
       providerUserId = userinfo.sub;
       accessToken = tokenSet.access_token;
+      emailVerified = isEmailVerifiedClaim(userinfo.email_verified);
     }
 
     if (!email) return res.redirect(`${FRONTEND_URL}/login?error=no_email`);
@@ -351,6 +614,14 @@ router.get('/callback/:provider', async (req, res) => {
         [accessToken, provider, providerUserId]
       );
     } else {
+      // Linking a new provider identity to an existing account by email is
+      // only safe when the provider vouches that the address is verified;
+      // otherwise anyone who can set an arbitrary email on a provider account
+      // could sign in as the matching ControlWeave user.
+      if (!emailVerified) {
+        return res.redirect(`${FRONTEND_URL}/login?error=email_not_verified`);
+      }
+
       // Check if user exists by email (must already have an account)
       const ssoEmailHash = (await hasSsoEmailHashCol()) ? hashForLookup(email.toLowerCase()) : null;
       let existingUser;
@@ -412,11 +683,7 @@ router.get('/callback/:provider', async (req, res) => {
       });
     }
 
-    const { accessToken: at, refreshToken: rt } = issueTokens(userId);
-    await storeSession(userId, rt);
-    return res.redirect(
-      `${FRONTEND_URL}/login/sso-callback#at=${encodeURIComponent(at)}&rt=${encodeURIComponent(rt)}`
-    );
+    return redirectWithHandoffCode(res, userId, `social:${provider}`);
   } catch (err) {
     console.error(`Social ${req.params.provider} callback error:`, err);
     
@@ -478,6 +745,79 @@ router.delete('/social-logins/:provider', authenticate, requireTier(SSO_TIER), a
     return res.json({ data: { unlinked: true } });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to unlink social login' });
+  }
+});
+
+// POST /sso/exchange -- trade a single-use SSO handoff code for tokens.
+// Public by design: the caller has no session yet, and the 256-bit code is the
+// credential. A TOTP-enabled user must also supply totp_code; the code is only
+// consumed on success or on a wrong second factor (which forces a fresh SSO
+// round-trip rather than allowing unlimited TOTP guesses).
+const exchangeLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30, label: 'sso-exchange' });
+
+router.post('/exchange', exchangeLimiter, async (req, res) => {
+  try {
+    const code = String(req.body?.code || '').trim();
+    const totpCode = String(req.body?.totp_code || '').trim();
+    if (!code) {
+      return res.status(400).json({ success: false, error: 'code is required' });
+    }
+    const codeHash = hashToken(code);
+
+    const pending = await pool.query(
+      `SELECT h.user_id, h.auth_method, u.is_active, u.organization_id, u.role, u.is_platform_admin,
+              COALESCE(u.totp_enabled, false) AS totp_enabled,
+              u.totp_secret, u.totp_backup_codes
+       FROM sso_handoff_codes h
+       JOIN users u ON u.id = h.user_id
+       WHERE h.code_hash = $1 AND h.expires_at > NOW()`,
+      [codeHash]
+    );
+    const user = pending.rows[0];
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid or expired sign-in code' });
+    }
+    if (!user.is_active) {
+      await pool.query('DELETE FROM sso_handoff_codes WHERE code_hash = $1', [codeHash]);
+      return res.status(401).json({ success: false, error: 'Account is disabled' });
+    }
+    // Social sign-in does not satisfy "Require SSO"; the organization's own
+    // IdP (auth_method 'sso') does.
+    if (user.auth_method !== 'sso' && (await ssoPolicy.ssoRequiredFor(user))) {
+      await pool.query('DELETE FROM sso_handoff_codes WHERE code_hash = $1', [codeHash]);
+      return res.status(403).json({ success: false, error: ssoPolicy.SSO_REQUIRED_MESSAGE, code: 'sso_required' });
+    }
+
+    if (user.totp_enabled) {
+      if (!totpCode) {
+        return res.json({
+          success: false,
+          totp_required: true,
+          message: 'Enter the 6-digit code from your authenticator app to complete sign-in.'
+        });
+      }
+      const valid = await verifyTotpOrBackupCode({ ...user, id: user.user_id }, totpCode);
+      if (!valid) {
+        await pool.query('DELETE FROM sso_handoff_codes WHERE code_hash = $1', [codeHash]);
+        return res.status(401).json({ success: false, error: 'Invalid authenticator code. Please sign in again.' });
+      }
+    }
+
+    // Consume atomically so a code can never be redeemed twice.
+    const consumed = await pool.query(
+      'DELETE FROM sso_handoff_codes WHERE code_hash = $1 AND expires_at > NOW() RETURNING user_id',
+      [codeHash]
+    );
+    if (consumed.rows.length === 0) {
+      return res.status(401).json({ success: false, error: 'Invalid or expired sign-in code' });
+    }
+
+    const { accessToken, refreshToken } = issueTokens(user.user_id);
+    await storeSession(user.user_id, refreshToken);
+    return res.json({ success: true, data: { accessToken, refreshToken: refreshCookie.deliverRefreshToken(req, res, refreshToken) } });
+  } catch (err) {
+    log('error', 'sso.exchange_failed', { error: err.message });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

@@ -11,6 +11,9 @@
  */
 
 const pool = require('../config/database');
+const { BASELINE_SCOPE_PREDICATE, baselineScopeJoin } = require('./baselineScope');
+const { complianceAggregateSql } = require('./complianceMetrics');
+const POSTURE_COMPLIANCE = complianceAggregateSql({ precision: 1 });
 const llm = require('./llmService');
 
 /**
@@ -101,20 +104,18 @@ async function getCompliancePosture(organizationId, frameworkCode) {
     SELECT 
       f.code as framework_code,
       f.name as framework_name,
-      COUNT(fc.id) as total_controls,
-      COUNT(CASE WHEN ci.status = 'implemented' THEN 1 END) as implemented,
+      ${POSTURE_COMPLIANCE.total} as total_controls,
+      ${POSTURE_COMPLIANCE.compliant} as implemented,
       COUNT(CASE WHEN ci.status = 'in_progress' THEN 1 END) as in_progress,
       COUNT(CASE WHEN ci.status IS NULL OR ci.status = 'not_started' THEN 1 END) as not_started,
-      ROUND(
-        COUNT(CASE WHEN ci.status = 'implemented' THEN 1 END)::numeric / 
-        NULLIF(COUNT(fc.id), 0) * 100, 
-        1
-      ) as compliance_percentage
+      ${POSTURE_COMPLIANCE.percentage} as compliance_percentage
     FROM organization_frameworks of2
     JOIN frameworks f ON f.id = of2.framework_id
     JOIN framework_controls fc ON fc.framework_id = f.id
+    ${baselineScopeJoin('$1')}
     LEFT JOIN control_implementations ci ON ci.control_id = fc.id AND ci.organization_id = $1
     WHERE of2.organization_id = $1 ${frameworkFilter}
+    ${BASELINE_SCOPE_PREDICATE}
     GROUP BY f.code, f.name
   `, params);
   

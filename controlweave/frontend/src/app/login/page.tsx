@@ -14,6 +14,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   sso_not_configured: 'Single sign-on is not configured for this organization.',
   no_email: 'Your identity provider did not return an email address.',
   account_disabled: 'Your account is disabled.',
+  seat_limit: 'Your organization has reached its user limit. Ask your administrator to upgrade the plan.',
+  not_provisioned: 'Your organization has not given you access to ControlWeave yet. Ask your administrator.',
   missing_tokens: 'The sign-in response was incomplete. Please try again.',
   token_exchange_failed: 'We could not complete sign-in. Please try again.'
 };
@@ -109,8 +111,8 @@ export default function LoginPage() {
       const { options, challengeId } = optRes.data?.data || {};
       const authResp = await startAuthentication({ optionsJSON: options });
       const verifyRes = await passkeyAPI.verifyAuth({ response: authResp, challengeId });
-      const { accessToken, refreshToken } = verifyRes.data?.data || {};
-      await loginWithTokens(accessToken, refreshToken);
+      const { accessToken, sessionExpiresAt } = verifyRes.data?.data || {};
+      await loginWithTokens(accessToken, sessionExpiresAt);
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || 'Passkey authentication failed.';
       if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('abort')) {
@@ -118,6 +120,27 @@ export default function LoginPage() {
       }
     } finally {
       setPasskeyLoading(false);
+    }
+  };
+
+  // "Sign in with SSO": find the organization's identity provider from the
+  // email domain and go there.
+  const handleSsoLogin = async () => {
+    setError('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Enter your work email address, then choose Sign in with SSO.');
+      return;
+    }
+    try {
+      const res = await ssoAPI.discover(email);
+      const data = res.data?.data as { sso?: boolean; login_url?: string } | undefined;
+      if (data?.sso && data.login_url) {
+        window.location.href = data.login_url;
+        return;
+      }
+      setError('Single sign-on is not set up for this email domain. Sign in with your password.');
+    } catch {
+      setError('Could not look up single sign-on. Please try again.');
     }
   };
 
@@ -247,6 +270,14 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
             {passkeyLoading ? 'Authenticating...' : 'Sign in with Passkey'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSsoLogin}
+            disabled={loading || passkeyLoading}
+            className="mt-2 w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 py-2.5 rounded-md font-medium hover:bg-gray-50 transition duration-200 disabled:opacity-50 text-sm"
+          >
+            Sign in with SSO
           </button>
         </div>
 

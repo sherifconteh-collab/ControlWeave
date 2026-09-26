@@ -22,6 +22,13 @@ Before marking code complete:
 - [ ] `authenticate` middleware applied to protected routes
 - [ ] Frontend components use TypeScript strict (no `any`)
 
+## Automated Invariants
+
+Run `npm run tevv:security` in `controlweave/backend` as part of every review. It
+checks the rules below mechanically (TEVV-SEC in CI); the review then covers what a
+script cannot judge. When a review finds a new class of defect that can be detected
+statically, add a check to `scripts/tevv-security-audit.js` in the same PR as the fix.
+
 ## Security Review Triggers
 
 STOP and do a thorough security review when changing:

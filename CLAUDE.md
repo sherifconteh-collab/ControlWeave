@@ -35,7 +35,7 @@
 ### Architecture
 
 - Multi-tenant: queries MUST filter by `organization_id`
-- Fully open source: all tier gating was removed — every feature is available to every authenticated user. Do not add `requireTier()`/`requireProEdition()` calls to new routes. See `.claude/rules/tier-system.md`.
+- Open-core: with `COMMERCIAL_MODE` unset (default) every feature is available to every authenticated user. When enabled, a few enterprise features are gated with `requireFeature()` from `services/entitlementService.js`; core GRC is never gated. Do not use the legacy `requireTier()`/`requireProEdition()`. See `.claude/rules/tier-system.md`.
 - AI features are optional — core platform works without API keys
 - BYOK (Bring Your Own Key) support for LLM providers
 
@@ -135,13 +135,14 @@ module.exports = router;
 
 ## CI Pipeline (TEVV)
 
-The CI runs 6 validation layers on every PR:
+The CI runs 7 validation layers on every PR:
 1. **Backend** — Syntax and IP hygiene
 2. **Frontend** — Typecheck, API type generation, build
 3. **Security** — npm audit (zero high-severity CVEs)
-4. **TEVV-API** — Route registration, auth middleware, frontend API client coverage
+4. **TEVV-API** — Route registration, loadable routers, frontend API client coverage
 5. **TEVV-DB** — Migration numbering, seed consistency, SQL validity
 6. **TEVV-UI** — Dashboard page existence, UI↔API linkage, untested page detection
+7. **TEVV-SEC** — Security and audit invariants from code review: RBAC, SoD, authenticate, rate limiting, SSRF guard on tenant URLs (pinned connections), pinned JWT algorithms, SSO policy on every sign-in path, organization scoping, complete ERP connector snapshots, refresh tokens only in HttpOnly cookies for the web app. Run locally with `npm run tevv:security` (backend)
 
 ## Environment Variables
 

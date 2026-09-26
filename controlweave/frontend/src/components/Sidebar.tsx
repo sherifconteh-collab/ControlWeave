@@ -63,6 +63,7 @@ const navigationSections: NavigationSection[] = [
           { name: 'Controls', href: '/dashboard/controls', icon: '✅', requiredPermissions: ['organizations.read'] },
           { name: 'AI Control Assessments', href: '/dashboard/controls/pending-assessments', icon: '🤖', requiredPermissions: ['implementations.read'] },
           { name: 'Exceptions', href: '/dashboard/exceptions', icon: '⚠️', requiredPermissions: ['controls.read'] },
+          { name: 'Policies', href: '/dashboard/policies', icon: '📜', requiredPermissions: ['controls.read'] },
           // Remediation sits at controls.read because that is what every POA&M
           // endpoint requires. It used to be reachable only as a tab on
           // Operations, which is gated on settings.manage -- so a compliance
@@ -98,6 +99,7 @@ const navigationSections: NavigationSection[] = [
         items: [
           { name: 'Risk Register', href: '/dashboard/risks', icon: '🎲', requiredPermissions: ['risks.read'] },
           { name: 'Indicators', href: '/dashboard/indicators', icon: '📉', requiredPermissions: ['indicators.read'] },
+          { name: 'HIPAA Risk Assessment', href: '/dashboard/hipaa-sra', icon: '🏥', requiredPermissions: ['risks.read'] },
         ],
       },
       {
@@ -109,7 +111,7 @@ const navigationSections: NavigationSection[] = [
       {
         label: 'Third Party',
         items: [
-          { name: 'Third-Party Risk', href: '/dashboard/tprm', icon: '🔗', requiredPermissions: ['organizations.read'] },
+          { name: 'Third-Party Risk', href: '/dashboard/tprm', icon: '🔗', requiredPermissions: ['tprm.read'] },
           { name: 'Vendor Contracts', href: '/dashboard/vendor-risk', icon: '🤝', requiredPermissions: ['organizations.read'] },
         ],
       },
@@ -188,6 +190,8 @@ const navigationSections: NavigationSection[] = [
         label: 'Preferences',
         items: [
           { name: 'Settings', href: '/dashboard/settings', icon: '⚙️', requiredPermissionsAny: ['settings.manage', 'roles.manage'] },
+          { name: 'Plan & Billing', href: '/dashboard/settings/plan', icon: '💳', requiredPermissions: ['settings.manage'] },
+          { name: 'QA & Self-Test', href: '/dashboard/qa', icon: '🧪', requiredPermissions: ['qa.run'] },
           { name: 'Notifications', href: '/dashboard/notifications', icon: '🔔', requiredPermissions: ['dashboard.read'] },
         ],
       },
@@ -220,6 +224,7 @@ const navigationSections: NavigationSection[] = [
           { name: 'All Organizations', href: '/dashboard/platform/organizations', icon: '🏢' },
           { name: 'LLM Status', href: '/dashboard/platform/llm-status', icon: '🔌' },
           { name: 'Backups', href: '/dashboard/platform/backups', icon: '💾' },
+          { name: 'Dependencies', href: '/dashboard/platform/dependencies', icon: '📦' },
           { name: 'Security', href: '/dashboard/platform/security', icon: '🔒' },
           { name: 'License', href: '/dashboard/platform/license', icon: '🪪' },
         ],

@@ -134,6 +134,8 @@ Fill in the evidence details:
 
 A SHA256 integrity hash is computed automatically on upload to support later verification.
 
+When object storage is configured, the file is saved to the bucket before the upload succeeds; if storage is unavailable the upload is rejected (HTTP 503) rather than recorded without a durable copy. Administrators: see `docs/runbooks/file-storage.md`.
+
 ---
 
 ## Evidence Types

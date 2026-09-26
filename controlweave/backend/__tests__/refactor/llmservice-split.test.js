@@ -135,9 +135,11 @@ describe('llmservice-split: ai/keyResolution identity', () => {
 
   test('exports the expected symbols', () => {
     expect(Object.keys(keyResolution).sort()).toEqual([
+      'AI_PROVIDER_TIMEOUT_MS',
       'GEMINI_API_BASE',
       'PROVIDER_SETTING_KEY_MAP',
       'VALID_PROVIDERS',
+      'assertTenantOllamaUrl',
       'getAllOrgApiKeys',
       'getAllPlatformApiKeys',
       'getClient',

@@ -12,13 +12,13 @@ ControlWeave supports 15+ compliance frameworks with intelligent crosswalk mappi
 
 ### Core Security Frameworks
 - **NIST 800-53 Rev 5** - Comprehensive federal security controls (20 families, 1,014 items: 300 base controls plus all 714 non-withdrawn control enhancements, with NIST SP 800-53B Low/Moderate/High baseline membership)
-- **NIST 800-171** - Protecting Controlled Unclassified Information (CUI)
+- **NIST 800-171** - Protecting Controlled Unclassified Information (CUI): all 97 Rev 3 security requirements across 17 families, with organization-defined parameters shown as [Assignment] / [Selection]
 - **ISO 27001** - International information security standard
 - **NIST CSF 2.0** - Cybersecurity Framework for risk management
 
 ### Industry-Specific Frameworks
 - **SOC 2** - Service Organization Controls (Trust Service Criteria)
-- **HIPAA** - Healthcare data protection
+- **HIPAA** - HIPAA Security Rule: the safeguard standards plus their 40 implementation specifications, each marked Required or Addressable. Pair it with the HIPAA Security Risk Assessment (Risk → HIPAA Risk Assessment); see `HIPAA_SRA.md`
 - **PCI DSS** - Payment card industry security (coming soon)
 - **FFIEC** - Financial institution cybersecurity
 - **NERC CIP** - Critical infrastructure protection (energy sector)

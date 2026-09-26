@@ -141,6 +141,7 @@ export default function RmfLifecyclePage() {
   const [selectedPackage, setSelectedPackage] = useState<(RmfPackage & { history: StepHistoryEntry[]; authorization_decisions: AuthorizationDecision[] }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [ineligibleReason, setIneligibleReason] = useState('');
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
@@ -188,8 +189,18 @@ export default function RmfLifecyclePage() {
     try {
       const res = await rmfAPI.getPackages();
       setPackages(res.data?.data || []);
-    } catch {
+      setIneligibleReason('');
+    } catch (err: unknown) {
       setPackages([]);
+      // 403 means the organization has no RMF-eligible framework selected;
+      // explain that instead of showing an empty list with a create button
+      // that would also be refused.
+      const response = (err as { response?: { status?: number; data?: { error?: unknown } } })?.response;
+      if (response?.status === 403) {
+        setIneligibleReason(typeof response.data?.error === 'string'
+          ? response.data.error
+          : 'RMF lifecycle requires NIST 800-53, NIST 800-171, or CMMC 2.0 framework selection');
+      }
     }
   }, []);
 
@@ -368,7 +379,7 @@ export default function RmfLifecyclePage() {
                 </button>
               ))}
             </div>
-            {canWrite && (
+            {canWrite && !ineligibleReason && (
               <button
                 onClick={() => setShowCreate(true)}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
@@ -380,6 +391,12 @@ export default function RmfLifecyclePage() {
         </div>
 
         {/* Feedback banners */}
+        {ineligibleReason && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+            {ineligibleReason}. Add one of these frameworks under{' '}
+            <a href="/dashboard/frameworks" className="underline font-medium">Frameworks</a> to start an RMF package.
+          </div>
+        )}
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
