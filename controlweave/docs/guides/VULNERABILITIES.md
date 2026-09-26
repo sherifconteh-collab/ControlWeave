@@ -261,7 +261,7 @@ panel reads **"No AI analysis available."** — visible in Figure 4.2, which was
 captured without an API key. AI is optional; everything else in this guide works
 without it.
 
-Configure a provider in **Settings → AI Configuration**. ControlWeave is
+Configure a provider in **Settings → AI providers**. ControlWeave is
 bring-your-own-key; see the [Settings guide](SETTINGS.md).
 
 ---

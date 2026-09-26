@@ -115,7 +115,7 @@ export default function PasswordVaultsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-2">
-          <Link href="/dashboard/cmdb" className="text-purple-600 hover:underline text-sm">← CMDB</Link>
+          <Link href="/dashboard/assets#inventory" className="text-purple-600 hover:underline text-sm">← Assets</Link>
         </div>
 
         <div className="flex items-center justify-between">

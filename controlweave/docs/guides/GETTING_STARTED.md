@@ -14,25 +14,49 @@ Welcome! This guide will walk you through your first steps with ControlWeave, fr
 
 ## Finding Your Way Around
 
-The left sidebar groups everything into collapsible sections rather than one long
-list. Only the section you are currently in is expanded, so when a step below
-says *"click **Frameworks** in the left sidebar"*, expand the section it lives
-under first:
+Three things get you almost anywhere in one or two clicks:
+
+- **Home (My Work)** at `/dashboard` lists everything waiting on you across every
+  module: controls assigned to you, POA&M items you own, risks due for review,
+  audit requests (PBC) assigned to you, access reviews, policies to acknowledge
+  and approvals waiting on you. Each row's button opens the exact record with
+  the right panel already open (for example **Upload evidence** opens that
+  control with the evidence panel showing). The summary cards filter the list
+  in place; **Overall compliance** opens the full compliance dashboard, now at
+  **Compliance → Compliance Overview** (`/dashboard/overview`).
+- **Search** (the box at the top of every page, or **Ctrl+K** / **Cmd+K**) finds
+  records by ID or name (`ac2` finds AC-2), pages, and individual settings
+  (`sso` opens Settings, Single sign-on). Press **Enter** to open the top result.
+- **+ New** (top bar) opens the create form for evidence, a risk, a POA&M item,
+  an exception, a vendor, a policy, an incident or an asset. On a control's page
+  it also offers evidence, a POA&M item or an exception already linked to that
+  control.
+
+The left sidebar keeps a **Pinned** list at the top (Controls, Evidence, POA&M,
+Risk Register and Assessments by default; hover any item and click the pin to
+add or remove it), then every section, collapsed:
 
 | Section | What is inside |
 |---|---|
-| **Compliance** | Controls, AI Control Assessments, Exceptions, Frameworks, Evidence, Assessments, Auditor Workspace, RMF Lifecycle, Cyber Resilience |
-| **Risk** | Risk Register, Indicators, Incidents, Third-Party Risk, Vendor Contracts |
+| **Compliance** | Controls, AI Control Assessments, Exceptions, Policies, POA&M, Frameworks, Compliance Overview, Evidence, Assessments, Auditor Workspace, RMF Lifecycle, Cyber Resilience, Financial Audit Readiness, ERP Access Governance, ERP Transaction Monitoring |
+| **Risk** | Risk Register, Indicators, HIPAA Risk Assessment, Incidents, Third-Party Risk (vendor contracts are its **Contracts** tab) |
 | **Regulatory** | Obligations, Regulatory News, AI Laws |
-| **Assets & Security** | Assets, SBOM, Financial Compliance, Vulnerabilities, Threat Intelligence, Security Posture, AI Threat Library |
+| **Assets & Security** | Assets (the CMDB registers are its **Inventory by type** section), SBOM, Financial Compliance, Vulnerabilities, Threat Intelligence, Security Posture, AI Threat Library |
 | **Insights & Reporting** | AI Insights, Reports, Dashboard Views |
-| **Organization** | Organization Profile, Structure (Departments + Business Objectives), My Organizations, Access Governance, Data Governance, Operations, Settings, Notifications |
+| **Organization** | Organization Profile, Structure (Departments + Business Objectives), My Organizations, Access Governance, Data Governance, Operations, Settings, Plan & Billing, QA & Self-Test, Notifications |
 | **Learn & Support** | Knowledge Base, Training, Help Center, Report Issue |
 
-**Dashboard** sits above the sections and is always visible. Sections you expand
-stay expanded between visits, and navigating straight to a URL expands whichever
-section contains it. Items you lack permission for are hidden, so your sidebar
-may show fewer entries than the table above.
+Sections you expand stay expanded between visits, and navigating straight to a
+URL expands whichever section contains it. Items you lack permission for are
+hidden, so your sidebar may show fewer entries than the table above. On a phone,
+the **menu** button (top left) opens the same sidebar as a drawer.
+
+Pages that were merged keep their old addresses as redirects:
+`/dashboard/vendor-risk` opens Third-Party Risk → Contracts,
+`/dashboard/evidence/auto` and `/dashboard/evidence/pending` open the Evidence
+page's **Automated collection** and **AI suggestions** tabs, `/dashboard/cmdb`
+opens Assets → Inventory by type, and `/dashboard/settings/ai-keys` opens
+Settings, AI providers.
 
 ## 📋 Prerequisites
 - Web browser (Chrome, Firefox, Safari, or Edge recommended)

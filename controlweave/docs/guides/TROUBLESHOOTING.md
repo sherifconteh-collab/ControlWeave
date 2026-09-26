@@ -27,7 +27,7 @@ Solutions for common issues encountered in ControlWeave.
 ### AI Analysis Fails or Shows No Results
 1. Verify your LLM provider is configured in **Settings** → **LLM Configuration**
 2. Confirm the API key is valid and has not expired
-3. Check your AI request quota (visible in Settings → LLM Configuration)
+3. Check your AI request quota (visible in Settings → AI providers)
 4. Try a different LLM provider if one is unavailable
 
 ### AI Copilot Not Responding

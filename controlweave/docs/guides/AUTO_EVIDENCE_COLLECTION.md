@@ -30,7 +30,7 @@ Schedule automated evidence collection from integrated sources on a recurring ba
 ## Creating a Rule
 
 1. Navigate to **Evidence** in the sidebar
-2. Scroll to **Auto-Collection Rules**
+2. Open the **Automated collection** tab (`/dashboard/evidence?tab=auto`)
 3. Click **+ New Rule**
 4. Configure:
    - **Name**: Descriptive rule name

@@ -19,7 +19,7 @@ AI Analysis provides structured, report-quality insights powered by large langua
 
 Before running AI Analysis:
 
-1. **Configure an LLM provider** (Settings → LLM Configuration)
+1. **Configure an LLM provider** (Settings → AI providers)
 2. **Have data in the system** (activated frameworks, controls, assessments)
 
 > **💡 Tip**: The more data you have in ControlWeave, the more accurate and specific your AI analyses will be.
@@ -342,7 +342,7 @@ ControlWeaver has no tier-based monthly AI request limit — any limit you hit c
 
 **Each analysis = 1 request** (regardless of complexity or length)
 
-> **💡 Tip**: Use your own API key (BYOK) to control your provider quota directly. See [Settings → LLM Configuration](SETTINGS.md#llm-configuration).
+> **💡 Tip**: Use your own API key (BYOK) to control your provider quota directly. See [Settings → AI providers](SETTINGS.md#llm-configuration).
 
 ### Checking Your Usage
 
@@ -423,7 +423,7 @@ Results include confidence levels based on available data:
 
 ### "No LLM Provider Configured"
 
-**Solution**: Go to Settings → LLM Configuration and add an API key.  
+**Solution**: Go to Settings → AI providers and add an API key.  
 See [LLM Configuration Guide](SETTINGS.md#llm-configuration).
 
 ### "Insufficient Data for Analysis"
@@ -441,7 +441,7 @@ See [LLM Configuration Guide](SETTINGS.md#llm-configuration).
 **Solutions**:
 1. ControlWeaver has no tier-based monthly AI request limit — this error comes from your configured LLM provider's own rate limit or quota
 2. Wait for the provider's rate limit/quota to reset
-3. Add your own API key (BYOK) to control your own provider quota directly — see [Settings → LLM Configuration](SETTINGS.md#llm-configuration)
+3. Add your own API key (BYOK) to control your own provider quota directly — see [Settings → AI providers](SETTINGS.md#llm-configuration)
 
 ### Slow or Incomplete Results
 

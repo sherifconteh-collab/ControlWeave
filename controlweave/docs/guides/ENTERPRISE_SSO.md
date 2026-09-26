@@ -1,6 +1,6 @@
 # Single Sign-On and User Provisioning
 
-ControlWeave signs users in through your identity provider (IdP) with **SAML 2.0** or **OpenID Connect**, and lets the IdP create, update and deactivate users with **SCIM 2.0**. Both are configured by an administrator (`settings.manage`) under **Settings → Security**.
+ControlWeave signs users in through your identity provider (IdP) with **SAML 2.0** or **OpenID Connect**, and lets the IdP create, update and deactivate users with **SCIM 2.0**. Both are configured by an administrator (`settings.manage`) under **Settings → Single sign-on** (`/dashboard/settings/single-sign-on`; searching `sso` with **Ctrl+K** opens it).
 
 ## How users sign in
 
@@ -10,7 +10,7 @@ Turn on **Require SSO** to stop every other way of signing in (password, passkey
 
 ## SAML 2.0
 
-1. In ControlWeave, open **Settings → Security → Single sign-on** and choose **SAML 2.0**. Copy the three service provider values shown:
+1. In ControlWeave, open **Settings → Single sign-on** and choose **SAML 2.0**. Copy the three service provider values shown:
    - **SP entity ID / audience**: `https://<backend>/api/v1/sso/saml/<org-id>/metadata`
    - **ACS (reply) URL**, using the HTTP-POST binding: `https://<backend>/api/v1/sso/saml/<org-id>/acs`
    - **SP metadata URL**: the same address as the entity ID. IdPs that accept metadata can import it from here.
@@ -85,4 +85,4 @@ Not supported:
 - Groups: the endpoint returns an empty list so connection tests pass, and roles are assigned in ControlWeave
 - bulk operations
 
-Every SCIM change is audit-logged with the token that made it. Revoke a token under **Settings → Security** at any time.
+Every SCIM change is audit-logged with the token that made it. Revoke a token under **Settings → Single sign-on** at any time.

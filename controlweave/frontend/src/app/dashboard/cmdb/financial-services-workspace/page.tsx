@@ -169,7 +169,7 @@ export default function FinancialServicesWorkspacePage() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/dashboard/help" className="text-sm text-gray-500 hover:text-purple-600 hover:underline font-medium">📖 Help</Link>
-            <Link href="/dashboard/cmdb" className="text-sm text-purple-600 hover:underline font-medium">← Back to CMDB</Link>
+            <Link href="/dashboard/assets#inventory" className="text-sm text-purple-600 hover:underline font-medium">← Back to Assets</Link>
           </div>
         </div>
 

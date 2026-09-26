@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { policiesAPI, PolicyStatus } from '@/lib/api';
 import { errorMessage, formatDate, primaryButton } from './policyShared';
+import { invalidateMyWork } from '@/lib/useMyWork';
 
 export interface Attestation {
   version: string;
@@ -40,6 +41,7 @@ export default function PolicyAttestationPanel({ policyId, status, attestation, 
     setError('');
     try {
       await policiesAPI.acknowledge(policyId);
+      invalidateMyWork();
       await onChanged();
       if (users) await loadUsers();
     } catch (err: unknown) {
@@ -88,7 +90,7 @@ export default function PolicyAttestationPanel({ policyId, status, attestation, 
         attestation.acknowledged_by_me ? (
           <p className="text-sm text-green-700">You have acknowledged this version.</p>
         ) : (
-          <button type="button" className={`${primaryButton} w-full`} disabled={busy} onClick={acknowledge}>
+          <button id="policy-acknowledge-button" type="button" className={`${primaryButton} w-full`} disabled={busy} onClick={acknowledge}>
             {busy ? 'Saving…' : 'I have read and agree to this policy'}
           </button>
         )

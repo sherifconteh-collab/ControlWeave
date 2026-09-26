@@ -93,7 +93,7 @@ For the structured, report-quality analyses in particular, see the
 Nothing above works until a provider is configured. ControlWeave is
 bring-your-own-key.
 
-1. Go to **Settings → LLM Configuration**
+1. Go to **Settings → AI providers**
 2. Choose a provider
 3. Enter your API key
 4. Test the connection
@@ -164,7 +164,7 @@ strong starting point, not an authority.
 
 ### "No AI API key configured"
 
-No provider is set up. Go to **Settings → LLM Configuration**, add a key, and
+No provider is set up. Go to **Settings → AI providers**, add a key, and
 test the connection.
 
 ### Provider rate limit or quota reached

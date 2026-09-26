@@ -4,7 +4,7 @@ The **QA & Self-Test** page (sidebar: Organization → Preferences → QA & Self
 
 ## Who can use it
 
-Running and viewing self-tests requires the `qa.run` permission. Administrators have it by default. To give a dedicated tester access without admin rights, create a custom role under **Settings → Roles** (for example "QA Tester") and grant it `qa.run`, plus read permissions for the areas they should inspect.
+Running and viewing self-tests requires the `qa.run` permission. Administrators have it by default. To give a dedicated tester access without admin rights, create a custom role under **Settings → Users and roles** (for example "QA Tester") and grant it `qa.run`, plus read permissions for the areas they should inspect.
 
 ## What it checks
 

@@ -448,7 +448,7 @@ Auto-Evidence Collection supports eight source types organized into categories. 
 
 ### 10.2 Create a Collection Rule
 
-1. Go to the **Evidence** page and scroll to the **Auto-Collection Rules** section
+1. Go to the **Evidence** page and open the **Automated collection** tab (`/dashboard/evidence?tab=auto`)
 2. Click **New Rule**
 3. Fill in the rule details:
    - **Name**: Descriptive label for the rule (e.g., "Daily Auth Logs")
@@ -473,7 +473,7 @@ Auto-Evidence Collection supports eight source types organized into categories. 
 
 ### 10.3 Run a Rule Manually
 
-1. Scroll to the **Auto-Collection Rules** section on the Evidence page
+1. Open the **Automated collection** tab on the Evidence page
 2. Find the rule you want to run
 3. Click **▶ Run**
 4. Collected evidence appears in the Evidence list and is linked to the specified controls
@@ -506,7 +506,7 @@ Connected Integrations → AI Scan → Pending Evidence (staging)
                                   └── ✗ Reject  → Dismissed (audit-logged)
 ```
 
-1. **Scan**: Click **🔍 Scan Integrations** in the **AI Evidence Suggestions** section on the Evidence page. The AI:
+1. **Scan**: Click **🔍 Scan Integrations** on the Evidence page's **AI suggestions** tab (`/dashboard/evidence?tab=pending`). The AI:
    - Detects which integrations are connected (e.g., Splunk)
    - Queries recent audit logs, auth events, and any enabled collection rules
    - Analyzes the data against your org's active frameworks
@@ -526,14 +526,14 @@ Connected Integrations → AI Scan → Pending Evidence (staging)
 ### 11.2 Trigger an AI Scan
 
 1. Go to the **Evidence** page
-2. Scroll to the **AI Evidence Suggestions** section (purple left-border card)
+2. Open the **AI suggestions** tab (the tab shows how many are waiting)
 3. Click **🔍 Scan Integrations**
 4. Wait for the AI to finish (this may take a minute depending on data volume)
 5. Review each pending suggestion that appears
 
 ### 11.3 Approve Pending Evidence
 
-1. In the **AI Evidence Suggestions** section, review a suggestion's title, description, confidence, and mapped controls
+1. On the **AI suggestions** tab, review a suggestion's title, description, confidence, and mapped controls
 2. Click **✓ Approve** to add it to your official evidence library
 3. The evidence is automatically linked to the AI-suggested controls
 4. The item moves from "pending" to "approved" status

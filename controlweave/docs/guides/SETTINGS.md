@@ -4,38 +4,44 @@ Complete guide to configuring ControlWeave for your organization.
 
 ## Accessing Settings
 
-1. Click your **profile icon** (top-right corner)
-2. Select **Settings** from the dropdown
+Open **Organization → Settings** in the sidebar, or type the setting you want
+into search (**Ctrl+K**), for example `sso`, `api key` or `audit log`.
 
-Or navigate directly to `/dashboard/settings`.
+Each section has its own address, so a link, a help article or a bookmark can
+open it directly. The list on the left of the Settings page has a
+**Find a setting** box that filters it.
 
 ---
 
-## Settings Tabs Overview
+## Settings Sections
 
-The Settings page is organized into the following tabs (shown left to right, subject to your permissions):
+Sections are shown subject to your permissions. `/dashboard/settings` opens the
+first one you can use (Users and roles for administrators).
 
-| Tab | Description | Access |
-|-----|-------------|--------|
-| **Roles & Permissions** | Manage team members, roles, and permissions | Users who can manage roles |
-| **LLM Configuration** | Configure AI providers and API keys | Users who can manage settings |
-| **AI Activity & Decisions** | Monitor AI usage and decisions | Users who can manage settings |
-| **Automation** | Configure auto-crosswalk and other automation | Users who can manage settings |
-| **Integrations** | Connect external tools (SIEM, Splunk, webhooks) | Users who can use integrations |
-| **Content Packs** | Import vendor-provided compliance content | Users who can manage settings |
-| **Audit Logs** | Review organization activity history | Users who can manage settings |
-| **Platform Ops** | Platform-wide administration | Platform admins only |
-| **Security** | Manage passkeys and security settings | All users with Settings access |
-| **Notifications** | Configure alerts and email preferences | All users with Settings access |
-| **Account** | Data export and account cancellation | Users who can manage settings |
+| Section | Address | Description | Access |
+|-----|-----|-------------|--------|
+| **Security and sign-in** | `/dashboard/settings/security` | Two-factor authentication, passkeys, password | Everyone |
+| **Notifications** | `/dashboard/settings/notifications` | Alert and email preferences (SMTP for administrators) | Everyone |
+| **Users and roles** | `/dashboard/settings/users-and-roles` | Team members, invitations, roles and permissions | `roles.manage` |
+| **Single sign-on** | `/dashboard/settings/single-sign-on` | Email domain verification, SAML or OpenID Connect, SCIM provisioning | `settings.manage` |
+| **AI providers** | `/dashboard/settings/ai-providers` | AI provider API keys (BYOK) and default model | `settings.manage` |
+| **AI activity** | `/dashboard/settings/ai-activity` | AI usage and decision log | `settings.manage` |
+| **Integrations** | `/dashboard/settings/integrations` | SIEM, Splunk, GitHub, trust center, webhooks | `settings.manage` |
+| **Automation** | `/dashboard/settings/automation` | Auto-crosswalk and other automation | `settings.manage` |
+| **Content** | `/dashboard/settings/content` | Vendor-provided compliance content packs | `settings.manage` |
+| **Audit log** | `/dashboard/settings/audit-log` | Organization activity history (AU-2) | `settings.manage` |
+| **Platform** | `/dashboard/settings/platform` | Platform-wide administration | Platform admins |
+| **Account and data** | `/dashboard/settings/account` | Data export and account cancellation | `settings.manage` |
 
-At the top of the Settings page (above the tabs), all users see an **Open Source** notice confirming ControlWeaver is open source (AGPL v3) and that all features are available to all authenticated users — no subscription required.
+Plan and billing stays at `/dashboard/settings/plan`. Old links using
+`/dashboard/settings?tab=<name>` still work and are rewritten to the section's
+address, keeping any audit-log filters in the link.
 
 ---
 
 ## Open Source — No Billing or Plan Management
 
-ControlWeaver removed all tier gating and billing/Stripe infrastructure. Every feature described in this guide is available to every authenticated user; there is no Plan & Trial banner, no Subscription Details panel, no Available Plans grid, and no Stripe Checkout or Customer Portal flow. The Settings page shows a simple **Open Source** notice above the tab navigation instead.
+ControlWeaver removed all tier gating and billing/Stripe infrastructure. Every feature described in this guide is available to every authenticated user; there is no Plan & Trial banner, no Subscription Details panel, no Available Plans grid, and no Stripe Checkout or Customer Portal flow.
 
 ---
 
@@ -171,7 +177,7 @@ For maximum privacy, run AI locally:
 
 1. [Install Ollama](https://ollama.ai) on your server
 2. Pull a model: `ollama pull llama3.1:8b-q4_K_M` (quantized for efficiency)
-3. In Settings → LLM Configuration, select **Ollama**
+3. In Settings → AI providers, select **Ollama**
 4. Enter your Ollama server URL (e.g., `http://localhost:11434`)
 5. Enter the model name you pulled
 6. Click **Save**
@@ -396,7 +402,7 @@ ControlWeave supports passkeys (WebAuthn) for secure, password-free authenticati
 
 Any organization can configure Single Sign-On:
 
-1. Go to **Settings** → **Security** → **SSO Configuration**
+1. Go to **Settings → Single sign-on** (`/dashboard/settings/single-sign-on`)
 2. Enter your IdP details:
    - **IdP Entity ID**
    - **IdP SSO URL**
@@ -537,7 +543,7 @@ API keys are stored encrypted at rest in the database. They are never logged or 
 
 ### Can I export audit logs?
 
-Yes. Go to Settings → Audit Logs → Export. Logs are available as CSV.
+Yes. Go to Settings → Audit log → Export. Logs are available as CSV.
 
 ### Do I need to upgrade a plan to unlock features?
 

@@ -2,7 +2,9 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { Suspense, useEffect, useRef, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import VendorContractsPanel from '@/components/tprm/VendorContractsPanel';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { tprmAPI, aiAPI, tprmPublicAPI } from '@/lib/api';
@@ -169,7 +171,8 @@ const DOC_TYPE_LABELS: Record<DocType, string> = {
   other: 'Other',
 };
 
-type ActiveTab = 'vendors' | 'questionnaires' | 'documents' | 'security_ratings';
+type ActiveTab = 'vendors' | 'questionnaires' | 'documents' | 'security_ratings' | 'contracts';
+const TAB_IDS: ActiveTab[] = ['vendors', 'questionnaires', 'documents', 'security_ratings', 'contracts'];
 
 const emptyVendorForm = {
   vendor_name: '',
@@ -194,8 +197,17 @@ const emptyDocForm = {
   notes: '',
 };
 
-export default function TprmPage() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('vendors');
+function TprmPageInner() {
+  // Deep links: ?tab=<id> selects a tab (the old Vendor Contracts page redirects to
+  // ?tab=contracts); ?vendor=<id> opens that vendor (search results); ?new=1 opens Add Vendor.
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const vendorParam = searchParams.get('vendor');
+  const wantsNew = searchParams.get('new') === '1';
+  const deepLinkHandled = useRef(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    tabParam && (TAB_IDS as string[]).includes(tabParam) ? (tabParam as ActiveTab) : 'vendors'
+  );
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [documents, setDocuments] = useState<TprmDocument[]>([]);
@@ -307,6 +319,25 @@ export default function TprmPage() {
       showToast(e.response?.data?.error || 'Failed to send reminder', 'error');
     }
   };
+
+  useEffect(() => {
+    if (deepLinkHandled.current || loading) return;
+    if (wantsNew) {
+      deepLinkHandled.current = true;
+      setActiveTab('vendors');
+      setShowVendorModal(true);
+      loadCmdbAssets();
+      return;
+    }
+    if (vendorParam) {
+      const match = vendors.find((v) => v.id === vendorParam);
+      if (match) {
+        deepLinkHandled.current = true;
+        setActiveTab('vendors');
+        setSelectedVendor(match);
+      }
+    }
+  }, [loading, wantsNew, vendorParam, vendors, loadCmdbAssets]);
 
   const loadEvidence = async (questionnaireId: string) => {
     setEvidenceLoading(questionnaireId);
@@ -543,14 +574,14 @@ export default function TprmPage() {
 
         {/* Cross-feature linkage */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Link href="/dashboard/vendor-risk"
-            className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors">
+          <button type="button" onClick={() => setActiveTab('contracts')}
+            className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors text-left">
             <span className="text-xl">🤝</span>
             <div>
               <div className="text-sm font-medium text-purple-800">Vendor Contracts</div>
               <div className="text-xs text-purple-600">Contracts, renewals, SLAs, quick scoring</div>
             </div>
-          </Link>
+          </button>
           <Link href="/dashboard/ai-insights"
             className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
             <span className="text-xl">🛡️</span>
@@ -605,7 +636,7 @@ export default function TprmPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="border-b border-gray-200">
             <nav className="flex gap-0">
-              {(['vendors', 'questionnaires', 'documents', 'security_ratings'] as ActiveTab[]).map(tab => (
+              {TAB_IDS.map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -619,6 +650,7 @@ export default function TprmPage() {
                   {tab === 'questionnaires' && '📋 Questionnaires'}
                   {tab === 'documents' && '📄 Documents'}
                   {tab === 'security_ratings' && '🛡️ Security Ratings'}
+                  {tab === 'contracts' && '🤝 Contracts'}
                 </button>
               ))}
             </nav>
@@ -1100,6 +1132,7 @@ export default function TprmPage() {
 
                 {/* ===== SECURITY RATINGS TAB ===== */}
                 {activeTab === 'security_ratings' && <VendorSecurityRatingsTab />}
+                {activeTab === 'contracts' && <VendorContractsPanel />}
               </>
             )}
           </div>
@@ -1108,7 +1141,7 @@ export default function TprmPage() {
         {/* ===== VENDOR DETAIL PANEL ===== */}
         {selectedVendor && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto">
+            <div role="dialog" aria-modal="true" aria-label={selectedVendor.vendor_name} className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto">
               <div className="flex justify-between items-start p-6 border-b border-gray-200">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">{selectedVendor.vendor_name}</h3>
@@ -1193,7 +1226,7 @@ export default function TprmPage() {
         {/* ===== ADD VENDOR MODAL ===== */}
         {showVendorModal && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div role="dialog" aria-modal="true" aria-label="Add Vendor" className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center p-6 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">Add Vendor</h3>
                 <button onClick={() => setShowVendorModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
@@ -1484,5 +1517,13 @@ export default function TprmPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function TprmPage() {
+  return (
+    <Suspense fallback={null}>
+      <TprmPageInner />
+    </Suspense>
   );
 }

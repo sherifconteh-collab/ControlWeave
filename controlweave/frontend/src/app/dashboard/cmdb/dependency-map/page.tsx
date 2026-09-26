@@ -169,7 +169,7 @@ export default function DependencyMapPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard/cmdb" className="text-sm text-gray-500 hover:text-gray-700">← CMDB</Link>
+            <Link href="/dashboard/assets#inventory" className="text-sm text-gray-500 hover:text-gray-700">← Assets</Link>
             <h1 className="text-2xl font-bold text-gray-900">Dependency Graph</h1>
             <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-semibold">Enterprise</span>
           </div>

@@ -1,7 +1,8 @@
 // @tier: community
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -77,9 +78,16 @@ const STATUS_LABELS: Record<ExceptionStatus, string> = {
   revoked: 'Revoked',
 };
 
-export default function ExceptionsPage() {
+function ExceptionsPageInner() {
   const { user } = useAuth();
   const canWrite = hasPermission(user, 'controls.write');
+  // Deep links: ?open=<id> highlights one exception (My Work "Approve or reject");
+  // ?new=1 opens the create form, with ?controlId=<id> pre-selecting the control.
+  const searchParams = useSearchParams();
+  const openId = searchParams.get('open');
+  const wantsNew = searchParams.get('new') === '1';
+  const presetControlId = searchParams.get('controlId') || '';
+  const deepLinkHandled = useRef(false);
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
@@ -153,6 +161,20 @@ export default function ExceptionsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    if (wantsNew && canWrite) {
+      deepLinkHandled.current = true;
+      setForm({ ...EMPTY_FORM, control_id: presetControlId });
+      setShowForm(true);
+      return;
+    }
+    if (openId && !loading && exceptions.some((e) => e.id === openId)) {
+      deepLinkHandled.current = true;
+      window.setTimeout(() => document.getElementById(`exception-${openId}`)?.scrollIntoView({ block: 'center' }), 50);
+    }
+  }, [wantsNew, canWrite, presetControlId, openId, loading, exceptions]);
 
   const openCreateForm = () => {
     setForm(EMPTY_FORM);
@@ -429,8 +451,10 @@ export default function ExceptionsPage() {
             {exceptions.map((exception) => (
               <li
                 key={exception.id}
+                id={`exception-${exception.id}`}
                 role="listitem"
-                className="bg-white rounded-lg shadow-md p-5 border-l-4 border-purple-400"
+                aria-current={exception.id === openId ? 'true' : undefined}
+                className={`bg-white rounded-lg shadow-md p-5 border-l-4 border-purple-400 scroll-mt-20 ${exception.id === openId ? 'ring-2 ring-purple-600' : ''}`}
               >
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -497,5 +521,13 @@ export default function ExceptionsPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ExceptionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExceptionsPageInner />
+    </Suspense>
   );
 }

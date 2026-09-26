@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { erpAPI, usersAPI } from '@/lib/api';
 import { errorMessage, formatDate, inputClass, Modal, primaryButton, secondaryButton } from '@/components/policies/policyShared';
 import { downloadBlob, ErrorBanner, NoticeBanner, StatusPill } from './erpShared';
@@ -43,9 +43,11 @@ interface ReviewsPanelProps {
   canManage: boolean;
   systems: ErpSystem[];
   onChanged: () => void;
+  /** From ?review=<id>: open this review on arrival, showing the items routed to me. */
+  initialReviewId?: string | null;
 }
 
-export default function ReviewsPanel({ canManage, systems, onChanged }: ReviewsPanelProps) {
+export default function ReviewsPanel({ canManage, systems, onChanged, initialReviewId }: ReviewsPanelProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [open, setOpen] = useState<ReviewDetail | null>(null);
   const [creating, setCreating] = useState<{ system_id: string; name: string; due_date: string; reviewer_id: string; routing: 'reviewer' | 'manager' } | null>(null);
@@ -66,6 +68,16 @@ export default function ReviewsPanel({ canManage, systems, onChanged }: ReviewsP
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const initialOpened = useRef(false);
+  useEffect(() => {
+    if (!initialReviewId || initialOpened.current) return;
+    initialOpened.current = true;
+    setMine(true);
+    openReview(initialReviewId, true);
+    // openReview is a plain function recreated per render; the ref runs this once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialReviewId]);
 
   const openReview = async (id: string, onlyMine = mine) => {
     try {

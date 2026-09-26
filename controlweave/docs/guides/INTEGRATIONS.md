@@ -83,7 +83,7 @@ Once Splunk is connected, ControlWeave's AI can automatically scan your Splunk d
 
 ## SSO / SAML and SCIM
 
-Single sign-on (SAML 2.0 or OpenID Connect) and automatic user provisioning (SCIM 2.0) are configured under **Settings → Security**. See `ENTERPRISE_SSO.md` for step-by-step setup with Okta and Microsoft Entra ID.
+Single sign-on (SAML 2.0 or OpenID Connect) and automatic user provisioning (SCIM 2.0) are configured under **Settings → Single sign-on** (`/dashboard/settings/single-sign-on`). See `ENTERPRISE_SSO.md` for step-by-step setup with Okta and Microsoft Entra ID.
 
 ---
 

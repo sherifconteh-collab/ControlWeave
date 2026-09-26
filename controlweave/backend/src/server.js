@@ -466,6 +466,8 @@ const dynamicConfigRoutes = require('./routes/dynamicConfig');
 const poamRoutes = require('./routes/poam');
 const poamMilestoneRoutes = require('./routes/poamMilestones');
 const exceptionsRoutes = require('./routes/exceptions');
+const myWorkRoutes = require('./routes/myWork');
+const searchRoutes = require('./routes/search');
 const controlHealthRoutes = require('./routes/controlHealth');
 const dashboardBuilderRoutes = require('./routes/dashboardBuilder');
 const integrationsHubRoutes = safeRequire('./routes/integrationsHub');
@@ -632,6 +634,8 @@ app.use('/api/v1/poam', poamRoutes);
 // routes/poam.js is already past the 800-line guideline.
 app.use('/api/v1/poam', poamMilestoneRoutes);
 app.use('/api/v1/exceptions', exceptionsRoutes);
+app.use('/api/v1/my-work', myWorkRoutes);
+app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/control-health', controlHealthRoutes);
 app.use('/api/v1/dashboard-builder', dashboardBuilderRoutes);
 app.use('/api/v1/webhooks', webhookRoutes);

@@ -4,7 +4,7 @@ Configure security features including two-factor authentication, passkeys, and S
 
 ## Overview
 
-ControlWeaver provides several account and organization security features, configured from **Settings** → **Security** (organization-level SSO/passkey setup) and **Account** → **Security** (your own TOTP/passkeys). This guide covers what's actually configurable today — see the note at the end for security controls that are sometimes assumed to exist but currently don't.
+ControlWeaver provides several account and organization security features, configured from **Settings → Single sign-on** (organization SSO, `/dashboard/settings/single-sign-on`) and **Settings → Security and sign-in** (your own TOTP and passkeys, `/dashboard/settings/security`). This guide covers what's actually configurable today — see the note at the end for security controls that are sometimes assumed to exist but currently don't.
 
 ## Two-Factor Authentication (TOTP)
 
@@ -36,7 +36,7 @@ Passkeys are opt-in per user, same as TOTP — there's no organization-wide "req
 
 ### SAML 2.0 Configuration
 
-1. Go to **Settings** → **Security** → **SSO/SAML**
+1. Go to **Settings → Single sign-on** (search `sso` with **Ctrl+K**)
 2. Download the ControlWeaver Service Provider metadata
 3. Configure your Identity Provider (IdP) with the SP metadata
 4. Enter the IdP metadata URL or paste the XML

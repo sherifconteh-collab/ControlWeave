@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { MarkdownContent } from '@/components/ai/MarkdownContent';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { hasPermission } from '@/lib/access';
 import { policiesAPI, PolicyStatus } from '@/lib/api';
 import PolicyAttestationPanel, { Attestation } from '@/components/policies/PolicyAttestationPanel';
 import PolicyReviewsPanel, { PolicyReview } from '@/components/policies/PolicyReviewsPanel';
+import { focusTarget } from '@/lib/focusTarget';
 import {
   errorMessage,
   formatDate,
@@ -75,6 +76,10 @@ export default function PolicyDetailPage() {
   const params = useParams<{ id: string }>();
   const policyId = params.id;
   const { user } = useAuth();
+  // Deep link from My Work: ?action=acknowledge brings the acknowledgment panel into view.
+  const searchParams = useSearchParams();
+  const deepLinkAction = searchParams.get('action');
+  const deepLinkHandled = useRef(false);
   const canWrite = hasPermission(user, 'controls.write');
   const [detail, setDetail] = useState<PolicyDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +102,12 @@ export default function PolicyDetailPage() {
   }, [policyId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (deepLinkHandled.current || !detail || deepLinkAction !== 'acknowledge') return;
+    deepLinkHandled.current = true;
+    focusTarget('policy-acknowledge-button');
+  }, [deepLinkAction, detail]);
 
   const run = async (action: () => Promise<unknown>, fallback: string) => {
     setBusy(true);
@@ -261,7 +272,9 @@ export default function PolicyDetailPage() {
           </section>
 
           <div className="space-y-6">
-            <PolicyAttestationPanel policyId={policy.id} status={policy.status} attestation={attestation} onChanged={load} />
+            <div id="policy-acknowledge" className="scroll-mt-20">
+              <PolicyAttestationPanel policyId={policy.id} status={policy.status} attestation={attestation} onChanged={load} />
+            </div>
             <PolicyReviewsPanel policyId={policy.id} reviews={reviews} canWrite={canWrite} onChanged={load} />
           </div>
         </div>

@@ -46,9 +46,9 @@ vulnerabilities, dependencies and notes.
 
 ### 1.2 Navigate to the specialized registers
 
-The six specialized registers live at `/dashboard/cmdb` and are **not** in the
-sidebar. Reach them from the **Financial Compliance** entry under
-**Assets & Security**, or go to `/dashboard/cmdb` directly:
+The six specialized registers are linked from the **Inventory by type (CMDB)**
+section at the bottom of **Assets & Security → Assets** (`/dashboard/assets#inventory`).
+The old `/dashboard/cmdb` address redirects there:
 
 - **Hardware** — Physical and virtual machines
 - **Software** — Applications and services
@@ -57,7 +57,7 @@ sidebar. Reach them from the **Financial Compliance** entry under
 - **Environments** — Deployment environments (Production, Staging, etc.)
 - **Password Vaults** — Credential store integrations
 
-Two further pages live under `/dashboard/cmdb` alongside the registers:
+Two further pages are linked from the same section:
 
 - **Dependency Graph** (`/dashboard/cmdb/dependency-map`) — visualizes the
   asset-to-asset relationships recorded via `POST /api/v1/cmdb/relationships`
@@ -90,13 +90,14 @@ New**" throughout — the buttons are not labeled "Add Hardware", "Add Software"
 **Assets** (`/dashboard/assets`): Total Assets, Active, Categories,
 Environments, plus category / status / environment filters.
 
-**CMDB** (`/dashboard/cmdb`): Total Assets, Service Accounts and AI Agents,
-with links into each register and a short explanation of why the CMDB matters
-for GRC.
+**Inventory by type (CMDB)**, the section at the bottom of Assets
+(`/dashboard/assets#inventory`, formerly the separate `/dashboard/cmdb` page):
+Total Assets, Service Accounts and AI Agents, with links into each register and
+a short explanation of why the CMDB matters for GRC.
 
 ### 1.4 Bulk import and export
 
-The **Bulk import & export** panel at the bottom of `/dashboard/cmdb` handles
+The **Bulk import & export** panel in the Inventory by type section of Assets handles
 loading and extracting inventory in one go.
 
 1. **Download template** gives you a CSV with exactly the columns the importer
@@ -138,7 +139,7 @@ Define your deployment environments before adding assets. Assets are associated 
 
 ### 2.1 Add an Environment
 
-1. Go to `/dashboard/cmdb` → **Environments**, then click **+ Add New**
+1. Go to **Assets → Inventory by type** → **Environments**, then click **+ Add New**
 2. Fill in the environment details:
 
 **Required Fields**:
@@ -180,7 +181,7 @@ The equivalent endpoint is `PUT /api/v1/cmdb/environments/:id`.
 
 ### 3.1 Add a Hardware Asset
 
-1. Go to `/dashboard/cmdb` → **Hardware** → **+ Add New**
+1. Go to **Assets → Inventory by type** → **Hardware** → **+ Add New**
 2. Fill in asset details:
 
 **Required Fields**:
@@ -218,7 +219,7 @@ The equivalent endpoint is `PUT /api/v1/cmdb/environments/:id`.
 
 ### 3.2 Bulk Asset Management
 
-Use the **Bulk import & export** panel on `/dashboard/cmdb` (§1.4) — download
+Use the **Bulk import & export** panel in Assets → Inventory by type (§1.4) — download
 the template, fill it in, dry-run it and import. The register pages themselves
 have no Import control; bulk loading is centralized on the CMDB dashboard so one
 file can be validated the same way whichever category it targets.
@@ -232,7 +233,7 @@ To script it instead, `POST /api/v1/cmdb/assets` creates one asset per call, and
 
 ### 4.1 Add a Software Asset
 
-1. Go to `/dashboard/cmdb` → **Software** → **+ Add New**
+1. Go to **Assets → Inventory by type** → **Software** → **+ Add New**
 2. Fill in asset details:
 
 **Software-Specific Fields**:
@@ -268,7 +269,7 @@ AI Agent assets have additional fields to support AI governance and the NIST AI 
 
 ### 5.1 Add an AI Agent
 
-1. Go to `/dashboard/cmdb` → **AI Agents** → **+ Add New**
+1. Go to **Assets → Inventory by type** → **AI Agents** → **+ Add New**
 2. Fill in standard asset fields, plus:
 
 **AI Governance Fields**:
@@ -311,7 +312,7 @@ What does exist:
 
 Service accounts represent non-human identities such as API keys, CI/CD tokens, and database credentials.
 
-1. Go to `/dashboard/cmdb` → **Service Accounts** → **+ Add New**
+1. Go to **Assets → Inventory by type** → **Service Accounts** → **+ Add New**
 2. Fill in the details:
 
 **Required Fields**:
@@ -365,7 +366,7 @@ Register your organization's password vaults to link service account credentials
 
 ### 7.1 Add a Password Vault
 
-1. Go to `/dashboard/cmdb` → **Password Vaults** → **+ Add New**
+1. Go to **Assets → Inventory by type** → **Password Vaults** → **+ Add New**
 2. Fill in the details:
 
 **Fields**:
@@ -475,7 +476,7 @@ Requires the `ai.use` permission and a configured LLM provider.
 
 ### 10.1 Exporting the inventory
 
-Use **Export inventory** in the bulk panel on `/dashboard/cmdb` (§1.4). It emits
+Use **Export inventory** in the bulk panel in Assets → Inventory by type (§1.4). It emits
 CSV covering every asset — or one category, if you pick one — using the same
 columns the importer accepts, so an export can be edited and loaded back.
 
@@ -596,7 +597,7 @@ After setting up your CMDB:
 3. **Map to Controls**: link assets to the controls they evidence (§9.1)
 4. **Review dependencies**: open the Dependency Graph at
    `/dashboard/cmdb/dependency-map`
-5. **Extract the inventory**: **Export inventory** on `/dashboard/cmdb` (§1.4)
+5. **Extract the inventory**: **Export inventory** in Assets → Inventory by type (§1.4)
 
 ---
 

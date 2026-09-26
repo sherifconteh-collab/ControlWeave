@@ -6,7 +6,7 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-blue.svg)](https://modelcontextprotocol.io)
-[![Release](https://img.shields.io/badge/Release-v4.12.0-green.svg)](./RELEASE_NOTES.md)
+[![Release](https://img.shields.io/badge/Release-v4.13.0-green.svg)](./RELEASE_NOTES.md)
 [![Security Pipeline](https://img.shields.io/badge/Security-NIST%20800--160-orange.svg)](./.github/workflows/security-pipeline.yml)
 [![Frameworks](https://img.shields.io/badge/Frameworks-44-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
 [![Controls](https://img.shields.io/badge/Controls-1%2C190%2B-brightgreen.svg)](./docs/FRAMEWORK_COVERAGE.md)
@@ -164,7 +164,7 @@ See [PHASE_6_SUMMARY.md](./PHASE_6_SUMMARY.md) for the endpoint table, the scori
 | Groq | Yes (BYOK) | openai/gpt-oss-120b, openai/gpt-oss-20b, groq/compound, groq/compound-mini, meta-llama/llama-4-scout-17b-16e-instruct — free tier at console.groq.com |
 | Ollama | No key needed | Self-hosted local LLMs (llama3.2, llama3.1:8b, mistral, qwen2.5, phi3, gemma2, etc.) |
 
-Configure providers in **Settings → LLM Configuration**. Each organization can set its own BYOK key per provider and choose the active model.
+Configure providers in **Settings → AI providers** (`/dashboard/settings/ai-providers`). Each organization can set its own BYOK key per provider and choose the active model.
 
 ### Asset Management (CMDB)
 - **Hardware** — Servers, workstations, network equipment

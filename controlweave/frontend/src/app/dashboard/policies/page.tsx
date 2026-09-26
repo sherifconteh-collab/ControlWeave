@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/access';
@@ -43,7 +43,7 @@ const EMPTY_FORM: NewPolicyForm = {
   review_frequency_days: 365,
 };
 
-export default function PoliciesPage() {
+function PoliciesPageInner() {
   const { user } = useAuth();
   const router = useRouter();
   const canWrite = hasPermission(user, 'controls.write');
@@ -55,6 +55,15 @@ export default function PoliciesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState<Dialog>('none');
+  // ?new=1 opens the New policy dialog ("+ New").
+  const searchParams = useSearchParams();
+  const wantsNew = searchParams.get('new') === '1';
+  const newHandled = useRef(false);
+  useEffect(() => {
+    if (!wantsNew || !canWrite || newHandled.current) return;
+    newHandled.current = true;
+    setDialog('create');
+  }, [wantsNew, canWrite]);
   const [form, setForm] = useState<NewPolicyForm>(EMPTY_FORM);
   const [generateFrameworks, setGenerateFrameworks] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -330,5 +339,13 @@ export default function PoliciesPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function PoliciesPage() {
+  return (
+    <Suspense fallback={null}>
+      <PoliciesPageInner />
+    </Suspense>
   );
 }

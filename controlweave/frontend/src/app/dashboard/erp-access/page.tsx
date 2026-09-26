@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/access';
@@ -27,12 +28,18 @@ interface Summary {
   pending_emergency_reviews: number;
 }
 
-export default function ErpAccessPage() {
+const TAB_IDS = ['systems', 'conflicts', 'rules', 'reviews', 'emergency'];
+
+function ErpAccessPageInner() {
   const { user } = useAuth();
   const erpAddon = useAddon('erp');
   // Managing ERP data needs the permission and the ERP Governance add-on.
   const canManage = hasPermission(user, 'erp.manage') && erpAddon.licensed;
-  const [tab, setTab] = useState('systems');
+  // Deep links: ?tab=<id> selects a tab; ?review=<id> opens that access review (My Work "Review N items").
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const reviewParam = searchParams.get('review');
+  const [tab, setTab] = useState(tabParam && TAB_IDS.includes(tabParam) ? tabParam : reviewParam ? 'reviews' : 'systems');
   const [systems, setSystems] = useState<ErpSystem[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState('');
@@ -80,9 +87,17 @@ export default function ErpAccessPage() {
         {tab === 'systems' && <SystemsPanel canManage={canManage} systems={systems} onChanged={load} />}
         {tab === 'conflicts' && <ConflictsPanel canManage={canManage} systems={systems} onChanged={load} />}
         {tab === 'rules' && <RulesPanel canManage={canManage} />}
-        {tab === 'reviews' && <ReviewsPanel canManage={canManage} systems={systems} onChanged={load} />}
+        {tab === 'reviews' && <ReviewsPanel canManage={canManage} systems={systems} onChanged={load} initialReviewId={reviewParam} />}
         {tab === 'emergency' && <EmergencyPanel canManage={canManage} onChanged={load} />}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ErpAccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <ErpAccessPageInner />
+    </Suspense>
   );
 }

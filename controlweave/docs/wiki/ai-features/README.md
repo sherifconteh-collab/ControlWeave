@@ -90,7 +90,7 @@ WebSocket: ws://server/socket.io
 - LLM provider configured (for AI analysis features)
 
 ### Quick Start
-1. Navigate to Settings → LLM Configuration
+1. Navigate to Settings → AI providers
 2. Configure your AI provider (OpenAI, Anthropic, etc.)
 3. Set usage limits and safety thresholds
 4. Start using AI features from dashboards or API

@@ -106,7 +106,7 @@ an administrator override, so 4 were independently reviewed"). The same count
 is available as `decision_counts.self_reviewed`.
 
 Revoke decisions are recorded for the certification record; actually removing
-roles is a separate step in **Settings → Users & Permissions** so the change
+roles is a separate step in **Settings → Users and roles** so the change
 passes the standard role-assignment safeguards.
 
 ## Simulator
@@ -118,7 +118,7 @@ it. Pick roles and/or type permission names, and ControlWeave returns:
   (positive and negative access testing)
 - any SoD rules the proposed combination would violate
 
-Use it to validate custom roles built in **Settings → Roles** before granting
+Use it to validate custom roles built in **Settings → Users and roles** before granting
 them to anyone.
 
 ## Import & AI Analysis
@@ -161,4 +161,4 @@ analysis, not an error about the document itself.
 
 All Access Governance mutations — rule changes, campaign lifecycle events,
 document uploads and analysis, and every certify/revoke decision — are written
-to the audit log (AU-2) and are visible in **Settings → Audit**.
+to the audit log (AU-2) and are visible in **Settings → Audit log**.

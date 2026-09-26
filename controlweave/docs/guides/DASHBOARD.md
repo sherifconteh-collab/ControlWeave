@@ -4,6 +4,13 @@ Your compliance command center — a real-time view of your organization's secur
 
 ## Overview
 
+> **Where it is**: the compliance dashboard lives at **Compliance → Compliance
+> Overview** (`/dashboard/overview`), and the **Overall compliance** card on
+> Home opens it. Home (`/dashboard`) is now **My Work**, the list of everything
+> waiting on you; see [Getting Started → Finding your way around](GETTING_STARTED.md#finding-your-way-around).
+> Clicking a framework bar or a status slice here opens the Controls list
+> already filtered to it.
+
 The ControlWeave Dashboard provides an at-a-glance summary of your compliance status across all active frameworks, recent activity, priority actions, crosswalk impact, and trend data. The dashboard refreshes automatically and uses server-side caching (30-second TTL) for performance.
 
 ---
@@ -139,7 +146,7 @@ When enabled, the dashboard automatically fetches:
 
 > **💡 Tip**: AI Insights results are cached for 6 hours. Disable AI Insights if you want to minimize AI API usage.
 
-> **⚠️ Requirement**: AI Insights require a configured LLM provider in **Settings → LLM Configuration**.
+> **⚠️ Requirement**: AI Insights require a configured LLM provider in **Settings → AI providers**.
 
 ---
 

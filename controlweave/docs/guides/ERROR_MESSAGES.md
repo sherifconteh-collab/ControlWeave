@@ -23,7 +23,7 @@ Common error messages in ControlWeave and how to resolve them.
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| `LLM provider not configured` | No AI provider set up | Go to Settings → LLM Configuration |
+| `LLM provider not configured` | No AI provider set up | Go to Settings → AI providers |
 | `Invalid API key` | API key expired or incorrect | Update the API key in Settings |
 | `Provider unavailable` | LLM service outage | Try a different provider |
 | `Context too large` | Too much data for model | Apply filters to narrow scope |
